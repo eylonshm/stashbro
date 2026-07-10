@@ -8,51 +8,46 @@ final class StashBroTests: XCTestCase {
     }
 }
 
-// MARK: - AppDelegate.detectType tests
+// MARK: - detectItemType tests
 
-@MainActor
 final class DetectTypeTests: XCTestCase {
-    // AppDelegate must be allocated, but applicationDidFinishLaunching NOT called
-    // (that would create NSStatusItem + timers - not headless-safe)
-    private let delegate = AppDelegate()
-
     func testYouTubeIsVideo() {
-        XCTAssertEqual(delegate.detectType(url: "https://youtube.com/watch?v=abc"), .video)
+        XCTAssertEqual(detectItemType(url: "https://youtube.com/watch?v=abc"), .video)
     }
 
     func testYouTubeSubdomainIsVideo() {
-        XCTAssertEqual(delegate.detectType(url: "https://www.youtube.com/watch?v=abc"), .video)
+        XCTAssertEqual(detectItemType(url: "https://www.youtube.com/watch?v=abc"), .video)
     }
 
     func testYouTuBeShortlinkIsVideo() {
-        XCTAssertEqual(delegate.detectType(url: "https://youtu.be/abc"), .video)
+        XCTAssertEqual(detectItemType(url: "https://youtu.be/abc"), .video)
     }
 
     func testVimeoIsVideo() {
-        XCTAssertEqual(delegate.detectType(url: "https://vimeo.com/123"), .video)
+        XCTAssertEqual(detectItemType(url: "https://vimeo.com/123"), .video)
     }
 
     func testXIsPost() {
-        XCTAssertEqual(delegate.detectType(url: "https://x.com/user/status/1"), .post)
+        XCTAssertEqual(detectItemType(url: "https://x.com/user/status/1"), .post)
     }
 
     func testTwitterIsPost() {
-        XCTAssertEqual(delegate.detectType(url: "https://twitter.com/user/status/1"), .post)
+        XCTAssertEqual(detectItemType(url: "https://twitter.com/user/status/1"), .post)
     }
 
     func testRedditIsPost() {
-        XCTAssertEqual(delegate.detectType(url: "https://reddit.com/r/swift"), .post)
+        XCTAssertEqual(detectItemType(url: "https://reddit.com/r/swift"), .post)
     }
 
     func testThreadsIsPost() {
-        XCTAssertEqual(delegate.detectType(url: "https://threads.net/@user"), .post)
+        XCTAssertEqual(detectItemType(url: "https://threads.net/@user"), .post)
     }
 
     func testUnknownDomainIsArticle() {
-        XCTAssertEqual(delegate.detectType(url: "https://example.com/blog/post"), .article)
+        XCTAssertEqual(detectItemType(url: "https://example.com/blog/post"), .article)
     }
 
     func testMalformedURLIsArticle() {
-        XCTAssertEqual(delegate.detectType(url: "not-a-url"), .article)
+        XCTAssertEqual(detectItemType(url: "not-a-url"), .article)
     }
 }
