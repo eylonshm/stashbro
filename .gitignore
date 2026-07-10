@@ -3,6 +3,7 @@
 node_modules/
 dist/
 .turbo/
+.output/
 *.db
 *.db-shm
 *.db-wal
