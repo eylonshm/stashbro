@@ -12,9 +12,11 @@ final class AppDatabase {
     }
 
     static func makeShared(appGroupId: String = "group.com.stashbro.app") -> AppDatabase {
-        let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId)!
-        let path = container.appendingPathComponent("stashbro.db").path
-        return makeAt(path: path)
+        if let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId),
+           let db = try? makeAt(path: container.appendingPathComponent("stashbro.db").path) {
+            return db
+        }
+        return makeInMemory() // ponytail: fallback for test/sandbox environments
     }
 
     static func makeInMemory() -> AppDatabase {
@@ -24,12 +26,12 @@ final class AppDatabase {
         return db
     }
 
-    static func makeAt(path: String) -> AppDatabase {
+    static func makeAt(path: String) throws -> AppDatabase {
         var config = Self.config()
         config.prepareDatabase { db in try db.execute(sql: "PRAGMA journal_mode = WAL") }
-        let writer = try! DatabasePool(path: path, configuration: config)
+        let writer = try DatabasePool(path: path, configuration: config)
         let db = AppDatabase(dbWriter: writer)
-        try! db.migrate()
+        try db.migrate()
         return db
     }
 

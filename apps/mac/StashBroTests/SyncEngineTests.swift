@@ -258,6 +258,62 @@ final class GRDBLocalStoreTests: XCTestCase {
         XCTAssertEqual(changes.count, 1)
         XCTAssertEqual(changes[0].id, "b") // only changeSeq=10 > 7
     }
+
+    func testNewItemFromServerApplied() throws {
+        let (store, db) = makeStore()
+        let now = Date(timeIntervalSince1970: 1_000_000.000)
+
+        let change = SyncChange(id: "new", changeSeq: 5, createdAt: now, updatedAt: now,
+                                deletedAt: nil, url: "https://new.com", title: "New",
+                                description: nil, thumbnailUrl: nil, faviconUrl: nil,
+                                domain: "new.com", type: .article, status: .unread,
+                                priority: .medium, tagNames: ["swift", "mac"])
+        try store.applyChanges([change])
+
+        let fetched = try db.dbWriter.read { try StashItem.fetchOne($0, key: "new") }
+        XCTAssertEqual(fetched?.title, "New")
+        XCTAssertEqual(fetched?.changeSeq, 5) // server changeSeq preserved, not incremented
+
+        let tagCount = try db.dbWriter.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM item_tags WHERE item_id = 'new'")!
+        }
+        XCTAssertEqual(tagCount, 2) // both tags linked
+    }
+
+    func testTombstoneForUnknownItemCreatesRecord() throws {
+        let (store, db) = makeStore()
+        let now = Date(timeIntervalSince1970: 1_000_000.000)
+        let deletedAt = now.addingTimeInterval(1)
+
+        let tombstone = SyncChange(id: "ghost", changeSeq: 3, createdAt: now,
+                                   updatedAt: deletedAt, deletedAt: deletedAt,
+                                   url: "https://x.com", title: "Ghost",
+                                   description: nil, thumbnailUrl: nil, faviconUrl: nil,
+                                   domain: "x.com", type: .article, status: .unread,
+                                   priority: .medium, tagNames: [])
+        try store.applyChanges([tombstone])
+
+        let fetched = try db.dbWriter.read { try StashItem.fetchOne($0, key: "ghost") }
+        XCTAssertNotNil(fetched)
+        XCTAssertNotNil(fetched?.deletedAt) // tombstone created even for unknown item
+    }
+
+    @MainActor
+    func testAppliedItemsNotRepushed() async throws {
+        let (store, db) = makeStore()
+        _ = db // confirm in-memory DB wired to store
+
+        let client = MockSyncClient()
+        let newCursor = 10
+        client.pullResult = ([SyncChange.make(id: "r1", changeSeq: 5),
+                              SyncChange.make(id: "r2", changeSeq: 10)], newCursor)
+        let engine = SyncEngine(store: store, client: client)
+
+        await engine.sync() // applies r1 (seq=5) + r2 (seq=10), sets cursor=10
+
+        let pending = try store.getChangesSince(store.getCursor())
+        XCTAssertTrue(pending.isEmpty) // no echo: server seqs ≤ newCursor are never re-pushed
+    }
 }
 
 // MARK: - Helpers

@@ -59,10 +59,7 @@ final class GRDBLocalStore: LocalStoreProtocol {
                 // LWW: server wins on tie - skip only if local is STRICTLY newer
                 if let existing, existing.updatedAt > change.updatedAt { continue }
 
-                let nextSeq = (try StashItem
-                    .order(Column("change_seq").desc)
-                    .fetchOne(dbConn)?.changeSeq ?? 0) + 1
-
+                // Use server's changeSeq so these items stay ≤ newCursor and are never re-pushed
                 let item = StashItem(
                     id: change.id,
                     userId: existing?.userId ?? "default",
@@ -73,7 +70,7 @@ final class GRDBLocalStore: LocalStoreProtocol {
                     createdAt: existing?.createdAt ?? change.createdAt,
                     updatedAt: change.updatedAt,
                     deletedAt: change.deletedAt,
-                    changeSeq: nextSeq
+                    changeSeq: change.changeSeq
                 )
                 try item.save(dbConn)
 

@@ -19,4 +19,18 @@ struct SyncChange: Codable {
     var status: ItemStatus
     var priority: ItemPriority
     var tagNames: [String]
+
+    // Explicit snake_case mapping for wire format - don't rely on future client's decoder strategy
+    enum CodingKeys: String, CodingKey {
+        case id
+        case changeSeq = "change_seq"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
+        case url, title, description
+        case thumbnailUrl = "thumbnail_url"
+        case faviconUrl = "favicon_url"
+        case domain, type, status, priority
+        case tagNames = "tag_names"
+    }
 }
