@@ -24,7 +24,7 @@ export function tagsRouter() {
 
   app.openapi(createRoute({
     method: 'post', path: '/',
-    request: { body: { content: { 'application/json': { schema: z.object({ name: z.string().min(1) }) } } } },
+    request: { body: { required: true, content: { 'application/json': { schema: z.object({ name: z.string().trim().min(1) }) } } } },
     responses: { 201: { content: { 'application/json': { schema: TagSchema } }, description: 'Created tag' } },
   }), (c) => {
     const db = getDb()
@@ -33,8 +33,13 @@ export function tagsRouter() {
     const existing = db.select().from(tags).where(and(eq(tags.user_id, userId), eq(tags.name, name))).all()[0]
     if (existing) return c.json(existing, 201)
     const id = uuidv7()
-    db.insert(tags).values({ id, user_id: userId, name }).run()
-    return c.json(db.select().from(tags).where(eq(tags.id, id)).all()[0]!, 201)
+    try {
+      db.insert(tags).values({ id, user_id: userId, name }).run()
+      return c.json(db.select().from(tags).where(eq(tags.id, id)).all()[0]!, 201)
+    } catch {
+      // ponytail: UNIQUE race - concurrent create lost; re-select the winner
+      return c.json(db.select().from(tags).where(and(eq(tags.user_id, userId), eq(tags.name, name))).all()[0]!, 201)
+    }
   })
 
   return app

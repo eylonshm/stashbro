@@ -44,6 +44,30 @@ describe('tags routes', () => {
     expect(tagList.some((t: { name: string }) => t.name === 'startups')).toBe(true)
   })
 
+  it('POST /tags trims whitespace - " AI " and "AI" resolve to same tag', async () => {
+    const app = createApp()
+    const r1 = await app.request('/tags', { method: 'POST', headers: AUTH, body: JSON.stringify({ name: '  AI  ' }) })
+    expect(r1.status).toBe(201)
+    const t1 = await r1.json()
+    const r2 = await app.request('/tags', { method: 'POST', headers: AUTH, body: JSON.stringify({ name: 'AI' }) })
+    const t2 = await r2.json()
+    expect(t1.id).toBe(t2.id)
+  })
+
+  it('item tag_names with whitespace and POST /tags share the same row', async () => {
+    const a = createApp()
+    await a.request('/items', {
+      method: 'POST',
+      headers: AUTH,
+      body: JSON.stringify({ url: 'https://example.com', tag_names: ['AI '] }),
+    })
+    const r = await a.request('/tags', { method: 'POST', headers: AUTH, body: JSON.stringify({ name: 'AI' }) })
+    expect(r.status).toBe(201)
+    const db = getDb()
+    const rows = db.select().from(tags).all()
+    expect(rows.filter(t => t.name === 'AI').length).toBe(1)
+  })
+
   it('GET /tags does not return tags owned by another user', async () => {
     // Direct insert for a different user
     const db = getDb()

@@ -50,9 +50,10 @@ function itemWithTags(db: ReturnType<typeof getDb>, itemId: string, userId: stri
 }
 
 function upsertTags(db: ReturnType<typeof getDb>, userId: string, tagNames: string[], itemId: string) {
+  const names = tagNames.map(n => n.trim()).filter(Boolean)
   db.transaction((tx) => {
     tx.delete(item_tags).where(eq(item_tags.item_id, itemId)).run()
-    for (const name of tagNames) {
+    for (const name of names) {
       let tag = tx.select().from(tags).where(and(eq(tags.user_id, userId), eq(tags.name, name))).all()[0]
       if (!tag) {
         const tagId = uuidv7()
