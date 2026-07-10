@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
+    "@bacons/apple-targets": "^4.0.7",
     "@types/better-sqlite3": "^7.6.12",
     "@types/react": "~18.3.0",
     "better-sqlite3": "^11.5.0",

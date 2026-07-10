@@ -26,6 +26,13 @@
           "height": 420,
           "rootComponent": "./share-extension/index"
         }
+      ],
+      [
+        "@bacons/apple-targets",
+        {
+          "root": ".",
+          "match": "ios-widgets"
+        }
       ]
     ],
     "experiments": { "typedRoutes": true }

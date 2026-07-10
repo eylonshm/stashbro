@@ -9,6 +9,20 @@ import { ingestShareExtensionInbox, type InboxFS } from '../sync/ingestInbox.js'
 
 const APP_GROUP = 'group.com.stashbro.mobile'
 
+// ponytail: copy DB to app group after each sync so the iOS widget can read it.
+// Widget can't access the default expo-sqlite sandbox path; app group is the shared container.
+// FULL checkpoint writes all WAL data to the main DB file before copy (safe read for widget).
+async function copyDbToAppGroup(): Promise<void> {
+  try {
+    const groupDir = await RNFS.pathForGroup(APP_GROUP)
+    const db = openDatabase()
+    db.execSync('PRAGMA wal_checkpoint(FULL)')
+    await RNFS.copyFile(db.databasePath, `${groupDir}/stashbro.db`)
+  } catch {
+    // non-fatal: widget shows stale or empty data until next successful copy
+  }
+}
+
 // ponytail: RNFS adapter defined once at module level; only referenced in prod (never in tests)
 const rnfsInboxFS: InboxFS = {
   exists: (p) => RNFS.exists(p),
@@ -42,7 +56,14 @@ export function useSyncEngine(onSyncComplete?: () => void) {
     const rawDb = openDatabase()
     storeRef.current = new SQLiteLocalStore(makeExpoSyncDb(rawDb), AsyncStorage, userId ?? 'local')
     const client = new StashBroClient({ baseUrl: url, token })
-    engineRef.current = new SyncEngine({ client, store: storeRef.current, onSyncComplete: () => onSyncCompleteRef.current?.() })
+    engineRef.current = new SyncEngine({
+      client,
+      store: storeRef.current,
+      onSyncComplete: () => {
+        onSyncCompleteRef.current?.()
+        void copyDbToAppGroup()
+      },
+    })
     void engineRef.current.sync()
   }, []) // stable - no deps needed, reads AsyncStorage fresh each call
 
