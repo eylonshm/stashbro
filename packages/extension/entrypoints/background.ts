@@ -1,12 +1,12 @@
 // packages/extension/entrypoints/background.ts
 import { StashBroClient, detectType } from '@stashbro/shared'
 import type { CreateItemInput } from '@stashbro/shared'
-
-interface QueuedItem extends CreateItemInput {
-  queuedAt: number
-}
+import { OfflineRetryQueue } from '../src/OfflineRetryQueue.js'
 
 type StorageConfig = { serverURL?: string; serverToken?: string }
+
+// ponytail: module-level instance; chrome is always available in extension contexts
+const offlineQueue = new OfflineRetryQueue(chrome.storage.local)
 
 export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(() => {
@@ -29,7 +29,7 @@ export default defineBackground(() => {
 export async function saveWithRetry(item: CreateItemInput, config?: StorageConfig): Promise<boolean> {
   const settings = config ?? (await browser.storage.local.get(['serverURL', 'serverToken']) as StorageConfig)
   if (!settings.serverURL || !settings.serverToken) {
-    await enqueueOffline(item)
+    await offlineQueue.enqueue(item)
     return false
   }
   const client = new StashBroClient({ baseUrl: settings.serverURL, token: settings.serverToken })
@@ -37,14 +37,7 @@ export async function saveWithRetry(item: CreateItemInput, config?: StorageConfi
     await client.createItem({ type: detectType(item.url), ...item })
     return true
   } catch {
-    await enqueueOffline(item)
+    await offlineQueue.enqueue(item)
     return false
   }
-}
-
-async function enqueueOffline(item: CreateItemInput) {
-  const { offlineQueue = [] } = await browser.storage.local.get('offlineQueue')
-  const queued: QueuedItem = { ...item, queuedAt: Date.now() }
-  offlineQueue.push(queued)
-  await browser.storage.local.set({ offlineQueue })
 }

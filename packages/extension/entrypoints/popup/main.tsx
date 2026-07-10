@@ -1,9 +1,7 @@
+// packages/extension/entrypoints/popup/main.tsx
 import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
+import PopupApp from './PopupApp.js'
 
-// ponytail: placeholder popup - Phase 5 will replace with full UI
-function App() {
-  return <div>StashBro</div>
-}
-
-ReactDOM.createRoot(document.getElementById('root')!).render(<App />)
+const root = document.getElementById('root')!
+createRoot(root).render(<PopupApp />)
