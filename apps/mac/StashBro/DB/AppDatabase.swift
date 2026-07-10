@@ -5,8 +5,6 @@ import GRDB
 final class AppDatabase {
     let dbWriter: DatabaseWriter
 
-    static let shared = AppDatabase.makeShared()
-
     init(dbWriter: DatabaseWriter) {
         self.dbWriter = dbWriter
     }

@@ -61,9 +61,9 @@ final class StashBroAPIClient: SyncClientProtocol {
                 thumbnail_url: c.thumbnailUrl,
                 favicon_url: c.faviconUrl,
                 domain: c.domain,
-                _type: .init(rawValue: c.type.rawValue)!,
-                status: .init(rawValue: c.status.rawValue)!,
-                priority: .init(rawValue: c.priority.rawValue)!,
+                _type: .init(rawValue: c.type.rawValue) ?? .article,
+                status: .init(rawValue: c.status.rawValue) ?? .unread,
+                priority: .init(rawValue: c.priority.rawValue) ?? .medium,
                 tag_names: c.tagNames
             )
         }

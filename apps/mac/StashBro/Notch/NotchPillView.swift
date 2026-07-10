@@ -8,6 +8,7 @@ struct NotchPillView: View {
     let onCollapse: () -> Void
 
     @State private var unreadCount = 0
+    @State private var observationToken: AnyDatabaseCancellable?
 
     var body: some View {
         HStack(spacing: 7) {
@@ -36,12 +37,16 @@ struct NotchPillView: View {
         .onHover { hovering in if hovering { onExpand() } }
         .onTapGesture { onExpand() }
         .onDrop(of: [.url], delegate: NotchDropDelegate())
-        .task { await loadCount() }
-    }
-
-    private func loadCount() async {
-        unreadCount = (try? await db.dbWriter.read { dbConn in
-            try StashItem.filter(Column("status") == "unread" && Column("deleted_at") == nil).fetchCount(dbConn)
-        }) ?? 0
+        .onAppear {
+            observationToken = ValueObservation
+                .tracking { db in
+                    try StashItem.filter(Column("status") == "unread" && Column("deleted_at") == nil).fetchCount(db)
+                }
+                .start(
+                    in: db.dbWriter,
+                    onError: { _ in },
+                    onChange: { count in unreadCount = count }
+                )
+        }
     }
 }

@@ -88,6 +88,24 @@ final class AuthMiddlewareTests: XCTestCase {
     }
 }
 
+// MARK: - Enum rawValue fallback tests
+
+final class EnumFallbackTests: XCTestCase {
+    // Verifies the nil-coalescing pattern used in push/pull mapping:
+    // unknown rawValue → sensible default instead of crash.
+    func testUnknownRawValueFallsBack() {
+        XCTAssertEqual(ItemType(rawValue: "podcast") ?? .article, .article)
+        XCTAssertEqual(ItemStatus(rawValue: "deleted") ?? .unread, .unread)
+        XCTAssertEqual(ItemPriority(rawValue: "urgent") ?? .medium, .medium)
+    }
+
+    func testKnownRawValuesParseCorrectly() {
+        XCTAssertEqual(ItemType(rawValue: "video"), .video)
+        XCTAssertEqual(ItemStatus(rawValue: "archived"), .archived)
+        XCTAssertEqual(ItemPriority(rawValue: "high"), .high)
+    }
+}
+
 // MARK: - SyncChange ↔ generated-type mapping tests
 
 final class MappingTests: XCTestCase {

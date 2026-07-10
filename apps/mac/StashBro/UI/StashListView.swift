@@ -71,6 +71,8 @@ struct StashListView: View {
     @State private var selectedTag: String? = nil
     @State private var availableTags: [Tag] = []
     @State private var items: [(item: StashItem, tags: [Tag])] = []
+    // ponytail: token held in @State so it lives with SwiftUI's storage and cancels on view removal
+    @State private var observationToken: AnyDatabaseCancellable?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -130,36 +132,41 @@ struct StashListView: View {
                 }
             }
         }
-        .task { await loadItems() }
-        .onChange(of: searchText) { _, _ in Task { await loadItems() } }
-        .onChange(of: selectedType) { _, _ in Task { await loadItems() } }
-        .onChange(of: selectedPriority) { _, _ in Task { await loadItems() } }
-        .onChange(of: selectedTag) { _, _ in Task { await loadItems() } }
+        .onAppear { startObservation() }
+        .onChange(of: searchText) { _, _ in startObservation() }
+        .onChange(of: selectedType) { _, _ in startObservation() }
+        .onChange(of: selectedPriority) { _, _ in startObservation() }
+        .onChange(of: selectedTag) { _, _ in startObservation() }
     }
 
-    private func loadItems() async {
+    /// Starts (or restarts) a GRDB ValueObservation for the current filter state.
+    /// Replaces the previous token, which auto-cancels the old observation.
+    private func startObservation() {
         let text = searchText
         let type = selectedType
         let priority = selectedPriority
         let tagName = selectedTag
-        let result = try? await db.dbWriter.read { dbConn -> ([(StashItem, [Tag])], [Tag]) in
-            let items = try stashListQuery(in: dbConn, type: type, priority: priority, tag: tagName, search: text)
-            let tags = try loadAvailableTags(in: dbConn)
-            return (items, tags)
-        }
-        if let result {
-            items = result.0.map { ($0.0, $0.1) }
-            availableTags = result.1
-        }
+        observationToken = ValueObservation
+            .tracking { db -> ([(StashItem, [Tag])], [Tag]) in
+                let its = try stashListQuery(in: db, type: type, priority: priority, tag: tagName, search: text)
+                let tgs = try loadAvailableTags(in: db)
+                return (its, tgs)
+            }
+            .start(
+                in: db.dbWriter,
+                onError: { print("[StashBro] list observation error: \($0)") },
+                onChange: { result in
+                    items = result.0.map { ($0.0, $0.1) }
+                    availableTags = result.1
+                }
+            )
     }
 
     private func archive(_ item: StashItem) {
         do {
             try archiveItem(item, in: db)
-            Task {
-                await loadItems()
-                await syncEngine()?.sync()
-            }
+            // Observation fires automatically on DB change; just trigger sync
+            Task { await syncEngine()?.sync() }
         } catch {
             // Keep item visible - do not reload on failure
             print("[StashBro] archive failed for \(item.id): \(error)")
