@@ -7,6 +7,7 @@ function makeChange(overrides: Partial<SyncChange> = {}): SyncChange {
   return {
     id: 'item-1',
     change_seq: 1,
+    created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     deleted_at: null,
     url: 'https://example.com',

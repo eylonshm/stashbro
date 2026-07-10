@@ -15,6 +15,7 @@ function makeChange(overrides: Record<string, unknown> = {}) {
   return {
     id: 'sync-item-1',
     change_seq: 1,
+    created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     deleted_at: null,
     url: 'https://example.com',
@@ -30,6 +31,36 @@ function makeChange(overrides: Record<string, unknown> = {}) {
     ...overrides,
   }
 }
+
+describe('I2: created_at round-trip', () => {
+  it('push item with explicit created_at stores it verbatim', async () => {
+    const app = createApp()
+    const createdAt = '2026-01-15T08:30:00.000Z'
+    await app.request('/sync/push', {
+      method: 'POST',
+      headers: AUTH,
+      body: JSON.stringify({ changes: [makeChange({ id: 'ca-test', created_at: createdAt })] }),
+    })
+    const pull = await app.request('/sync/pull?cursor=0', { headers: AUTH })
+    const body = await pull.json()
+    const change = body.changes.find((c: { id: string }) => c.id === 'ca-test')
+    expect(change?.created_at).toBe(createdAt)
+  })
+
+  it('pull response always includes created_at', async () => {
+    const app = createApp()
+    await app.request('/sync/push', {
+      method: 'POST',
+      headers: AUTH,
+      body: JSON.stringify({ changes: [makeChange()] }),
+    })
+    const pull = await app.request('/sync/pull?cursor=0', { headers: AUTH })
+    const body = await pull.json()
+    const change = body.changes.find((c: { id: string }) => c.id === 'sync-item-1')
+    expect(typeof change?.created_at).toBe('string')
+    expect(change?.created_at).toBeTruthy()
+  })
+})
 
 describe('POST /sync/push - edge cases', () => {
   it('same item id twice in batch: newer wins, correct final state', async () => {

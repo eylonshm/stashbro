@@ -675,6 +675,9 @@
                         "change_seq": {
                           "type": "number"
                         },
+                        "created_at": {
+                          "type": "string"
+                        },
                         "updated_at": {
                           "type": "string"
                         },
@@ -737,6 +740,7 @@
                       "required": [
                         "id",
                         "change_seq",
+                        "created_at",
                         "updated_at",
                         "deleted_at",
                         "url",
@@ -814,6 +818,9 @@
                           "change_seq": {
                             "type": "number"
                           },
+                          "created_at": {
+                            "type": "string"
+                          },
                           "updated_at": {
                             "type": "string"
                           },
@@ -876,6 +883,7 @@
                         "required": [
                           "id",
                           "change_seq",
+                          "created_at",
                           "updated_at",
                           "deleted_at",
                           "url",

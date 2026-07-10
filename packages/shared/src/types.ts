@@ -30,6 +30,7 @@ export interface Item {
 export interface SyncChange {
   id: string
   change_seq: number
+  created_at: string   // ISO 8601
   updated_at: string
   deleted_at: string | null
   url: string

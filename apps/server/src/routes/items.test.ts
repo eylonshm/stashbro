@@ -225,6 +225,26 @@ describe('GET /items', () => {
     expect(seen.size).toBe(4) // items 1,2,8,9
   })
 
+  it('does not return soft-deleted (tombstoned) items', async () => {
+    const a = app()
+    const createRes = await a.request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com/doomed' }),
+    })
+    const { id } = await createRes.json()
+
+    await a.request(`/items/${id}`, {
+      method: 'PATCH',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deleted_at: new Date().toISOString() }),
+    })
+
+    const listRes = await a.request('/items', { headers: AUTH })
+    const body = await listRes.json()
+    expect(body.items.every((item: { id: string }) => item.id !== id)).toBe(true)
+  })
+
   it('does not return another user item', async () => {
     const db = getDb()
     db.insert(items).values({

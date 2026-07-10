@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { uuidv7 } from 'uuidv7'
-import { eq, and, asc, desc, gt } from 'drizzle-orm'
+import { eq, and, asc, desc, gt, isNull } from 'drizzle-orm'
 import { detectType, extractDomain } from '@stashbro/shared'
 import { authMiddleware } from '../middleware/auth.js'
 import { getDb } from '../db/index.js'
@@ -137,6 +137,7 @@ export function itemsRouter() {
     let rows = db.select().from(items)
       .where(and(
         eq(items.user_id, userId),
+        isNull(items.deleted_at),
         q.status ? eq(items.status, q.status) : undefined,
         q.type ? eq(items.type, q.type) : undefined,
         since > 0 ? gt(items.change_seq, since) : undefined,
