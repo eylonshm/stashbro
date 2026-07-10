@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { uuidv7 } from 'uuidv7'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, lt } from 'drizzle-orm'
 import { Resend } from 'resend'
 import { getDb } from '../db/index.js'
 import { users, auth_codes, refresh_tokens } from '../db/schema.js'
@@ -9,24 +9,32 @@ import {
   createAccessToken, refreshTokenExpiry, codeExpiry,
 } from '../services/auth.js'
 
-// ponytail: in-process rate limit Map; fine for single-instance; add Redis if horizontal scale
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>()
+// ponytail: in-process rate limit; fine for single-instance; add Redis if horizontal scale
+type RateBucket = { count: number; windowStart: number }
+const requestLimits = new Map<string, RateBucket>()
+const verifyLimits = new Map<string, RateBucket>()
 const RATE_WINDOW_MS = 15 * 60 * 1000
-const RATE_MAX = 5
 
 // ponytail: test-only reset so rate limit state doesn't leak between tests
-export function _testResetRateLimit() { rateLimitMap.clear() }
+export function _testResetRateLimit() { requestLimits.clear(); verifyLimits.clear() }
 
-function isRateLimited(ip: string): boolean {
+function isRateLimited(map: Map<string, RateBucket>, ip: string, max: number): boolean {
   const now = Date.now()
-  const entry = rateLimitMap.get(ip) ?? { count: 0, windowStart: now }
+  const entry = map.get(ip) ?? { count: 0, windowStart: now }
   if (now - entry.windowStart > RATE_WINDOW_MS) {
-    rateLimitMap.set(ip, { count: 1, windowStart: now })
+    map.set(ip, { count: 1, windowStart: now })
     return false
   }
   entry.count++
-  rateLimitMap.set(ip, entry)
-  return entry.count > RATE_MAX
+  map.set(ip, entry)
+  return entry.count > max
+}
+
+function clientIp(req: { header: (name: string) => string | undefined }): string {
+  // X-Forwarded-For can be comma-separated (proxy chain); take first to prevent header-append spoofing
+  return req.header('X-Forwarded-For')?.split(',')[0]?.trim()
+    ?? req.header('CF-Connecting-IP')
+    ?? 'unknown'
 }
 
 // Lazy singleton - deferred so vi.mock('resend') in tests replaces the class before first instantiation
@@ -34,6 +42,8 @@ let _resend: Resend | null = null
 function getResend() {
   return (_resend ??= new Resend(process.env['RESEND_API_KEY']))
 }
+
+const MAX_CODE_ATTEMPTS = 5
 
 export function authRouter() {
   const app = new OpenAPIHono()
@@ -52,11 +62,8 @@ export function authRouter() {
       429: { content: { 'application/json': { schema: z.object({ error: z.string() }) } }, description: 'Rate limited' },
     },
   }), async (c) => {
-    // X-Forwarded-For can be comma-separated (proxy chain); take first (client IP) to prevent spoofing via header append
-    const ip = (c.req.header('X-Forwarded-For')?.split(',')[0]?.trim()
-      ?? c.req.header('CF-Connecting-IP')
-      ?? 'unknown')
-    if (isRateLimited(ip)) return c.json({ error: 'Too many requests' }, 429)
+    const ip = clientIp(c.req)
+    if (isRateLimited(requestLimits, ip, 5)) return c.json({ error: 'Too many requests' }, 429)
 
     const db = getDb()
     const { email } = c.req.valid('json')
@@ -77,6 +84,9 @@ export function authRouter() {
       code_hash: hashCode(code),
       expires_at: codeExpiry(),
     }).run()
+
+    // Minor sweep: clean up expired codes to prevent accumulation
+    db.delete(auth_codes).where(lt(auth_codes.expires_at, new Date().toISOString())).run()
 
     await getResend().emails.send({
       from: 'StashBro <noreply@stashbro.app>',
@@ -108,29 +118,43 @@ export function authRouter() {
     responses: {
       200: { content: { 'application/json': { schema: z.object({ accessToken: z.string(), refreshToken: z.string() }) } }, description: 'Tokens' },
       401: { content: { 'application/json': { schema: z.object({ error: z.string() }) } }, description: 'Invalid code' },
+      429: { content: { 'application/json': { schema: z.object({ error: z.string() }) } }, description: 'Rate limited' },
     },
   }), async (c) => {
+    const ip = clientIp(c.req)
+    if (isRateLimited(verifyLimits, ip, 10)) return c.json({ error: 'Too many requests' }, 429)
+
     const db = getDb()
     const { email, code, deviceId } = c.req.valid('json')
     const now = new Date().toISOString()
 
+    // Constant-time path: always query auth_codes even for unknown email
+    // (unknown email -> userId '' -> zero rows returned, same DB cost as wrong code)
     const user = db.select().from(users).where(eq(users.email, email)).all()[0]
-    // Same error for unknown user to avoid user enumeration
-    if (!user) return c.json({ error: 'Invalid or expired code' }, 401)
+    const userId = user?.id ?? ''
 
-    const authCode = db.select().from(auth_codes)
-      .where(and(
-        eq(auth_codes.user_id, user.id),
-        eq(auth_codes.code_hash, hashCode(code)),
-        eq(auth_codes.used, 0),
-      ))
+    // Find all valid codes (unused, unexpired, not locked by too many attempts)
+    const validCodes = db.select().from(auth_codes)
+      .where(and(eq(auth_codes.user_id, userId), eq(auth_codes.used, 0)))
       .all()
-      .find(row => row.expires_at > now)
+      .filter(row => row.expires_at > now && row.attempts < MAX_CODE_ATTEMPTS)
 
-    if (!authCode) return c.json({ error: 'Invalid or expired code' }, 401)
+    const matchingCode = validCodes.find(row => row.code_hash === hashCode(code))
+
+    if (!user || !matchingCode) {
+      // Wrong code: increment attempts on latest valid code to burn brute-force budget
+      const latest = validCodes[validCodes.length - 1]
+      if (latest) {
+        db.update(auth_codes)
+          .set({ attempts: latest.attempts + 1 })
+          .where(eq(auth_codes.id, latest.id))
+          .run()
+      }
+      return c.json({ error: 'Invalid or expired code' }, 401)
+    }
 
     // Mark code used before issuing tokens (prevent TOCTOU reuse on retry)
-    db.update(auth_codes).set({ used: 1 }).where(eq(auth_codes.id, authCode.id)).run()
+    db.update(auth_codes).set({ used: 1 }).where(eq(auth_codes.id, matchingCode.id)).run()
 
     const refreshToken = generateRefreshToken()
     const rtId = uuidv7()

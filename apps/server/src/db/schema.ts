@@ -46,6 +46,7 @@ export const auth_codes = sqliteTable('auth_codes', {
   code_hash: text('code_hash').notNull(),
   expires_at: text('expires_at').notNull(),
   used: integer('used').notNull().default(0),
+  attempts: integer('attempts').notNull().default(0),
 })
 
 export const refresh_tokens = sqliteTable('refresh_tokens', {

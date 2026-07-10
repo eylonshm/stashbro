@@ -182,6 +182,45 @@ describe('POST /auth/verify', () => {
     expect(res.status).toBe(401)
   })
 
+  it('locks code after 5 wrong attempts (brute-force protection)', async () => {
+    const app = createApp()
+    await requestCode(app, 'bf@example.com')
+    await seedKnownCode('bf@example.com', '321321')
+
+    const wrong = () => app.request('/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'bf@example.com', code: '000000', deviceId: 'dev-1' }),
+    })
+    for (let i = 0; i < 5; i++) expect((await wrong()).status).toBe(401)
+
+    // 6th attempt with the CORRECT code must also fail (code is locked)
+    const res = await app.request('/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'bf@example.com', code: '321321', deviceId: 'dev-1' }),
+    })
+    expect(res.status).toBe(401)
+  })
+
+  it('rate limits /auth/verify after 10 requests per IP', async () => {
+    const app = createApp()
+    const ip = '77.0.0.1'
+    for (let i = 0; i < 10; i++) {
+      await app.request('/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': ip },
+        body: JSON.stringify({ email: 'ratelim@example.com', code: '000000', deviceId: 'dev-1' }),
+      })
+    }
+    const res = await app.request('/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': ip },
+      body: JSON.stringify({ email: 'ratelim@example.com', code: '000000', deviceId: 'dev-1' }),
+    })
+    expect(res.status).toBe(429)
+  })
+
   it('rotates refresh token on re-auth from same device (one row per user+device)', async () => {
     const app = createApp()
     const email = 'rotate@example.com'

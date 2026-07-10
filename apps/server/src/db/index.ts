@@ -67,7 +67,8 @@ export function getDb(path = process.env['DB_PATH'] ?? '/data/stashbro.db') {
       user_id TEXT NOT NULL,
       code_hash TEXT NOT NULL,
       expires_at TEXT NOT NULL,
-      used INTEGER NOT NULL DEFAULT 0
+      used INTEGER NOT NULL DEFAULT 0,
+      attempts INTEGER NOT NULL DEFAULT 0
     )
   `)
   db.run(sql`CREATE INDEX IF NOT EXISTS auth_codes_user ON auth_codes(user_id)`)
