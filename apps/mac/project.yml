@@ -70,6 +70,9 @@ targets:
       - target: StashBroSafariExtension
         embed: true
         codeSign: true
+      - target: StashBroWidget
+        embed: true
+        codeSign: true
     buildToolPlugins:
       - package: swift-openapi-generator
         plugin: OpenAPIGenerator
@@ -124,6 +127,29 @@ targets:
           fi
           mkdir -p "$DEST"
           cp -R "$SRC/" "$DEST/"
+
+  StashBroWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: StashBroWidget
+      - path: StashBro/DB/AppDatabase.swift
+      - path: StashBro/DB/StashItem+DB.swift
+      - path: StashBro/DB/Tag+DB.swift
+    info:
+      path: StashBroWidget/Info.plist
+      properties:
+        CFBundleIdentifier: com.stashbro.app.widget
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        com.apple.security.application-groups:
+          - group.com.stashbro.app
+    dependencies:
+      - package: GRDB
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.stashbro.app.widget
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
 
   StashBroTests:
     type: bundle.unit-test
