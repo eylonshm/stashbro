@@ -46,9 +46,8 @@ export class StashBroClient {
   }
 
   pullChanges(cursor: number): Promise<{ changes: SyncChange[]; cursor: number }> {
-    return this.request<{ changes: SyncChange[]; cursor: number }>(
-      `/sync/pull?cursor=${cursor}`
-    )
+    const params = new URLSearchParams({ cursor: String(cursor) })
+    return this.request<{ changes: SyncChange[]; cursor: number }>(`/sync/pull?${params}`)
   }
 
   pushChanges(changes: SyncChange[]): Promise<{ accepted: number }> {
