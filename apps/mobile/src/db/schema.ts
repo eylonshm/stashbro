@@ -11,8 +11,8 @@ export const MIGRATIONS: string[] = [
     type TEXT NOT NULL DEFAULT 'article' CHECK(type IN ('video','post','article','other')),
     status TEXT NOT NULL DEFAULT 'unread' CHECK(status IN ('unread','archived')),
     priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high')),
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     deleted_at TEXT,
     change_seq INTEGER NOT NULL DEFAULT 0
   )`,
@@ -26,6 +26,8 @@ export const MIGRATIONS: string[] = [
   `CREATE TABLE IF NOT EXISTS item_tags (
     item_id TEXT NOT NULL,
     tag_id TEXT NOT NULL,
-    PRIMARY KEY (item_id, tag_id)
+    PRIMARY KEY (item_id, tag_id),
+    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
   )`,
 ]
