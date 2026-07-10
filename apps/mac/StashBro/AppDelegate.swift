@@ -2,6 +2,40 @@
 import AppKit
 import SwiftUI
 
+// ponytail: top-level so tests can call directly without instantiating AppDelegate
+@discardableResult
+func processShareInbox(at inbox: URL, into store: GRDBLocalStore) -> Int {
+    guard let files = try? FileManager.default.contentsOfDirectory(
+        at: inbox, includingPropertiesForKeys: nil
+    ).filter({ $0.pathExtension == "json" }) else { return 0 }
+
+    let iso = ISO8601DateFormatter()
+    var count = 0
+    for file in files {
+        defer { try? FileManager.default.removeItem(at: file) }
+        guard let data = try? Data(contentsOf: file),
+              let payload = try? JSONDecoder().decode([String: String].self, from: data),
+              let id = payload["id"], let url = payload["url"],
+              let typeStr = payload["type"], let type_ = ItemType(rawValue: typeStr),
+              let priorityStr = payload["priority"], let priority = ItemPriority(rawValue: priorityStr),
+              let createdStr = payload["createdAt"], let created = iso.date(from: createdStr)
+        else { continue }
+
+        let now = Date()
+        let change = SyncChange(
+            id: id, changeSeq: 0, createdAt: created, updatedAt: now, deletedAt: nil,
+            url: url, title: payload["title"] ?? url, description: nil,
+            thumbnailUrl: nil, faviconUrl: nil,
+            domain: payload["domain"] ?? url,
+            type: type_, status: .unread, priority: priority,
+            tagNames: []
+        )
+        try? store.applyChanges([change])
+        count += 1
+    }
+    return count
+}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var menubarController: MenubarController?
@@ -9,7 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var syncEngine: SyncEngine?
     var syncTimer: Timer?
     let db = AppDatabase.makeShared()
-    private var store: GRDBLocalStore?   // reused in saveURL
+    private var store: GRDBLocalStore?   // reused in saveURL and ingestShareExtensionInbox
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let s = GRDBLocalStore(db: db)
@@ -31,7 +65,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
+        ingestShareExtensionInbox()
         Task { @MainActor in await syncEngine?.sync() }
+    }
+
+    func ingestShareExtensionInbox() {
+        guard let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "group.com.stashbro.app"
+        ), let store else { return }
+        let inbox = container.appendingPathComponent("inbox", isDirectory: true)
+        let count = processShareInbox(at: inbox, into: store)
+        if count > 0 {
+            Task { @MainActor in await syncEngine?.sync() }
+        }
     }
 
     private func startSyncTimer(engine: SyncEngine) {

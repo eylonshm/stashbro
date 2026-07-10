@@ -64,6 +64,9 @@ targets:
       - package: swift-openapi-urlsession
         product: OpenAPIURLSession
       - package: KeyboardShortcuts
+      - target: StashBroShareExtension
+        embed: true
+        codeSign: true
     buildToolPlugins:
       - package: swift-openapi-generator
         plugin: OpenAPIGenerator
@@ -85,8 +88,6 @@ targets:
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
         com.apple.security.application-groups:
           - group.com.stashbro.app
-    dependencies:
-      - package: GRDB
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.stashbro.app.shareextension
