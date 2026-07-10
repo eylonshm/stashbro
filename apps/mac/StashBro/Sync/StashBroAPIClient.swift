@@ -10,17 +10,17 @@ struct ServerConfig {
     var baseURL: URL
     var token: String
 
-    static func load() -> ServerConfig? {
-        guard let urlStr = UserDefaults.standard.string(forKey: "serverURL"),
+    static func load(from defaults: UserDefaults = .standard) -> ServerConfig? {
+        guard let urlStr = defaults.string(forKey: "serverURL"),
               let url = URL(string: urlStr),
-              let token = UserDefaults.standard.string(forKey: "serverToken"),
+              let token = defaults.string(forKey: "serverToken"),
               !token.isEmpty else { return nil }
         return ServerConfig(baseURL: url, token: token)
     }
 
-    func save() {
-        UserDefaults.standard.set(baseURL.absoluteString, forKey: "serverURL")
-        UserDefaults.standard.set(token, forKey: "serverToken")
+    func save(to defaults: UserDefaults = .standard) {
+        defaults.set(baseURL.absoluteString, forKey: "serverURL")
+        defaults.set(token, forKey: "serverToken")
     }
 }
 
@@ -34,6 +34,15 @@ final class StashBroAPIClient: SyncClientProtocol {
             serverURL: config.baseURL,
             transport: URLSessionTransport(),
             middlewares: [AuthMiddleware(token: config.token)]
+        )
+    }
+
+    // ponytail: internal init for testing with a mock transport; not for production use
+    init(serverURL: URL, transport: any ClientTransport, token: String) {
+        self.openAPIClient = Client(
+            serverURL: serverURL,
+            transport: transport,
+            middlewares: [AuthMiddleware(token: token)]
         )
     }
 

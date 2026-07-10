@@ -3,7 +3,7 @@ import AppKit
 // ponytail: no-op client used when ServerConfig not yet set; token hardening is a later task
 private struct NoOpSyncClient: SyncClientProtocol {
     func pushChanges(_ changes: [SyncChange]) async throws -> Int { 0 }
-    func pullChanges(cursor: Int) async throws -> (changes: [SyncChange], cursor: Int) { ([], 0) }
+    func pullChanges(cursor: Int) async throws -> (changes: [SyncChange], cursor: Int) { ([], cursor) }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
