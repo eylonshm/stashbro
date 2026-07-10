@@ -1,2 +1,9 @@
-// ponytail: placeholder; real server entry added in Task 3 (apps/server)
-export {};
+import { serve } from '@hono/node-server'
+import { createApp } from './app.js'
+
+const app = createApp()
+const port = parseInt(process.env['PORT'] ?? '3000', 10)
+
+serve({ fetch: app.fetch, port }, () => {
+  console.log(`StashBro server listening on :${port}`)
+})
