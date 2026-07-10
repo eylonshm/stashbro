@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>StashBro - Design Mockups</title>
 <style>
-/* ─── TOKENS ─────────────────────────────────────────────────────────── */
+/* ─── PAGE-LEVEL TOKENS (light, for page chrome) ──────────────────────── */
 :root {
   --page-bg:        #ECEDF2;
   --stage-bg:       #D8D9E0;
@@ -18,51 +18,21 @@
   --border-strong:  rgba(18,19,28,.15);
   --accent:         #C87A38;
   --accent-dim:     #F0D4B2;
-  --accent-text:    #FFFFFF;
   --badge-vid-bg:   #FCEAEA; --badge-vid-fg:  #B53030;
   --badge-post-bg:  #EAF0FD; --badge-post-fg: #2A56A8;
   --badge-art-bg:   #E8F7EF; --badge-art-fg:  #1F7A47;
   --badge-oth-bg:   #F2EDF8; --badge-oth-fg:  #6441A0;
   --tag-bg:         #ECEDF4; --tag-fg:  #4A4D62;
-  /* mac surfaces */
   --menubar-bg:     rgba(232,233,238,.82);
   --popover-bg:     rgba(248,249,252,.97);
-  --notch-bg:       #0A0A0C;
-  --notch-panel:    rgba(14,14,18,.97);
-  --notch-text:     rgba(255,255,255,.87);
-  --notch-sec:      rgba(255,255,255,.50);
-  /* system */
-  --radius-sm:  6px;
-  --radius-md:  10px;
-  --radius-lg:  16px;
+  --priority-high:  #D95A28;
+  --priority-low:   #9EA1B4;
   --radius-xl:  24px;
   font-variant-numeric: tabular-nums;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page-bg:        #0B0C11;
-    --stage-bg:       #141519;
-    --card-bg:        #1C1D25;
-    --card-bg-raised: #21222C;
-    --text-pri:       #E6E7F0;
-    --text-sec:       #8A8DA2;
-    --text-ter:       #545669;
-    --border:         rgba(255,255,255,.07);
-    --border-strong:  rgba(255,255,255,.12);
-    --accent:         #D98E45;
-    --accent-dim:     #3A2410;
-    --badge-vid-bg:   #2C1212; --badge-vid-fg:  #E06060;
-    --badge-post-bg:  #121B2F; --badge-post-fg: #6A96E8;
-    --badge-art-bg:   #0D1F16; --badge-art-fg:  #50C07A;
-    --badge-oth-bg:   #1A1228; --badge-oth-fg:  #A07EDE;
-    --tag-bg:         #1E1F2A; --tag-fg:  #8B8EA8;
-    --menubar-bg:     rgba(22,23,30,.85);
-    --popover-bg:     rgba(26,27,35,.98);
-  }
-}
-
-:root[data-theme="light"] {
+/* ─── THEME WRAPPERS (scoped CSS vars - both render simultaneously) ─────── */
+.theme-light {
   --page-bg:        #ECEDF2;
   --stage-bg:       #D8D9E0;
   --card-bg:        #FFFFFF;
@@ -81,9 +51,11 @@
   --tag-bg:         #ECEDF4; --tag-fg:  #4A4D62;
   --menubar-bg:     rgba(232,233,238,.82);
   --popover-bg:     rgba(248,249,252,.97);
+  --priority-high:  #D95A28;
+  --priority-low:   #9EA1B4;
 }
 
-:root[data-theme="dark"] {
+.theme-dark {
   --page-bg:        #0B0C11;
   --stage-bg:       #141519;
   --card-bg:        #1C1D25;
@@ -102,9 +74,11 @@
   --tag-bg:         #1E1F2A; --tag-fg:  #8B8EA8;
   --menubar-bg:     rgba(22,23,30,.85);
   --popover-bg:     rgba(26,27,35,.98);
+  --priority-high:  #E8693A;
+  --priority-low:   #545669;
 }
 
-/* ─── BASE ───────────────────────────────────────────────────────────── */
+/* ─── BASE ──────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -113,172 +87,55 @@ body {
   color: var(--text-pri);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  transition: background .25s, color .25s;
+  overflow-x: hidden;
 }
 
-/* ─── PAGE LAYOUT ────────────────────────────────────────────────────── */
+/* ─── PAGE LAYOUT ───────────────────────────────────────────────────────── */
 .page-header {
-  max-width: 920px;
-  margin: 0 auto;
+  max-width: 1400px; margin: 0 auto;
   padding: 56px 24px 0;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
 }
 
-.page-title {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--text-ter);
-}
-
-.page-wordmark {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-pri);
-  letter-spacing: -.02em;
-  margin-top: 6px;
-}
-
+.page-title { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-ter); }
+.page-wordmark { font-size: 28px; font-weight: 700; color: var(--text-pri); letter-spacing: -.02em; margin-top: 6px; }
 .page-wordmark span { color: var(--accent); }
 
-.theme-toggle {
-  border: 1px solid var(--border-strong);
-  background: var(--card-bg);
-  color: var(--text-sec);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 6px 14px;
-  border-radius: 99px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: background .18s, color .18s, border-color .18s;
+main { max-width: 1400px; margin: 0 auto; padding: 48px 24px 80px; display: flex; flex-direction: column; gap: 72px; }
+
+.section-label { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.section-heading { font-size: 20px; font-weight: 700; letter-spacing: -.02em; color: var(--text-pri); margin-bottom: 4px; }
+.section-desc { font-size: 14px; color: var(--text-sec); max-width: 72ch; margin-bottom: 20px; line-height: 1.6; }
+
+/* ─── THEME PAIR LAYOUT ─────────────────────────────────────────────────── */
+.theme-pair { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+.theme-col { flex: 1; min-width: 0; }
+.theme-col-header { margin-bottom: 10px; }
+
+.theme-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 99px; display: inline-block;
 }
-.theme-toggle:hover { background: var(--card-bg-raised); color: var(--text-pri); }
-
-main { max-width: 920px; margin: 0 auto; padding: 48px 24px 80px; display: flex; flex-direction: column; gap: 72px; }
-
-.design-section {}
-
-.section-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 8px;
-}
-
-.section-heading {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -.02em;
-  color: var(--text-pri);
-  margin-bottom: 4px;
-  text-wrap: balance;
-}
-
-.section-desc {
-  font-size: 14px;
-  color: var(--text-sec);
-  max-width: 58ch;
-  margin-bottom: 28px;
-  line-height: 1.6;
-}
+.theme-badge--light { background: #F0F1F6; color: #6B6E85; border: 1px solid rgba(18,19,28,.12); }
+.theme-badge--dark  { background: #1C1D25; color: #8A8DA2; border: 1px solid rgba(255,255,255,.11); }
 
 .mockup-stage {
   background: var(--stage-bg);
   border-radius: var(--radius-xl);
-  padding: 40px 24px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 32px;
-  flex-wrap: wrap;
+  padding: 32px 20px;
+  display: flex; align-items: flex-start; justify-content: center;
+  gap: 28px; flex-wrap: wrap;
   overflow-x: auto;
-  transition: background .25s;
 }
 
-.mockup-label {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--text-ter);
-  text-align: center;
-  margin-top: 12px;
-}
+.mockup-label { font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--text-ter); text-align: center; margin-top: 10px; }
 
-/* ─── SHARED LIST ITEM ───────────────────────────────────────────────── */
-.stash-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-.stash-item:last-child { border-bottom: none; }
-
-.stash-thumb {
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-.stash-thumb.thumb-yt   { background: linear-gradient(135deg,#FF2020,#CC0000); }
-.stash-thumb.thumb-x    { background: linear-gradient(135deg,#1C1C1C,#0A0A0A); color: #fff; }
-.stash-thumb.thumb-reddit { background: linear-gradient(135deg,#FF4500,#FF6B35); }
-.stash-thumb.thumb-pg   { background: linear-gradient(135deg,#3A3A3A,#1A1A1A); color: #ddd; }
-.stash-thumb.thumb-strat { background: linear-gradient(135deg,#1A3A5C,#0D2540); color: #88B0D8; }
-.stash-thumb.thumb-arxiv { background: linear-gradient(135deg,#5A2A8C,#3D1A6E); color: #CCA0FF; }
-.stash-thumb.thumb-hn   { background: linear-gradient(135deg,#FF6600,#E85A00); }
-
-.stash-info { flex: 1; min-width: 0; }
-
-.stash-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-pri);
-  line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stash-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 3px;
-  flex-wrap: wrap;
-}
-
-.stash-domain {
-  font-size: 11px;
-  color: var(--text-ter);
-}
-
+/* ─── TYPE BADGES + TAG CHIPS ───────────────────────────────────────────── */
 .type-badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  padding: 1px 6px;
-  border-radius: 4px;
-  line-height: 16px;
+  display: inline-flex; align-items: center;
+  font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  padding: 1px 6px; border-radius: 4px; line-height: 16px;
 }
 .type-badge.video   { background: var(--badge-vid-bg);  color: var(--badge-vid-fg); }
 .type-badge.post    { background: var(--badge-post-bg); color: var(--badge-post-fg); }
@@ -286,1406 +143,363 @@ main { max-width: 920px; margin: 0 auto; padding: 48px 24px 80px; display: flex;
 .type-badge.other   { background: var(--badge-oth-bg);  color: var(--badge-oth-fg); }
 
 .tag-chip {
-  display: inline-flex;
-  font-size: 10px;
-  font-weight: 500;
-  padding: 1px 7px;
-  border-radius: 99px;
-  background: var(--tag-bg);
-  color: var(--tag-fg);
-  line-height: 16px;
+  display: inline-flex; font-size: 10px; font-weight: 500;
+  padding: 1px 7px; border-radius: 99px;
+  background: var(--tag-bg); color: var(--tag-fg); line-height: 16px;
 }
 
-/* ─── MAC NOTCH ──────────────────────────────────────────────────────── */
-.notch-frame {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.stash-domain { font-size: 11px; color: var(--text-ter); }
+
+/* ─── THUMB VARIANTS ────────────────────────────────────────────────────── */
+.thumb-yt    { background: linear-gradient(135deg,#FF2020,#CC0000); }
+.thumb-x     { background: linear-gradient(135deg,#1C1C1C,#0A0A0A); color:#fff; }
+.thumb-reddit{ background: linear-gradient(135deg,#FF4500,#FF6B35); }
+.thumb-pg    { background: linear-gradient(135deg,#3A3A3A,#1A1A1A); color:#ddd; }
+.thumb-strat { background: linear-gradient(135deg,#1A3A5C,#0D2540); color:#88B0D8; }
+.thumb-arxiv { background: linear-gradient(135deg,#5A2A8C,#3D1A6E); color:#CCA0FF; }
+
+/* ─── PRIORITY MARKERS (high/low only; medium = no marker, plain look) ──── */
+/* ponytail: left-bar on item container; 3px wide, inset top+bottom */
+.notch-item.priority-high,
+.notch-item.priority-low,
+.app-item.priority-high,
+.app-item.priority-low,
+.popover-item.priority-high,
+.popover-item.priority-low { position: relative; }
+
+.app-item.priority-high,
+.app-item.priority-low,
+.popover-item.priority-high,
+.popover-item.priority-low { padding-left: 7px; }
+
+.priority-high::before,
+.priority-low::before {
+  content: ''; position: absolute; left: 0;
+  top: 9px; bottom: 9px; width: 3px; border-radius: 2px;
 }
+.priority-high::before { background: var(--priority-high); }
+.priority-low::before  { background: var(--priority-low); }
+
+/* notch items have 16px left pad - marker sits inside that gap */
+.notch-item.priority-high::before,
+.notch-item.priority-low::before { left: 5px; top: 7px; bottom: 7px; }
+
+/* ─── PRIORITY SEGMENTED CONTROL ────────────────────────────────────────── */
+.priority-seg { display: flex; background: var(--stage-bg); border-radius: 8px; padding: 2px; gap: 1px; }
+.pseg-btn {
+  flex: 1; font: inherit; font-size: 11px; font-weight: 600;
+  padding: 4px 0; border: none; border-radius: 6px;
+  background: transparent; color: var(--text-sec); cursor: pointer; text-align: center;
+}
+.pseg-btn.active { background: var(--card-bg); color: var(--text-pri); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* ─── MAC NOTCH ─────────────────────────────────────────────────────────── */
+.notch-frame { display: flex; flex-direction: column; align-items: center; }
 
 .mac-screen-bar {
-  width: 440px;
-  height: 44px;
-  background: #1A1B1F;
-  border-radius: 8px 8px 0 0;
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
+  width: 440px; height: 44px; background: #1A1B1F;
+  border-radius: 8px 8px 0 0; position: relative;
+  display: flex; align-items: center; padding: 0 16px;
 }
 
-/* Physical notch */
 .mac-notch-cut {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 148px;
-  height: 30px;
-  background: #000;
-  border-radius: 0 0 20px 20px;
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 148px; height: 30px; background: #000; border-radius: 0 0 20px 20px;
 }
 
-.mac-menubar-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255,255,255,.75);
-  z-index: 1;
-}
+.mac-menubar-left { display: flex; align-items: center; gap: 16px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,.75); z-index: 1; }
 .mac-apple { font-size: 14px; }
+.mac-menubar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 11px; color: rgba(255,255,255,.65); z-index: 1; }
 
-.mac-menubar-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: rgba(255,255,255,.65);
-  z-index: 1;
-}
-
-/* Notch pill collapsed */
 .notch-pill-collapsed {
-  position: absolute;
-  bottom: -16px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 192px;
-  height: 30px;
-  background: #0A0A0C;
+  position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);
+  width: 192px; height: 30px; background: #0A0A0C;
   border-radius: 0 0 16px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  z-index: 10;
-  border: 1px solid rgba(255,255,255,.06);
-  border-top: none;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  z-index: 10; border: 1px solid rgba(255,255,255,.06); border-top: none;
 }
 
-.notch-pill-icon {
-  width: 18px;
-  height: 18px;
-  background: var(--accent);
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  color: #fff;
-  font-weight: 700;
-}
+.notch-pill-icon { width: 18px; height: 18px; background: var(--accent); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; font-weight: 700; }
+.notch-pill-text { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.82); }
+.notch-pill-count { font-size: 11px; font-weight: 600; background: var(--accent); color: #fff; padding: 1px 6px; border-radius: 99px; }
 
-.notch-pill-text {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255,255,255,.82);
-}
-
-.notch-pill-count {
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--accent);
-  color: #fff;
-  padding: 1px 6px;
-  border-radius: 99px;
-}
-
-/* Notch panel expanded */
 .notch-panel {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 360px;
-  background: rgba(14,14,18,.97);
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 360px; background: rgba(14,14,18,.97);
   backdrop-filter: blur(24px);
   border-radius: 0 0 18px 18px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-top: none;
-  z-index: 20;
-  overflow: hidden;
-  padding-bottom: 14px;
+  border: 1px solid rgba(255,255,255,.08); border-top: none;
+  z-index: 20; overflow: hidden; padding-bottom: 14px;
 }
 
-.notch-panel-notch-cutout {
-  height: 30px;
-  background: #000;
-  margin-bottom: 0;
-  /* Provides the physical notch fill */
-}
+.notch-panel-notch-cutout { height: 30px; background: #000; }
 
-.notch-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px 8px;
-}
+.notch-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 8px; }
+.notch-panel-title { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.9); display: flex; align-items: center; gap: 7px; }
+.notch-panel-badge { font-size: 10px; font-weight: 600; background: var(--accent); color: #fff; padding: 2px 7px; border-radius: 99px; }
+.notch-open-btn { font-size: 11px; color: var(--accent); font-weight: 500; cursor: pointer; }
 
-.notch-panel-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255,255,255,.9);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
+.notch-item { display: flex; align-items: center; gap: 9px; padding: 7px 16px; }
 
-.notch-panel-badge {
-  font-size: 10px;
-  font-weight: 600;
-  background: var(--accent);
-  color: #fff;
-  padding: 2px 7px;
-  border-radius: 99px;
-}
-
-.notch-open-btn {
-  font-size: 11px;
-  color: var(--accent);
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.notch-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 16px;
-  transition: background .12s;
-}
-.notch-item:hover { background: rgba(255,255,255,.04); }
-
-.notch-item-thumb {
-  width: 32px;
-  height: 32px;
-  border-radius: 7px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-
+.notch-item-thumb { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 .notch-item-info { flex: 1; min-width: 0; }
+.notch-item-title { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notch-item-sub { font-size: 10.5px; color: rgba(255,255,255,.42); margin-top: 1px; }
 
-.notch-item-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255,255,255,.85);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.notch-item-sub {
-  font-size: 10.5px;
-  color: rgba(255,255,255,.42);
-  margin-top: 1px;
-}
-
-.notch-item-badge {
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: .03em;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
+.notch-item-badge { font-size: 9.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
 .notch-item-badge.video   { background: rgba(200,50,50,.25);  color: #E07070; }
 .notch-item-badge.post    { background: rgba(50,100,200,.25); color: #7AAAE8; }
 .notch-item-badge.article { background: rgba(50,160,100,.25); color: #68C890; }
 
-.notch-divider {
-  height: 1px;
-  background: rgba(255,255,255,.07);
-  margin: 4px 16px;
-}
+.notch-divider { height: 1px; background: rgba(255,255,255,.07); margin: 4px 16px; }
+.notch-footer { display: flex; align-items: center; justify-content: center; padding: 8px 16px 0; }
+.notch-save-hint { font-size: 11px; color: rgba(255,255,255,.38); display: flex; align-items: center; gap: 5px; }
+.kbd { display: inline-flex; align-items: center; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.15); border-radius: 4px; font-size: 10px; padding: 1px 5px; color: rgba(255,255,255,.55); line-height: 14px; }
 
-.notch-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 16px 0;
-}
-
-.notch-save-hint {
-  font-size: 11px;
-  color: rgba(255,255,255,.38);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.kbd {
-  display: inline-flex;
-  align-items: center;
-  background: rgba(255,255,255,.10);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 4px;
-  font-size: 10px;
-  font-family: -apple-system, sans-serif;
-  padding: 1px 5px;
-  color: rgba(255,255,255,.55);
-  line-height: 14px;
-}
-
-/* Content area behind expanded notch */
-.mac-content-area {
-  width: 440px;
-  height: 160px;
-  background: linear-gradient(180deg, #1E2030 0%, #262840 100%);
-  border-radius: 0 0 8px 8px;
-  border-top: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.mac-content-blur {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    rgba(255,255,255,.02) 0px,
-    rgba(255,255,255,.02) 1px,
-    transparent 1px,
-    transparent 60px
-  );
-}
-
-.mac-content-placeholder {
-  display: flex;
-  gap: 10px;
-  padding: 16px;
-}
-
-.mac-win {
-  height: 90px;
-  border-radius: 8px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.08);
-  flex-shrink: 0;
-}
-
-/* ─── MENUBAR ────────────────────────────────────────────────────────── */
+/* ─── MENUBAR POPOVER ───────────────────────────────────────────────────── */
 .menubar-frame { display: flex; flex-direction: column; align-items: center; }
 
 .mac-menubar-strip {
-  width: 560px;
-  height: 28px;
-  background: var(--menubar-bg);
-  backdrop-filter: blur(12px);
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  gap: 14px;
-  border-radius: 8px 8px 0 0;
-  border: 1px solid var(--border);
-  border-bottom: none;
+  width: 520px; height: 28px; background: var(--menubar-bg); backdrop-filter: blur(12px);
+  display: flex; align-items: center; padding: 0 14px; gap: 14px;
+  border-radius: 8px 8px 0 0; border: 1px solid var(--border); border-bottom: none;
 }
 
-.menubar-app-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-pri);
-}
+.menubar-app-name { font-size: 13px; font-weight: 600; color: var(--text-pri); }
+.menubar-menus { display: flex; gap: 14px; font-size: 13px; color: var(--text-sec); }
+.menubar-right-icons { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-sec); }
+.menubar-icon-active { display: flex; align-items: center; justify-content: center; width: 24px; height: 22px; background: rgba(128,128,128,.20); border-radius: 5px; font-size: 14px; }
+.menubar-clock { font-size: 12px; font-weight: 500; color: var(--text-pri); }
 
-.menubar-menus {
-  display: flex;
-  gap: 14px;
-  font-size: 13px;
-  color: var(--text-sec);
-}
-
-.menubar-right-icons {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-sec);
-}
-
-.menubar-icon-active {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 22px;
-  background: rgba(128,128,128,.20);
-  border-radius: 5px;
-  font-size: 14px;
-}
-
-.menubar-clock {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-pri);
-}
-
-/* Popover */
 .menubar-popover-container {
-  position: relative;
-  width: 560px;
-  height: 480px;
+  position: relative; width: 520px; height: 510px;
   background: linear-gradient(135deg, var(--card-bg-raised), var(--page-bg));
-  border-radius: 0 0 8px 8px;
-  border: 1px solid var(--border);
-  border-top: none;
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 14px 0;
+  border-radius: 0 0 8px 8px; border: 1px solid var(--border); border-top: none;
+  display: flex; justify-content: flex-end; padding: 8px 14px 0;
 }
 
 .popover-card {
-  width: 300px;
-  background: var(--popover-bg);
-  backdrop-filter: blur(24px);
-  border-radius: 12px;
-  border: 1px solid var(--border-strong);
+  width: 288px; background: var(--popover-bg); backdrop-filter: blur(24px);
+  border-radius: 12px; border: 1px solid var(--border-strong);
   box-shadow: 0 8px 40px rgba(0,0,0,.15), 0 2px 8px rgba(0,0,0,.08);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  overflow: hidden; display: flex; flex-direction: column;
 }
 
-.popover-arrow {
-  position: absolute;
-  right: 66px;
-  top: 4px;
-  width: 12px;
-  height: 8px;
-  z-index: 2;
-}
+.popover-arrow { position: absolute; right: 56px; top: 4px; width: 12px; height: 8px; z-index: 2; }
 
-.popover-search {
-  margin: 12px 12px 8px;
-  position: relative;
-}
-
-.popover-search input {
-  width: 100%;
-  height: 28px;
-  background: var(--stage-bg);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 0 10px 0 28px;
-  font: inherit;
-  font-size: 13px;
-  color: var(--text-pri);
-  outline: none;
-}
-
+.popover-search { margin: 12px 12px 8px; position: relative; }
+.popover-search input { width: 100%; height: 28px; background: var(--stage-bg); border: 1px solid var(--border); border-radius: 7px; padding: 0 10px 0 28px; font: inherit; font-size: 13px; color: var(--text-pri); outline: none; }
 .popover-search input::placeholder { color: var(--text-ter); }
+.popover-search-icon { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--text-ter); font-size: 12px; }
 
-.popover-search-icon {
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-ter);
-  font-size: 12px;
-}
-
-.popover-filters {
-  display: flex;
-  gap: 5px;
-  padding: 0 12px 10px;
-  overflow-x: auto;
-}
+.popover-filters { display: flex; gap: 5px; padding: 0 12px 5px; overflow-x: auto; }
 .popover-filters::-webkit-scrollbar { display: none; }
 
 .filter-chip {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11.5px;
-  font-weight: 500;
-  padding: 3px 10px;
-  border-radius: 99px;
-  border: 1px solid var(--border);
-  background: var(--card-bg);
-  color: var(--text-sec);
-  white-space: nowrap;
-  cursor: pointer;
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 99px;
+  border: 1px solid var(--border); background: var(--card-bg); color: var(--text-sec);
+  white-space: nowrap; cursor: pointer;
 }
+.filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-.filter-chip.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-.filter-chip.active.video   { background: var(--badge-vid-fg);  border-color: var(--badge-vid-fg); }
-.filter-chip.active.post    { background: var(--badge-post-fg); border-color: var(--badge-post-fg); }
-.filter-chip.active.article { background: var(--badge-art-fg);  border-color: var(--badge-art-fg); }
-
-.popover-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 12px;
-}
+.popover-list { flex: 1; overflow-y: auto; padding: 0 12px; }
 .popover-list::-webkit-scrollbar { display: none; }
 
-.popover-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-}
+.popover-item { display: flex; align-items: flex-start; gap: 9px; padding: 9px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
 .popover-item:last-child { border-bottom: none; }
-.popover-item:hover { opacity: .82; }
 
-.popover-thumb {
-  width: 36px;
-  height: 36px;
-  border-radius: 7px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
+.popover-thumb { width: 34px; height: 34px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+.popover-item-title { font-size: 12px; font-weight: 500; color: var(--text-pri); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.popover-item-meta { display: flex; align-items: center; gap: 5px; margin-top: 3px; flex-wrap: wrap; }
 
-.popover-item-title {
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--text-pri);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+.popover-footer { border-top: 1px solid var(--border); display: flex; align-items: center; }
+.popover-footer-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; font-weight: 500; color: var(--accent); padding: 10px 0; cursor: pointer; }
+.popover-footer-btn:first-child { border-right: 1px solid var(--border); }
 
-.popover-item-meta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 3px;
-  flex-wrap: wrap;
-}
-
-.popover-footer {
-  border-top: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 1px;
-}
-
-.popover-footer-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent);
-  padding: 10px 0;
-  cursor: pointer;
-}
-.popover-footer-btn:first-child {
-  border-right: 1px solid var(--border);
-}
-
-/* ─── MAC WIDGET ─────────────────────────────────────────────────────── */
+/* ─── MAC WIDGET ────────────────────────────────────────────────────────── */
 .mac-widget {
-  width: 329px;
-  height: 141px;
-  border-radius: 16px;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  overflow: hidden;
-  display: flex;
-  padding: 14px;
-  gap: 14px;
+  width: 329px; height: 141px; border-radius: 16px;
+  background: var(--card-bg); border: 1px solid var(--border);
+  overflow: hidden; display: flex; padding: 14px; gap: 14px;
 }
 
-.widget-count-block {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 1px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--border);
-  padding-right: 14px;
-}
+.widget-count-block { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; flex-shrink: 0; border-right: 1px solid var(--border); padding-right: 14px; }
+.widget-count-num { font-size: 48px; font-weight: 800; color: var(--accent); line-height: 1; letter-spacing: -.04em; }
+.widget-count-label { font-size: 11px; font-weight: 500; color: var(--text-ter); text-transform: uppercase; letter-spacing: .06em; }
 
-.widget-count-num {
-  font-size: 48px;
-  font-weight: 800;
-  color: var(--accent);
-  line-height: 1;
-  letter-spacing: -.04em;
-}
-
-.widget-count-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-ter);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-}
-
-.widget-items-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  justify-content: center;
-}
-
-.widget-item-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.widget-item-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+.widget-items-col { flex: 1; display: flex; flex-direction: column; gap: 7px; justify-content: center; }
+.widget-item-row { display: flex; align-items: center; gap: 7px; }
+.widget-item-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .widget-item-dot.video   { background: var(--badge-vid-fg); }
 .widget-item-dot.post    { background: var(--badge-post-fg); }
 .widget-item-dot.article { background: var(--badge-art-fg); }
+.widget-item-title { font-size: 11.5px; font-weight: 500; color: var(--text-pri); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.widget-item-title {
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--text-pri);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+/* priority tick on widget items: tiny 3px dot to right of type dot */
+.widget-p-high { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--priority-high); flex-shrink: 0; }
+.widget-p-low  { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--priority-low);  flex-shrink: 0; }
 
-/* ─── IPHONE FRAME ───────────────────────────────────────────────────── */
+/* ─── IPHONE FRAME ──────────────────────────────────────────────────────── */
 .iphone-frame {
-  position: relative;
-  width: 290px;
-  height: 628px;
-  background: #1C1C1E;
-  border-radius: 48px;
-  padding: 3px;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,.12),
-    0 0 0 3px #2A2A2C,
-    0 24px 60px rgba(0,0,0,.45),
-    0 8px 20px rgba(0,0,0,.25);
+  position: relative; width: 290px; height: 628px; background: #1C1C1E;
+  border-radius: 48px; padding: 3px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 0 0 3px #2A2A2C, 0 24px 60px rgba(0,0,0,.45), 0 8px 20px rgba(0,0,0,.25);
   flex-shrink: 0;
 }
 
-.iphone-screen {
-  width: 100%;
-  height: 100%;
-  background: var(--card-bg);
-  border-radius: 45px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: background .25s;
-}
+.iphone-screen { width: 100%; height: 100%; background: var(--card-bg); border-radius: 45px; overflow: hidden; display: flex; flex-direction: column; }
 
-/* Dynamic Island */
-.dynamic-island {
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100px;
-  height: 30px;
-  background: #000;
-  border-radius: 20px;
-  z-index: 10;
-}
+.dynamic-island { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 100px; height: 30px; background: #000; border-radius: 20px; z-index: 10; }
 
-/* iOS Status bar */
-.ios-status {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px 8px;
-  /* reserve space for dynamic island */
-  margin-top: 20px;
-}
+.ios-status { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 8px; margin-top: 20px; }
+.ios-time { font-size: 15px; font-weight: 600; color: var(--text-pri); letter-spacing: -.01em; }
+.ios-status-icons { display: flex; align-items: center; gap: 5px; }
 
-.ios-time {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-pri);
-  letter-spacing: -.01em;
-}
-
-.ios-status-icons {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-/* App header */
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 18px 8px;
-}
-
-.app-wordmark {
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -.03em;
-  color: var(--text-pri);
-}
+.app-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 18px 8px; }
+.app-wordmark { font-size: 24px; font-weight: 800; letter-spacing: -.03em; color: var(--text-pri); }
 .app-wordmark .accent { color: var(--accent); }
+.app-icon-btn { width: 32px; height: 32px; border-radius: 8px; background: var(--stage-bg); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--text-sec); }
 
-.app-icon-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--stage-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  color: var(--text-sec);
-}
-
-/* iOS search bar */
-.ios-search {
-  margin: 0 18px 12px;
-  position: relative;
-}
-
-.ios-search input {
-  width: 100%;
-  height: 34px;
-  background: var(--stage-bg);
-  border: none;
-  border-radius: 10px;
-  padding: 0 10px 0 30px;
-  font: inherit;
-  font-size: 13px;
-  color: var(--text-pri);
-  outline: none;
-}
+.ios-search { margin: 0 18px 10px; position: relative; }
+.ios-search input { width: 100%; height: 34px; background: var(--stage-bg); border: none; border-radius: 10px; padding: 0 10px 0 30px; font: inherit; font-size: 13px; color: var(--text-pri); outline: none; }
 .ios-search input::placeholder { color: var(--text-ter); }
-.ios-search-icon {
-  position: absolute;
-  left: 9px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  color: var(--text-ter);
-}
+.ios-search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-ter); }
 
-/* Filter chips */
-.filter-chips-row {
-  display: flex;
-  gap: 6px;
-  padding: 0 18px 12px;
-  overflow-x: auto;
-}
+.filter-chips-row { display: flex; gap: 6px; padding: 0 18px 6px; overflow-x: auto; }
 .filter-chips-row::-webkit-scrollbar { display: none; }
 
+.priority-chips-row { display: flex; gap: 5px; padding: 0 18px 10px; align-items: center; overflow-x: auto; }
+.priority-chips-row::-webkit-scrollbar { display: none; }
+.priority-chips-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-ter); white-space: nowrap; flex-shrink: 0; }
+
 .fc {
-  display: inline-flex;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 4px 12px;
-  border-radius: 99px;
-  border: 1px solid var(--border);
-  background: var(--card-bg);
-  color: var(--text-sec);
-  white-space: nowrap;
-  flex-shrink: 0;
+  display: inline-flex; font-size: 11.5px; font-weight: 500;
+  padding: 3px 11px; border-radius: 99px;
+  border: 1px solid var(--border); background: var(--card-bg); color: var(--text-sec);
+  white-space: nowrap; flex-shrink: 0;
 }
 .fc.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-.fc.tag { background: var(--tag-bg); border-color: transparent; color: var(--tag-fg); }
+.fc.tag    { background: var(--tag-bg); border-color: transparent; color: var(--tag-fg); }
 
-/* List */
-.app-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 18px;
-}
+.app-list { flex: 1; overflow-y: auto; padding: 0 18px; }
 .app-list::-webkit-scrollbar { display: none; }
 
-.app-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--border);
-}
+.app-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
 .app-item:last-child { border-bottom: none; }
-
 .app-item.archived { opacity: .48; }
 
-.app-thumb {
-  width: 44px;
-  height: 44px;
-  border-radius: 9px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-
+.app-thumb { width: 44px; height: 44px; border-radius: 9px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
 .app-item-info { flex: 1; min-width: 0; }
+.app-item-title { font-size: 13.5px; font-weight: 500; color: var(--text-pri); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.app-item-meta { display: flex; align-items: center; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
+.app-item-domain { font-size: 11px; color: var(--text-ter); }
 
-.app-item-title {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--text-pri);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.app-item-meta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 4px;
-  flex-wrap: wrap;
-}
-
-.app-item-domain {
-  font-size: 11px;
-  color: var(--text-ter);
-}
-
-/* Swipe hint */
-.swipe-hint {
-  position: relative;
-}
-.swipe-hint::after {
-  content: 'Archive';
-  position: absolute;
-  right: -60px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: var(--badge-oth-fg);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 5px;
-  opacity: .7;
-}
-
-/* Tab bar */
-.ios-tab-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding: 10px 0 0;
-  border-top: 1px solid var(--border);
-  background: var(--card-bg);
-}
-
-.tab-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  flex: 1;
-  padding: 4px 0 12px;
-}
-
+.ios-tab-bar { display: flex; align-items: center; justify-content: space-around; padding: 10px 0 0; border-top: 1px solid var(--border); background: var(--card-bg); }
+.tab-item { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; padding: 4px 0 12px; }
 .tab-icon { font-size: 20px; }
 .tab-label { font-size: 10px; font-weight: 500; color: var(--text-ter); }
-.tab-item.active .tab-icon { filter: hue-rotate(0) saturate(2); }
 .tab-item.active .tab-label { color: var(--accent); }
 
-/* ─── SHARE SHEET ────────────────────────────────────────────────────── */
-.share-backdrop {
-  flex: 1;
-  background: rgba(0,0,0,.4);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  overflow: hidden;
-}
+/* ─── SHARE SHEET ───────────────────────────────────────────────────────── */
+.share-backdrop { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+.ios-share-sheet { background: var(--card-bg-raised); border-radius: 16px 16px 0 0; overflow: hidden; }
+.share-sheet-header { padding: 14px 16px 8px; border-bottom: 1px solid var(--border); }
+.share-url-preview { display: flex; align-items: center; gap: 8px; }
+.share-favicon { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(135deg,#1A3A5C,#0D2540); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #88B0D8; flex-shrink: 0; }
+.share-url-text { font-size: 12px; color: var(--text-sec); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.ios-share-sheet {
-  background: var(--card-bg-raised);
-  border-radius: 16px 16px 0 0;
-  padding-bottom: 0;
-  overflow: hidden;
-}
-
-.share-sheet-header {
-  padding: 14px 16px 8px;
-  border-bottom: 1px solid var(--border);
-}
-
-.share-url-preview {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.share-favicon {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: linear-gradient(135deg,#1A3A5C,#0D2540);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: #88B0D8;
-  flex-shrink: 0;
-}
-
-.share-url-text {
-  font-size: 12px;
-  color: var(--text-sec);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.share-apps-row {
-  display: flex;
-  gap: 16px;
-  padding: 14px 16px;
-  overflow-x: auto;
-}
+.share-apps-row { display: flex; gap: 14px; padding: 12px 16px; overflow-x: auto; }
 .share-apps-row::-webkit-scrollbar { display: none; }
+.share-app-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; }
+.share-app-icon { width: 52px; height: 52px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 24px; background: var(--stage-bg); }
+.share-app-icon.stashbro { background: linear-gradient(145deg, #C87A38, #9E5A20); }
+.share-app-label { font-size: 10px; color: var(--text-sec); text-align: center; max-width: 58px; line-height: 1.2; }
 
-.share-app-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.share-app-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
-  background: var(--stage-bg);
-}
-.share-app-icon.stashbro {
-  background: linear-gradient(145deg, #C87A38, #9E5A20);
-}
-
-.share-app-label {
-  font-size: 10.5px;
-  color: var(--text-sec);
-  text-align: center;
-  max-width: 60px;
-  line-height: 1.2;
-}
-
-/* StashBro quick-save card */
-.stashbro-quicksave {
-  background: var(--card-bg);
-  border-top: 1px solid var(--border);
-  padding: 14px 16px;
-}
-
-.quicksave-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.quicksave-appicon {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: linear-gradient(145deg,#C87A38,#9E5A20);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  color: #fff;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
+.stashbro-quicksave { background: var(--card-bg); border-top: 1px solid var(--border); padding: 12px 16px; }
+.quicksave-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.quicksave-appicon { width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(145deg,#C87A38,#9E5A20); display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; font-weight: 700; flex-shrink: 0; }
 .quicksave-title-block { flex: 1; min-width: 0; }
+.quicksave-app-name { font-size: 13px; font-weight: 600; color: var(--text-pri); }
+.quicksave-subtitle { font-size: 11px; color: var(--text-ter); }
+.quicksave-field { background: var(--stage-bg); border-radius: 9px; padding: 8px 12px; margin-bottom: 7px; }
+.quicksave-field-label { font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-ter); margin-bottom: 2px; }
+.quicksave-field-val { font-size: 13px; font-weight: 500; color: var(--text-pri); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.quicksave-tags-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.quicksave-save-btn { width: 100%; height: 38px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 4px; }
+.share-sheet-indicator { height: 4px; width: 36px; background: var(--text-ter); border-radius: 2px; margin: 8px auto 0; }
 
-.quicksave-app-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-pri);
-}
-
-.quicksave-subtitle {
-  font-size: 11px;
-  color: var(--text-ter);
-}
-
-.quicksave-field {
-  background: var(--stage-bg);
-  border-radius: 9px;
-  padding: 9px 12px;
-  margin-bottom: 8px;
-}
-
-.quicksave-field-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--text-ter);
-  margin-bottom: 3px;
-}
-
-.quicksave-field-val {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-pri);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.quicksave-tags-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-.quicksave-save-btn {
-  width: 100%;
-  height: 40px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 4px;
-}
-
-.share-sheet-indicator {
-  height: 4px;
-  width: 36px;
-  background: var(--text-ter);
-  border-radius: 2px;
-  margin: 8px auto 0;
-}
-
-/* ─── IOS WIDGETS ────────────────────────────────────────────────────── */
+/* ─── IOS WIDGETS ───────────────────────────────────────────────────────── */
 .ios-widget-small {
-  width: 152px;
-  height: 152px;
-  border-radius: 22px;
+  width: 152px; height: 152px; border-radius: 22px;
   background: linear-gradient(145deg, #C87A38, #9A5820);
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
+  padding: 14px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;
 }
-
-.widget-s-top {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.widget-s-appname {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(255,255,255,.75);
-  letter-spacing: .02em;
-}
-
-.widget-s-num {
-  font-size: 52px;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -.04em;
-  line-height: 1;
-}
-
-.widget-s-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255,255,255,.7);
-}
+.widget-s-top { display: flex; align-items: center; gap: 6px; }
+.widget-s-appname { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.75); letter-spacing: .02em; }
+.widget-s-num { font-size: 52px; font-weight: 800; color: #fff; letter-spacing: -.04em; line-height: 1; }
+.widget-s-label { font-size: 13px; font-weight: 500; color: rgba(255,255,255,.7); }
 
 .ios-widget-medium {
-  width: 320px;
-  height: 152px;
-  border-radius: 22px;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  padding: 14px 16px;
-  display: flex;
-  gap: 14px;
-  overflow: hidden;
+  width: 320px; height: 152px; border-radius: 22px;
+  background: var(--card-bg); border: 1px solid var(--border);
+  padding: 14px 16px; display: flex; gap: 14px; overflow: hidden;
 }
-
-.widget-m-left {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  border-right: 1px solid var(--border);
-  padding-right: 14px;
-  flex-shrink: 0;
-}
-
+.widget-m-left { display: flex; flex-direction: column; justify-content: center; gap: 2px; border-right: 1px solid var(--border); padding-right: 14px; flex-shrink: 0; }
 .widget-m-accent { color: var(--accent); font-size: 40px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
-.widget-m-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-ter); font-weight: 500; }
-.widget-m-sub { font-size: 10px; color: var(--text-ter); }
-
-.widget-m-right {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  justify-content: center;
-  min-width: 0;
-}
-
-.widget-m-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.widget-m-thumb {
-  width: 32px;
-  height: 32px;
-  border-radius: 7px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-
-.widget-m-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-pri);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.widget-m-badge {
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .03em;
-  padding: 1px 5px;
-  border-radius: 3px;
-}
+.widget-m-label  { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-ter); font-weight: 500; }
+.widget-m-sub    { font-size: 10px; color: var(--text-ter); }
+.widget-m-right  { flex: 1; display: flex; flex-direction: column; gap: 6px; justify-content: center; min-width: 0; }
+.widget-m-item   { display: flex; align-items: center; gap: 8px; }
+.widget-m-thumb  { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.widget-m-title  { font-size: 11.5px; font-weight: 500; color: var(--text-pri); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.widget-m-badge  { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; padding: 1px 5px; border-radius: 3px; }
 .widget-m-badge.video   { background: var(--badge-vid-bg);  color: var(--badge-vid-fg); }
-.widget-m-badge.post    { background: var(--badge-post-bg); color: var(--badge-post-fg); }
 .widget-m-badge.article { background: var(--badge-art-bg);  color: var(--badge-art-fg); }
 
-/* ─── BROWSER EXTENSION ──────────────────────────────────────────────── */
+/* ─── BROWSER EXTENSION ─────────────────────────────────────────────────── */
 .browser-frame { display: flex; flex-direction: column; align-items: center; }
 
 .chrome-toolbar {
-  width: 560px;
-  height: 44px;
-  background: var(--card-bg-raised);
-  border-radius: 10px 10px 0 0;
-  border: 1px solid var(--border);
-  border-bottom: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
+  width: 520px; height: 44px; background: var(--card-bg-raised);
+  border-radius: 10px 10px 0 0; border: 1px solid var(--border); border-bottom: none;
+  display: flex; align-items: center; gap: 8px; padding: 0 12px;
 }
 
-.chrome-nav-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--stage-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: var(--text-sec);
-  flex-shrink: 0;
-}
-
-.chrome-url-bar {
-  flex: 1;
-  height: 28px;
-  background: var(--stage-bg);
-  border-radius: 99px;
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-sec);
-  overflow: hidden;
-}
-
+.chrome-nav-btn { width: 26px; height: 26px; border-radius: 50%; background: var(--stage-bg); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-sec); flex-shrink: 0; }
+.chrome-url-bar { flex: 1; height: 28px; background: var(--stage-bg); border-radius: 99px; border: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; gap: 6px; font-size: 12px; color: var(--text-sec); overflow: hidden; }
 .chrome-url-lock { font-size: 11px; color: var(--badge-art-fg); }
 .chrome-url-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-pri); }
+.chrome-ext-area { display: flex; align-items: center; gap: 4px; }
+.chrome-ext-icon { width: 24px; height: 24px; border-radius: 5px; background: var(--stage-bg); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.chrome-ext-icon.active { background: rgba(200,122,56,.18); outline: 2px solid var(--accent); }
 
-.chrome-ext-area {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+.chrome-content-area { width: 520px; height: 120px; background: linear-gradient(180deg, var(--card-bg-raised), var(--page-bg)); display: flex; align-items: flex-start; justify-content: flex-end; padding: 0 12px; position: relative; border: 1px solid var(--border); border-top: none; border-bottom: none; }
 
-.chrome-ext-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 5px;
-  background: var(--stage-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-
-.chrome-ext-icon.active {
-  background: rgba(200,122,56,.18);
-  outline: 2px solid var(--accent);
-}
-
-.chrome-content-area {
-  width: 560px;
-  height: 120px;
-  background: linear-gradient(180deg, var(--card-bg-raised), var(--page-bg));
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  padding: 0 12px;
-  position: relative;
-  border: 1px solid var(--border);
-  border-top: none;
-  border-bottom: none;
-}
-
-.ext-popup {
-  width: 300px;
-  background: var(--popover-bg);
-  backdrop-filter: blur(24px);
-  border-radius: 10px;
-  border: 1px solid var(--border-strong);
-  box-shadow: 0 8px 40px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08);
-  overflow: hidden;
-}
-
-.ext-popup-header {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--border);
-}
-
-.ext-logo {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: linear-gradient(145deg, #C87A38, #9E5A20);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  color: #fff;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.ext-popup-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-pri);
-  letter-spacing: -.01em;
-}
-
-.ext-popup-subtitle {
-  font-size: 11px;
-  color: var(--text-ter);
-}
-
-.ext-popup-body { padding: 12px 14px; }
-
-.ext-field {
-  margin-bottom: 9px;
-}
-
-.ext-field-label {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--text-ter);
-  margin-bottom: 4px;
-}
-
-.ext-field-input {
-  width: 100%;
-  font: inherit;
-  font-size: 13px;
-  color: var(--text-pri);
-  background: var(--stage-bg);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 7px 10px;
-  outline: none;
-  resize: none;
-  line-height: 1.4;
-}
-.ext-field-input:focus { border-color: var(--accent); }
-
-.ext-type-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ext-type-badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  padding: 3px 9px;
-  border-radius: 5px;
-}
+.ext-popup { width: 288px; background: var(--popover-bg); backdrop-filter: blur(24px); border-radius: 10px; border: 1px solid var(--border-strong); box-shadow: 0 8px 40px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08); overflow: hidden; }
+.ext-popup-header { display: flex; align-items: center; gap: 9px; padding: 12px 14px 10px; border-bottom: 1px solid var(--border); }
+.ext-logo { width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(145deg, #C87A38, #9E5A20); display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; font-weight: 700; flex-shrink: 0; }
+.ext-popup-title { font-size: 14px; font-weight: 700; color: var(--text-pri); letter-spacing: -.01em; }
+.ext-popup-subtitle { font-size: 11px; color: var(--text-ter); }
+.ext-popup-body { padding: 10px 14px; }
+.ext-field { margin-bottom: 8px; }
+.ext-field-label { font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-ter); margin-bottom: 4px; }
+.ext-field-input { width: 100%; font: inherit; font-size: 13px; color: var(--text-pri); background: var(--stage-bg); border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; outline: none; resize: none; line-height: 1.4; }
+.ext-type-row { display: flex; align-items: center; gap: 6px; }
+.ext-type-badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 3px 9px; border-radius: 5px; }
 .ext-type-badge.article { background: var(--badge-art-bg); color: var(--badge-art-fg); }
-
 .ext-type-auto { font-size: 11px; color: var(--text-ter); }
-
-.ext-tags-input {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-  min-height: 34px;
-  background: var(--stage-bg);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 4px 8px;
-}
-
-.ext-tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--accent-dim);
-  color: var(--accent);
-  padding: 2px 8px;
-  border-radius: 99px;
-}
-
-.ext-tag-cursor {
-  font-size: 12px;
-  color: var(--text-ter);
-  padding: 2px 0;
-  animation: blink 1s infinite;
-}
-
+.ext-tags-input { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; min-height: 32px; background: var(--stage-bg); border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px; }
+.ext-tag-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 500; background: var(--accent-dim); color: var(--accent); padding: 2px 8px; border-radius: 99px; }
+.ext-tag-cursor { font-size: 12px; color: var(--text-ter); padding: 2px 0; animation: blink 1s infinite; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.ext-save-btn { width: 100%; height: 34px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 4px; }
+.ext-saved-link { font-size: 12px; font-weight: 500; color: var(--accent); text-decoration: none; }
+.chrome-stub { width: 520px; height: 40px; background: var(--page-bg); border-radius: 0 0 10px 10px; border: 1px solid var(--border); border-top: none; }
 
-.ext-save-btn {
-  width: 100%;
-  height: 36px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 4px;
-}
-
-/* Saved state */
-.ext-saved-state { padding: 12px 14px 14px; text-align: center; }
-
-.ext-saved-check {
-  width: 40px;
-  height: 40px;
-  background: var(--badge-art-bg);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  margin: 0 auto 10px;
-}
-
-.ext-saved-msg {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-pri);
-  margin-bottom: 4px;
-}
-
-.ext-saved-sub {
-  font-size: 12px;
-  color: var(--text-ter);
-  margin-bottom: 10px;
-}
-
-.ext-saved-link {
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.chrome-stub {
-  width: 560px;
-  height: 40px;
-  background: var(--page-bg);
-  border-radius: 0 0 10px 10px;
-  border: 1px solid var(--border);
-  border-top: none;
-}
-
-/* ─── HELPERS ────────────────────────────────────────────────────────── */
+/* ─── HELPERS ───────────────────────────────────────────────────────────── */
 .dimr { opacity: .45; }
-
-/* inline SVG icons */
-svg.icon { display: inline-block; vertical-align: middle; }
-
-@media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; transition: none !important; }
-}
-
-/* ensure mockup sub-containers don't cause body scrolling */
-.popover-card, .ext-popup, .app-list, .popover-list, .filter-chips-row, .share-apps-row { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
@@ -1695,768 +509,1372 @@ svg.icon { display: inline-block; vertical-align: middle; }
     <div class="page-title">Design Review &mdash; Jul 2026</div>
     <div class="page-wordmark">Stash<span>Bro</span></div>
   </div>
-  <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <circle cx="7" cy="7" r="3.5" fill="currentColor"/>
-      <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2" fill="none"/>
-    </svg>
-    Toggle theme
-  </button>
+  <div style="font-size:13px;color:var(--text-ter);align-self:center;">Both themes rendered simultaneously &mdash; no toggle needed</div>
 </div>
 
 <main>
 
-<!-- ╔══════════════════════════════════════════════════════╗
-     ║  1. MAC NOTCH UI                                    ║
-     ╚══════════════════════════════════════════════════════╝ -->
+<!-- ═══════════════════════════════════════════════════════════════════════
+     1. MAC NOTCH UI
+     ═══════════════════════════════════════════════════════════════════════ -->
 <section class="design-section" id="s-notch">
   <div class="section-label">Mac &mdash; Notch UI</div>
   <div class="section-heading">BoringNotch-style reading panel</div>
-  <p class="section-desc">A dark pill that merges with the physical display notch. Collapsed shows your unread count; clicking or hovering expands a full reading panel with recent items and quick-save hint.</p>
-  <div class="mockup-stage" style="align-items:flex-start; padding: 40px 32px;">
+  <p class="section-desc">A dark pill merging with the physical notch. Collapsed shows unread count; expanded shows recent items with priority markers. The panel stays dark in both themes &mdash; it hugs the physical black notch.</p>
 
-    <!-- COLLAPSED -->
-    <div class="notch-frame">
-      <div class="mac-screen-bar" style="margin-bottom:0; border-radius:8px 8px 0 0;">
-        <div class="mac-notch-cut"></div>
-        <div class="mac-menubar-left">
-          <span class="mac-apple">&#63743;</span>
-          <span>StashBro</span>
-          <span class="dimr">File</span>
-          <span class="dimr">View</span>
-        </div>
-        <div class="mac-menubar-right">
-          <span class="dimr">Fri Jul 10</span>
-          <span>9:41 AM</span>
-        </div>
-        <!-- Collapsed pill -->
-        <div class="notch-pill-collapsed">
-          <div class="notch-pill-icon">S</div>
-          <span class="notch-pill-text">StashBro</span>
-          <span class="notch-pill-count">7</span>
+  <div class="theme-pair">
+
+    <!-- LIGHT -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--light">Light</span></div>
+      <div class="theme-light">
+        <div class="mockup-stage" style="flex-direction:column;align-items:center;gap:24px;">
+
+          <!-- Collapsed -->
+          <div class="notch-frame">
+            <div class="mac-screen-bar" style="border-radius:8px 8px 0 0;">
+              <div class="mac-notch-cut"></div>
+              <div class="mac-menubar-left">
+                <span class="mac-apple">&#63743;</span><span>StashBro</span>
+                <span class="dimr">File</span><span class="dimr">View</span>
+              </div>
+              <div class="mac-menubar-right"><span class="dimr">Fri Jul 10</span><span>9:41 AM</span></div>
+              <div class="notch-pill-collapsed">
+                <div class="notch-pill-icon">S</div>
+                <span class="notch-pill-text">StashBro</span>
+                <span class="notch-pill-count">7</span>
+              </div>
+            </div>
+            <div style="width:440px;height:60px;background:linear-gradient(180deg,#2A2D42,#363958);border-radius:0 0 8px 8px;"></div>
+            <div class="mockup-label">Collapsed</div>
+          </div>
+
+          <!-- Expanded -->
+          <div class="notch-frame">
+            <div style="position:relative;width:440px;">
+              <div class="mac-screen-bar" style="border-radius:8px 8px 0 0;position:relative;z-index:1;">
+                <div class="mac-notch-cut"></div>
+                <div class="mac-menubar-left">
+                  <span class="mac-apple">&#63743;</span><span>StashBro</span>
+                  <span class="dimr">File</span><span class="dimr">View</span>
+                </div>
+                <div class="mac-menubar-right"><span class="dimr">Fri Jul 10</span><span>9:41 AM</span></div>
+              </div>
+              <div class="notch-panel">
+                <div class="notch-panel-notch-cutout"></div>
+                <div class="notch-panel-header">
+                  <div class="notch-panel-title">StashBro <span class="notch-panel-badge">7 unread</span></div>
+                  <span class="notch-open-btn">Open App</span>
+                </div>
+                <div class="notch-item priority-high">
+                  <div class="notch-item-thumb thumb-yt">&#9654;</div>
+                  <div class="notch-item-info">
+                    <div class="notch-item-title">Andrej Karpathy &mdash; Intro to LLMs</div>
+                    <div class="notch-item-sub">youtube.com &middot; 3h 15m</div>
+                  </div>
+                  <span class="notch-item-badge video">Video</span>
+                </div>
+                <div class="notch-item priority-high">
+                  <div class="notch-item-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
+                  <div class="notch-item-info">
+                    <div class="notch-item-title">The Great Unbundling of Search</div>
+                    <div class="notch-item-sub">stratechery.com</div>
+                  </div>
+                  <span class="notch-item-badge article">Article</span>
+                </div>
+                <div class="notch-item">
+                  <div class="notch-item-thumb thumb-x" style="font-size:13px;font-weight:700;">&#120143;</div>
+                  <div class="notch-item-info">
+                    <div class="notch-item-title">@levelsio: shipped $1M ARR solo</div>
+                    <div class="notch-item-sub">x.com &middot; 412 likes</div>
+                  </div>
+                  <span class="notch-item-badge post">Post</span>
+                </div>
+                <div class="notch-item">
+                  <div class="notch-item-thumb thumb-pg" style="font-size:11px;font-weight:700;">PG</div>
+                  <div class="notch-item-info">
+                    <div class="notch-item-title">Do Things That Don't Scale</div>
+                    <div class="notch-item-sub">paulgraham.com</div>
+                  </div>
+                  <span class="notch-item-badge article">Article</span>
+                </div>
+                <div class="notch-divider"></div>
+                <div class="notch-footer">
+                  <span class="notch-save-hint">
+                    <span class="kbd">&#8984;</span><span class="kbd">&#8679;</span><span class="kbd">S</span>
+                    save frontmost tab
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div style="width:440px;height:60px;background:linear-gradient(180deg,#2A2D42,#363958);border-radius:0 0 8px 8px;border-top:none;"></div>
+            <div class="mockup-label">Expanded (hover or click)</div>
+          </div>
+
         </div>
       </div>
-      <!-- desktop content behind -->
-      <div style="width:440px;height:80px;background:linear-gradient(180deg,#1E2130,#262846);border-radius:0 0 8px 8px;"></div>
-      <div class="mockup-label">Collapsed</div>
     </div>
 
-    <!-- EXPANDED -->
-    <div class="notch-frame">
-      <div style="position:relative; width:440px;">
-        <div class="mac-screen-bar" style="border-radius:8px 8px 0 0; position:relative; z-index:1;">
-          <div class="mac-notch-cut"></div>
-          <div class="mac-menubar-left">
-            <span class="mac-apple">&#63743;</span>
-            <span>StashBro</span>
-            <span class="dimr">File</span>
-            <span class="dimr">View</span>
-          </div>
-          <div class="mac-menubar-right">
-            <span class="dimr">Fri Jul 10</span>
-            <span>9:41 AM</span>
-          </div>
-        </div>
-        <!-- Expanded panel -->
-        <div class="notch-panel">
-          <div class="notch-panel-notch-cutout"></div>
-          <div class="notch-panel-header">
-            <div class="notch-panel-title">
-              StashBro
-              <span class="notch-panel-badge">7 unread</span>
+    <!-- DARK -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--dark">Dark</span></div>
+      <div class="theme-dark">
+        <div class="mockup-stage" style="flex-direction:column;align-items:center;gap:24px;">
+
+          <!-- Collapsed -->
+          <div class="notch-frame">
+            <div class="mac-screen-bar" style="border-radius:8px 8px 0 0;background:#111115;">
+              <div class="mac-notch-cut"></div>
+              <div class="mac-menubar-left">
+                <span class="mac-apple">&#63743;</span><span>StashBro</span>
+                <span class="dimr">File</span><span class="dimr">View</span>
+              </div>
+              <div class="mac-menubar-right"><span class="dimr">Fri Jul 10</span><span>9:41 AM</span></div>
+              <div class="notch-pill-collapsed">
+                <div class="notch-pill-icon">S</div>
+                <span class="notch-pill-text">StashBro</span>
+                <span class="notch-pill-count">7</span>
+              </div>
             </div>
-            <span class="notch-open-btn">Open App</span>
+            <div style="width:440px;height:60px;background:linear-gradient(180deg,#14151C,#1C1E2A);border-radius:0 0 8px 8px;"></div>
+            <div class="mockup-label">Collapsed</div>
           </div>
 
-          <div class="notch-item">
-            <div class="notch-item-thumb thumb-yt">&#9654;</div>
-            <div class="notch-item-info">
-              <div class="notch-item-title">Andrej Karpathy &mdash; Intro to LLMs</div>
-              <div class="notch-item-sub">youtube.com &middot; 3h 15m</div>
+          <!-- Expanded -->
+          <div class="notch-frame">
+            <div style="position:relative;width:440px;">
+              <div class="mac-screen-bar" style="border-radius:8px 8px 0 0;background:#111115;position:relative;z-index:1;">
+                <div class="mac-notch-cut"></div>
+                <div class="mac-menubar-left">
+                  <span class="mac-apple">&#63743;</span><span>StashBro</span>
+                  <span class="dimr">File</span><span class="dimr">View</span>
+                </div>
+                <div class="mac-menubar-right"><span class="dimr">Fri Jul 10</span><span>9:41 AM</span></div>
+              </div>
+              <div class="notch-panel">
+                <div class="notch-panel-notch-cutout"></div>
+                <div class="notch-panel-header">
+                  <div class="notch-panel-title">StashBro <span class="notch-panel-badge">7 unread</span></div>
+                  <span class="notch-open-btn">Open App</span>
+                </div>
+                <div class="notch-item priority-high">
+                  <div class="notch-item-thumb thumb-yt">&#9654;</div>
+                  <div class="notch-item-info">
+                    <div class="notch-item-title">Andrej Karpathy &mdash; Intro to LLMs</div>
+                    <div class="notch-item-sub">youtube.com &middot; 3h 15m</div>
+                  </div>
+                  <span class="notch-item-badge video">Video</span>
+                </div>
+                <div class="notch-item priority-high">
+                  <div class="notch-item-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
+                  <div class="notch-item-info">
+                    <div class="notch-item-title">The Great Unbundling of Search</div>
+                    <div class="notch-item-sub">stratechery.com</div>
+                  </div>
+                  <span class="notch-item-badge article">Article</span>
+                </div>
+                <div class="notch-item">
+                  <div class="notch-item-thumb thumb-x" style="font-size:13px;font-weight:700;">&#120143;</div>
+                  <div class="notch-item-info">
+                    <div class="notch-item-title">@levelsio: shipped $1M ARR solo</div>
+                    <div class="notch-item-sub">x.com &middot; 412 likes</div>
+                  </div>
+                  <span class="notch-item-badge post">Post</span>
+                </div>
+                <div class="notch-item">
+                  <div class="notch-item-thumb thumb-pg" style="font-size:11px;font-weight:700;">PG</div>
+                  <div class="notch-item-info">
+                    <div class="notch-item-title">Do Things That Don't Scale</div>
+                    <div class="notch-item-sub">paulgraham.com</div>
+                  </div>
+                  <span class="notch-item-badge article">Article</span>
+                </div>
+                <div class="notch-divider"></div>
+                <div class="notch-footer">
+                  <span class="notch-save-hint">
+                    <span class="kbd">&#8984;</span><span class="kbd">&#8679;</span><span class="kbd">S</span>
+                    save frontmost tab
+                  </span>
+                </div>
+              </div>
             </div>
-            <span class="notch-item-badge video">Video</span>
+            <div style="width:440px;height:60px;background:linear-gradient(180deg,#14151C,#1C1E2A);border-radius:0 0 8px 8px;border-top:none;"></div>
+            <div class="mockup-label">Expanded (hover or click)</div>
           </div>
 
-          <div class="notch-item">
-            <div class="notch-item-thumb thumb-strat" style="font-size:11px; font-weight:700;">S</div>
-            <div class="notch-item-info">
-              <div class="notch-item-title">The Great Unbundling of Search</div>
-              <div class="notch-item-sub">stratechery.com</div>
-            </div>
-            <span class="notch-item-badge article">Article</span>
-          </div>
-
-          <div class="notch-item">
-            <div class="notch-item-thumb thumb-x" style="font-size:13px; font-weight:700;">𝕏</div>
-            <div class="notch-item-info">
-              <div class="notch-item-title">@levelsio: shipped $1M ARR solo</div>
-              <div class="notch-item-sub">x.com &middot; 412 likes</div>
-            </div>
-            <span class="notch-item-badge post">Post</span>
-          </div>
-
-          <div class="notch-item">
-            <div class="notch-item-thumb thumb-pg" style="font-size:11px; font-weight:700;">PG</div>
-            <div class="notch-item-info">
-              <div class="notch-item-title">Do Things That Don't Scale</div>
-              <div class="notch-item-sub">paulgraham.com</div>
-            </div>
-            <span class="notch-item-badge article">Article</span>
-          </div>
-
-          <div class="notch-divider"></div>
-          <div class="notch-footer">
-            <span class="notch-save-hint">
-              <span class="kbd">&#8984;</span><span class="kbd">&#8679;</span><span class="kbd">S</span>
-              save frontmost tab
-            </span>
-          </div>
         </div>
       </div>
-      <!-- desktop content -->
-      <div style="width:440px;height:80px;background:linear-gradient(180deg,#1E2130,#262846);border-radius:0 0 8px 8px;border-top:none;"></div>
-      <div class="mockup-label">Expanded (hover or click)</div>
     </div>
 
   </div>
 </section>
 
-<!-- ╔══════════════════════════════════════════════════════╗
-     ║  2. MENUBAR POPOVER                                 ║
-     ╚══════════════════════════════════════════════════════╝ -->
+<!-- ═══════════════════════════════════════════════════════════════════════
+     2. MAC MENUBAR POPOVER
+     ═══════════════════════════════════════════════════════════════════════ -->
 <section class="design-section" id="s-menubar">
   <div class="section-label">Mac &mdash; Menubar Popover</div>
   <div class="section-heading">Always-available menubar panel</div>
-  <p class="section-desc">NSStatusItem popover anchored to the StashBro icon. Works on any Mac, notch or not. Includes search, type filters, full scrolling list, and quick-add.</p>
-  <div class="mockup-stage">
+  <p class="section-desc">NSStatusItem popover anchored to the StashBro icon. Works on any Mac, notch or not. Priority filter row added below type filters; defaults to All.</p>
 
-    <div class="menubar-frame">
-      <div class="mac-menubar-strip">
-        <span class="mac-apple" style="font-size:16px;color:var(--text-pri);">&#63743;</span>
-        <span class="menubar-app-name">Finder</span>
-        <div class="menubar-menus">
-          <span>File</span><span>Edit</span><span>View</span><span>Go</span>
-        </div>
-        <div class="menubar-right-icons">
-          <span class="dimr" style="font-size:12px;">&#9632; &#9650; &#9670;</span>
-          <div class="menubar-icon-active">📋</div>
-          <div class="menubar-icon-active" style="background:rgba(200,122,56,.2); outline:1.5px solid var(--accent); outline-offset:1px;">S</div>
-          <span class="dimr">&#9608;</span>
-          <span class="menubar-clock">9:41 AM</span>
-        </div>
-      </div>
+  <div class="theme-pair">
 
-      <div class="menubar-popover-container">
-        <!-- Arrow -->
-        <svg class="popover-arrow" viewBox="0 0 12 8" fill="none">
-          <path d="M6 0L12 8H0L6 0Z" fill="var(--border-strong)"/>
-          <path d="M6 1.5L11 8H1L6 1.5Z" fill="var(--popover-bg)"/>
-        </svg>
-
-        <div class="popover-card">
-          <!-- Search -->
-          <div class="popover-search">
-            <span class="popover-search-icon">&#128269;</span>
-            <input type="text" placeholder="Search your stash&hellip;" readonly>
-          </div>
-
-          <!-- Filters -->
-          <div class="popover-filters">
-            <div class="filter-chip active">All</div>
-            <div class="filter-chip">Video</div>
-            <div class="filter-chip">Post</div>
-            <div class="filter-chip">Article</div>
-            <div class="filter-chip" style="color:var(--tag-fg);background:var(--tag-bg);">#AI</div>
-            <div class="filter-chip" style="color:var(--tag-fg);background:var(--tag-bg);">#startups</div>
-          </div>
-
-          <!-- List -->
-          <div class="popover-list">
-            <div class="popover-item">
-              <div class="popover-thumb thumb-yt" style="font-size:16px;">&#9654;</div>
-              <div>
-                <div class="popover-item-title">Andrej Karpathy &mdash; Intro to LLMs</div>
-                <div class="popover-item-meta">
-                  <span class="stash-domain">youtube.com</span>
-                  <span class="type-badge video">Video</span>
-                  <span class="tag-chip">#AI</span>
-                </div>
+    <!-- LIGHT -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--light">Light</span></div>
+      <div class="theme-light">
+        <div class="mockup-stage" style="padding:0;background:var(--stage-bg);">
+          <div class="menubar-frame">
+            <div class="mac-menubar-strip">
+              <span style="font-size:16px;color:var(--text-pri);">&#63743;</span>
+              <span class="menubar-app-name">Finder</span>
+              <div class="menubar-menus"><span>File</span><span>Edit</span><span>View</span><span>Go</span></div>
+              <div class="menubar-right-icons">
+                <span class="dimr" style="font-size:12px;">&#9632; &#9650;</span>
+                <div class="menubar-icon-active">&#128203;</div>
+                <div class="menubar-icon-active" style="background:rgba(200,122,56,.2);outline:1.5px solid var(--accent);outline-offset:1px;font-size:12px;font-weight:700;">S</div>
+                <span class="menubar-clock">9:41 AM</span>
               </div>
             </div>
-            <div class="popover-item">
-              <div class="popover-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
-              <div>
-                <div class="popover-item-title">The Great Unbundling of Search</div>
-                <div class="popover-item-meta">
-                  <span class="stash-domain">stratechery.com</span>
-                  <span class="type-badge article">Article</span>
-                  <span class="tag-chip">#AI</span>
-                  <span class="tag-chip">#tech</span>
-                </div>
-              </div>
-            </div>
-            <div class="popover-item">
-              <div class="popover-thumb thumb-x" style="font-size:13px;font-weight:700;">𝕏</div>
-              <div>
-                <div class="popover-item-title">@levelsio: shipped $1M ARR solo, what I'd do differently</div>
-                <div class="popover-item-meta">
-                  <span class="stash-domain">x.com</span>
-                  <span class="type-badge post">Post</span>
-                  <span class="tag-chip">#startups</span>
-                </div>
-              </div>
-            </div>
-            <div class="popover-item">
-              <div class="popover-thumb thumb-reddit" style="font-size:15px;">&#128007;</div>
-              <div>
-                <div class="popover-item-title">I tried a weekly review for 30 days — what actually changed</div>
-                <div class="popover-item-meta">
-                  <span class="stash-domain">reddit.com</span>
-                  <span class="type-badge post">Post</span>
-                  <span class="tag-chip">#personalGrowth</span>
-                </div>
-              </div>
-            </div>
-            <div class="popover-item">
-              <div class="popover-thumb thumb-arxiv" style="font-size:13px;font-weight:700;">ar</div>
-              <div>
-                <div class="popover-item-title">Mamba: Linear-Time Sequence Modeling with Selective State Spaces</div>
-                <div class="popover-item-meta">
-                  <span class="stash-domain">arxiv.org</span>
-                  <span class="type-badge article">Article</span>
-                  <span class="tag-chip">#AI</span>
-                  <span class="tag-chip">#research</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div class="popover-footer">
-            <div class="popover-footer-btn">+ Add from clipboard</div>
-            <div class="popover-footer-btn">Open App &rarr;</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ╔══════════════════════════════════════════════════════╗
-     ║  3. MAC WIDGET                                      ║
-     ╚══════════════════════════════════════════════════════╝ -->
-<section class="design-section" id="s-mac-widget">
-  <div class="section-label">Mac &mdash; WidgetKit Widget</div>
-  <div class="section-heading">Desktop reading queue at a glance</div>
-  <p class="section-desc">Medium WidgetKit widget surfacing your unread count and three most-recent items with type indicators. Clicking opens the app.</p>
-  <div class="mockup-stage" style="background:linear-gradient(135deg,#1A2340,#2A1A40);">
-
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-      <div class="mac-widget">
-        <div class="widget-count-block">
-          <div class="widget-count-num">7</div>
-          <div class="widget-count-label">Unread</div>
-        </div>
-        <div class="widget-items-col">
-          <div class="widget-item-row">
-            <div class="widget-item-dot video"></div>
-            <div class="widget-item-title">Karpathy &mdash; Intro to LLMs</div>
-          </div>
-          <div class="widget-item-row">
-            <div class="widget-item-dot article"></div>
-            <div class="widget-item-title">The Unbundling of Search</div>
-          </div>
-          <div class="widget-item-row">
-            <div class="widget-item-dot post"></div>
-            <div class="widget-item-title">@levelsio on $1M ARR</div>
-          </div>
-        </div>
-      </div>
-      <div class="mockup-label" style="color:rgba(255,255,255,.45);">Medium widget &mdash; 329 &times; 141 pt</div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ╔══════════════════════════════════════════════════════╗
-     ║  4. IPHONE APP                                      ║
-     ╚══════════════════════════════════════════════════════╝ -->
-<section class="design-section" id="s-iphone">
-  <div class="section-label">iPhone &mdash; Full App</div>
-  <div class="section-heading">Primary mobile reading surface</div>
-  <p class="section-desc">Full-screen Expo app with search, filter chips by type and tag, scrolling item list, and swipe-to-archive. Items enrich after first save with thumbnail and metadata from the server.</p>
-  <div class="mockup-stage" style="gap:48px;">
-
-    <!-- iPhone frame -->
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-      <div class="iphone-frame">
-        <div class="dynamic-island"></div>
-        <div class="iphone-screen">
-
-          <div class="ios-status">
-            <span class="ios-time">9:41</span>
-            <div class="ios-status-icons">
-              <!-- Signal -->
-              <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor" style="color:var(--text-pri)">
-                <rect x="0" y="7" width="3" height="5" rx="1"/>
-                <rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/>
-                <rect x="9" y="2" width="3" height="10" rx="1"/>
-                <rect x="13.5" y="0" width="3" height="12" rx="1" opacity=".3"/>
+            <div class="menubar-popover-container">
+              <svg class="popover-arrow" viewBox="0 0 12 8" fill="none">
+                <path d="M6 0L12 8H0L6 0Z" fill="var(--border-strong)"/>
+                <path d="M6 1.5L11 8H1L6 1.5Z" fill="var(--popover-bg)"/>
               </svg>
-              <!-- Wifi -->
-              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" style="color:var(--text-pri)">
-                <path d="M8 10.5a1 1 0 100 2 1 1 0 000-2z" fill="currentColor"/>
-                <path d="M5.4 8.1a3.7 3.7 0 015.2 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-                <path d="M2.6 5.3a7.4 7.4 0 0110.8 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity=".6"/>
-              </svg>
-              <!-- Battery -->
-              <svg width="25" height="13" viewBox="0 0 25 13" fill="none">
-                <rect x="0.5" y="0.5" width="21" height="12" rx="3.5" stroke="currentColor" stroke-opacity=".35"/>
-                <rect x="2" y="2" width="16" height="9" rx="2" fill="currentColor" style="color:var(--text-pri)"/>
-                <path d="M23 4.5v4a2 2 0 000-4z" fill="currentColor" style="color:var(--text-pri)" opacity=".4"/>
-              </svg>
-            </div>
-          </div>
-
-          <div class="app-header">
-            <div class="app-wordmark">Stash<span class="accent">Bro</span></div>
-            <div class="app-icon-btn">&#9881;</div>
-          </div>
-
-          <div class="ios-search">
-            <span class="ios-search-icon">&#128269;</span>
-            <input type="text" placeholder="Search your stash&hellip;" readonly>
-          </div>
-
-          <div class="filter-chips-row">
-            <div class="fc active">All</div>
-            <div class="fc">Video</div>
-            <div class="fc">Post</div>
-            <div class="fc">Article</div>
-            <div class="fc tag">#AI</div>
-            <div class="fc tag">#startups</div>
-            <div class="fc tag">#research</div>
-          </div>
-
-          <div class="app-list">
-
-            <div class="app-item">
-              <div class="app-thumb thumb-yt" style="font-size:18px;">&#9654;</div>
-              <div class="app-item-info">
-                <div class="app-item-title">Andrej Karpathy &mdash; Intro to LLMs</div>
-                <div class="app-item-meta">
-                  <span class="app-item-domain">youtube.com</span>
-                  <span class="type-badge video">Video</span>
-                  <span class="tag-chip">#AI</span>
+              <div class="popover-card">
+                <div class="popover-search">
+                  <span class="popover-search-icon">&#128269;</span>
+                  <input type="text" placeholder="Search your stash&hellip;" readonly>
                 </div>
-              </div>
-            </div>
-
-            <div class="app-item">
-              <div class="app-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
-              <div class="app-item-info">
-                <div class="app-item-title">The Great Unbundling of Search</div>
-                <div class="app-item-meta">
-                  <span class="app-item-domain">stratechery.com</span>
-                  <span class="type-badge article">Article</span>
-                  <span class="tag-chip">#AI</span>
-                  <span class="tag-chip">#tech</span>
+                <!-- Type filters -->
+                <div class="popover-filters">
+                  <div class="filter-chip active">All</div>
+                  <div class="filter-chip">Video</div>
+                  <div class="filter-chip">Post</div>
+                  <div class="filter-chip">Article</div>
+                  <div class="filter-chip" style="color:var(--tag-fg);background:var(--tag-bg);">#AI</div>
+                  <div class="filter-chip" style="color:var(--tag-fg);background:var(--tag-bg);">#startups</div>
                 </div>
-              </div>
-            </div>
-
-            <!-- Swipe hint item -->
-            <div class="app-item" style="transform:translateX(-18px);transition:transform .2s;position:relative;overflow:visible;">
-              <div style="position:absolute;right:-72px;top:50%;transform:translateY(-50%);background:#6441A0;color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:6px;white-space:nowrap;">Archive</div>
-              <div class="app-thumb thumb-x" style="font-size:14px;font-weight:700;">𝕏</div>
-              <div class="app-item-info">
-                <div class="app-item-title">@levelsio: $1M ARR solo &mdash; what I'd do differently</div>
-                <div class="app-item-meta">
-                  <span class="app-item-domain">x.com</span>
-                  <span class="type-badge post">Post</span>
-                  <span class="tag-chip">#startups</span>
+                <!-- Priority filters -->
+                <div class="popover-filters" style="padding-bottom:10px;">
+                  <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-ter);line-height:26px;flex-shrink:0;">Priority:</span>
+                  <div class="filter-chip active">All</div>
+                  <div class="filter-chip">High</div>
+                  <div class="filter-chip">Low</div>
                 </div>
-              </div>
-            </div>
-
-            <div class="app-item">
-              <div class="app-thumb thumb-reddit" style="font-size:17px;">&#128007;</div>
-              <div class="app-item-info">
-                <div class="app-item-title">I tried a weekly review for 30 days — here's what changed</div>
-                <div class="app-item-meta">
-                  <span class="app-item-domain">reddit.com</span>
-                  <span class="type-badge post">Post</span>
-                  <span class="tag-chip">#personalGrowth</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="app-item">
-              <div class="app-thumb thumb-arxiv" style="font-size:12px;font-weight:700;">ar</div>
-              <div class="app-item-info">
-                <div class="app-item-title">Mamba: Linear-Time Sequence Modeling</div>
-                <div class="app-item-meta">
-                  <span class="app-item-domain">arxiv.org</span>
-                  <span class="type-badge article">Article</span>
-                  <span class="tag-chip">#AI</span>
-                  <span class="tag-chip">#research</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Archived item -->
-            <div class="app-item archived">
-              <div class="app-thumb thumb-pg" style="font-size:10px;font-weight:700;">PG</div>
-              <div class="app-item-info">
-                <div class="app-item-title">Do Things That Don't Scale</div>
-                <div class="app-item-meta">
-                  <span class="app-item-domain">paulgraham.com</span>
-                  <span class="type-badge article">Article</span>
-                  <span style="font-size:10px;color:var(--text-ter);">Archived</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <div class="ios-tab-bar">
-            <div class="tab-item active">
-              <span class="tab-icon">&#128218;</span>
-              <span class="tab-label" style="color:var(--accent);">Reading List</span>
-            </div>
-            <div class="tab-item">
-              <span class="tab-icon" style="opacity:.45;">&#128269;</span>
-              <span class="tab-label">Search</span>
-            </div>
-            <div class="tab-item">
-              <span class="tab-icon" style="opacity:.45;">&#9881;</span>
-              <span class="tab-label">Settings</span>
-            </div>
-          </div>
-
-        </div>
-      </div>
-      <div class="mockup-label">iPhone App &mdash; Reading List</div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ╔══════════════════════════════════════════════════════╗
-     ║  5. IOS SHARE SHEET                                 ║
-     ╚══════════════════════════════════════════════════════╝ -->
-<section class="design-section" id="s-share">
-  <div class="section-label">iPhone &mdash; Share Sheet</div>
-  <div class="section-heading">Save in two taps from any app</div>
-  <p class="section-desc">iOS share extension opens StashBro's quick-save card with the page title auto-filled, type auto-detected, and an optional tag picker. Save is instant and local-first.</p>
-  <div class="mockup-stage">
-
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-      <div class="iphone-frame">
-        <div class="dynamic-island"></div>
-        <div class="iphone-screen">
-
-          <div class="ios-status">
-            <span class="ios-time">9:41</span>
-            <div class="ios-status-icons">
-              <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor" style="color:rgba(255,255,255,.7)">
-                <rect x="0" y="7" width="3" height="5" rx="1"/>
-                <rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/>
-                <rect x="9" y="2" width="3" height="10" rx="1"/>
-              </svg>
-              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" style="color:rgba(255,255,255,.7)">
-                <path d="M8 10.5a1 1 0 100 2 1 1 0 000-2z" fill="currentColor"/>
-                <path d="M5.4 8.1a3.7 3.7 0 015.2 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-              </svg>
-              <svg width="25" height="13" viewBox="0 0 25 13" fill="none">
-                <rect x="0.5" y="0.5" width="21" height="12" rx="3.5" stroke="rgba(255,255,255,.5)"/>
-                <rect x="2" y="2" width="16" height="9" rx="2" fill="rgba(255,255,255,.7)"/>
-              </svg>
-            </div>
-          </div>
-
-          <!-- Blurred app content -->
-          <div class="share-backdrop" style="background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.7) 100%);">
-
-            <!-- Blurred app bg suggestion -->
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;padding:90px 18px 0;opacity:.35;pointer-events:none;">
-              <div style="height:16px;border-radius:4px;background:var(--text-sec);width:80%;"></div>
-              <div style="height:12px;border-radius:4px;background:var(--text-ter);width:55%;"></div>
-              <div style="height:44px;border-radius:9px;background:var(--card-bg);"></div>
-              <div style="height:44px;border-radius:9px;background:var(--card-bg);"></div>
-              <div style="height:44px;border-radius:9px;background:var(--card-bg);"></div>
-            </div>
-
-            <div class="ios-share-sheet">
-              <div class="share-sheet-indicator"></div>
-
-              <div class="share-sheet-header">
-                <div class="share-url-preview">
-                  <div class="share-favicon">S</div>
-                  <span class="share-url-text">stratechery.com/2026/the-great-unbundling-of-search</span>
-                </div>
-              </div>
-
-              <!-- App tiles row -->
-              <div class="share-apps-row">
-                <div class="share-app-tile">
-                  <div class="share-app-icon" style="font-size:22px;">&#128248;</div>
-                  <div class="share-app-label">Copy</div>
-                </div>
-                <div class="share-app-tile">
-                  <div class="share-app-icon" style="font-size:22px;">&#128172;</div>
-                  <div class="share-app-label">Messages</div>
-                </div>
-                <div class="share-app-tile">
-                  <div class="share-app-icon stashbro">
-                    <span style="font-size:24px;color:#fff;font-weight:800;font-family:-apple-system,sans-serif;">S</span>
+                <div class="popover-list">
+                  <div class="popover-item priority-high">
+                    <div class="popover-thumb thumb-yt" style="font-size:15px;">&#9654;</div>
+                    <div>
+                      <div class="popover-item-title">Andrej Karpathy &mdash; Intro to LLMs</div>
+                      <div class="popover-item-meta">
+                        <span class="stash-domain">youtube.com</span>
+                        <span class="type-badge video">Video</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="share-app-label" style="font-weight:600;color:var(--accent);">StashBro</div>
-                </div>
-                <div class="share-app-tile">
-                  <div class="share-app-icon" style="font-size:22px;">&#128233;</div>
-                  <div class="share-app-label">Mail</div>
-                </div>
-                <div class="share-app-tile">
-                  <div class="share-app-icon" style="font-size:22px;">&#128203;</div>
-                  <div class="share-app-label">Notes</div>
-                </div>
-              </div>
-
-              <!-- StashBro quick-save card -->
-              <div class="stashbro-quicksave">
-                <div class="quicksave-header">
-                  <div class="quicksave-appicon">S</div>
-                  <div class="quicksave-title-block">
-                    <div class="quicksave-app-name">StashBro</div>
-                    <div class="quicksave-subtitle">Quick save</div>
+                  <div class="popover-item priority-high">
+                    <div class="popover-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
+                    <div>
+                      <div class="popover-item-title">The Great Unbundling of Search</div>
+                      <div class="popover-item-meta">
+                        <span class="stash-domain">stratechery.com</span>
+                        <span class="type-badge article">Article</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-
-                <div class="quicksave-field">
-                  <div class="quicksave-field-label">Title</div>
-                  <div class="quicksave-field-val">The Great Unbundling of Search</div>
-                </div>
-
-                <div class="quicksave-field">
-                  <div class="quicksave-field-label">Type &amp; Tags</div>
-                  <div class="quicksave-field-val">
-                    <span class="type-badge article">Article</span>
-                    <div class="quicksave-tags-row" style="margin-top:6px;">
-                      <span class="tag-chip">#AI</span>
-                      <span class="tag-chip">#tech</span>
-                      <span style="font-size:11px;color:var(--text-ter);cursor:pointer;">+ add tag</span>
+                  <div class="popover-item">
+                    <div class="popover-thumb thumb-x" style="font-size:13px;font-weight:700;">&#120143;</div>
+                    <div>
+                      <div class="popover-item-title">@levelsio: $1M ARR solo &mdash; what I'd do differently</div>
+                      <div class="popover-item-meta">
+                        <span class="stash-domain">x.com</span>
+                        <span class="type-badge post">Post</span>
+                        <span class="tag-chip">#startups</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="popover-item priority-low">
+                    <div class="popover-thumb thumb-reddit" style="font-size:15px;">&#128007;</div>
+                    <div>
+                      <div class="popover-item-title">I tried a weekly review for 30 days &mdash; what changed</div>
+                      <div class="popover-item-meta">
+                        <span class="stash-domain">reddit.com</span>
+                        <span class="type-badge post">Post</span>
+                        <span class="tag-chip">#productivity</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="popover-item">
+                    <div class="popover-thumb thumb-arxiv" style="font-size:12px;font-weight:700;">ar</div>
+                    <div>
+                      <div class="popover-item-title">Mamba: Linear-Time Sequence Modeling</div>
+                      <div class="popover-item-meta">
+                        <span class="stash-domain">arxiv.org</span>
+                        <span class="type-badge article">Article</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                <button class="quicksave-save-btn">Save to StashBro</button>
+                <div class="popover-footer">
+                  <div class="popover-footer-btn">+ Add from clipboard</div>
+                  <div class="popover-footer-btn">Open App &rarr;</div>
+                </div>
               </div>
             </div>
           </div>
-
         </div>
       </div>
-      <div class="mockup-label">iOS Share Extension</div>
+    </div>
+
+    <!-- DARK -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--dark">Dark</span></div>
+      <div class="theme-dark">
+        <div class="mockup-stage" style="padding:0;background:var(--stage-bg);">
+          <div class="menubar-frame">
+            <div class="mac-menubar-strip">
+              <span style="font-size:16px;color:var(--text-pri);">&#63743;</span>
+              <span class="menubar-app-name">Finder</span>
+              <div class="menubar-menus"><span>File</span><span>Edit</span><span>View</span><span>Go</span></div>
+              <div class="menubar-right-icons">
+                <span class="dimr" style="font-size:12px;">&#9632; &#9650;</span>
+                <div class="menubar-icon-active">&#128203;</div>
+                <div class="menubar-icon-active" style="background:rgba(200,122,56,.2);outline:1.5px solid var(--accent);outline-offset:1px;font-size:12px;font-weight:700;">S</div>
+                <span class="menubar-clock">9:41 AM</span>
+              </div>
+            </div>
+            <div class="menubar-popover-container">
+              <svg class="popover-arrow" viewBox="0 0 12 8" fill="none">
+                <path d="M6 0L12 8H0L6 0Z" fill="var(--border-strong)"/>
+                <path d="M6 1.5L11 8H1L6 1.5Z" fill="var(--popover-bg)"/>
+              </svg>
+              <div class="popover-card">
+                <div class="popover-search">
+                  <span class="popover-search-icon">&#128269;</span>
+                  <input type="text" placeholder="Search your stash&hellip;" readonly>
+                </div>
+                <div class="popover-filters">
+                  <div class="filter-chip active">All</div>
+                  <div class="filter-chip">Video</div>
+                  <div class="filter-chip">Post</div>
+                  <div class="filter-chip">Article</div>
+                  <div class="filter-chip" style="color:var(--tag-fg);background:var(--tag-bg);">#AI</div>
+                  <div class="filter-chip" style="color:var(--tag-fg);background:var(--tag-bg);">#startups</div>
+                </div>
+                <div class="popover-filters" style="padding-bottom:10px;">
+                  <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-ter);line-height:26px;flex-shrink:0;">Priority:</span>
+                  <div class="filter-chip active">All</div>
+                  <div class="filter-chip">High</div>
+                  <div class="filter-chip">Low</div>
+                </div>
+                <div class="popover-list">
+                  <div class="popover-item priority-high">
+                    <div class="popover-thumb thumb-yt" style="font-size:15px;">&#9654;</div>
+                    <div>
+                      <div class="popover-item-title">Andrej Karpathy &mdash; Intro to LLMs</div>
+                      <div class="popover-item-meta">
+                        <span class="stash-domain">youtube.com</span>
+                        <span class="type-badge video">Video</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="popover-item priority-high">
+                    <div class="popover-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
+                    <div>
+                      <div class="popover-item-title">The Great Unbundling of Search</div>
+                      <div class="popover-item-meta">
+                        <span class="stash-domain">stratechery.com</span>
+                        <span class="type-badge article">Article</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="popover-item">
+                    <div class="popover-thumb thumb-x" style="font-size:13px;font-weight:700;">&#120143;</div>
+                    <div>
+                      <div class="popover-item-title">@levelsio: $1M ARR solo &mdash; what I'd do differently</div>
+                      <div class="popover-item-meta">
+                        <span class="stash-domain">x.com</span>
+                        <span class="type-badge post">Post</span>
+                        <span class="tag-chip">#startups</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="popover-item priority-low">
+                    <div class="popover-thumb thumb-reddit" style="font-size:15px;">&#128007;</div>
+                    <div>
+                      <div class="popover-item-title">I tried a weekly review for 30 days &mdash; what changed</div>
+                      <div class="popover-item-meta">
+                        <span class="stash-domain">reddit.com</span>
+                        <span class="type-badge post">Post</span>
+                        <span class="tag-chip">#productivity</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="popover-item">
+                    <div class="popover-thumb thumb-arxiv" style="font-size:12px;font-weight:700;">ar</div>
+                    <div>
+                      <div class="popover-item-title">Mamba: Linear-Time Sequence Modeling</div>
+                      <div class="popover-item-meta">
+                        <span class="stash-domain">arxiv.org</span>
+                        <span class="type-badge article">Article</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="popover-footer">
+                  <div class="popover-footer-btn">+ Add from clipboard</div>
+                  <div class="popover-footer-btn">Open App &rarr;</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
 </section>
 
-<!-- ╔══════════════════════════════════════════════════════╗
-     ║  6. IOS WIDGETS                                     ║
-     ╚══════════════════════════════════════════════════════╝ -->
+<!-- ═══════════════════════════════════════════════════════════════════════
+     3. MAC WIDGET
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="design-section" id="s-mac-widget">
+  <div class="section-label">Mac &mdash; WidgetKit Widget</div>
+  <div class="section-heading">Desktop reading queue at a glance</div>
+  <p class="section-desc">Medium WidgetKit widget: unread count + three most-recent items with type and priority indicators. High-priority items show a warm dot alongside the type dot.</p>
+
+  <div class="theme-pair">
+
+    <!-- LIGHT -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--light">Light</span></div>
+      <div class="theme-light">
+        <div class="mockup-stage" style="background:linear-gradient(135deg,#C8CDE0,#B8C0D8);">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="mac-widget">
+              <div class="widget-count-block">
+                <div class="widget-count-num">7</div>
+                <div class="widget-count-label">Unread</div>
+              </div>
+              <div class="widget-items-col">
+                <div class="widget-item-row">
+                  <div class="widget-item-dot video"></div>
+                  <span class="widget-p-high"></span>
+                  <div class="widget-item-title">Karpathy &mdash; Intro to LLMs</div>
+                </div>
+                <div class="widget-item-row">
+                  <div class="widget-item-dot article"></div>
+                  <span class="widget-p-high"></span>
+                  <div class="widget-item-title">The Unbundling of Search</div>
+                </div>
+                <div class="widget-item-row">
+                  <div class="widget-item-dot post"></div>
+                  <div class="widget-item-title">@levelsio on $1M ARR</div>
+                </div>
+              </div>
+            </div>
+            <div class="mockup-label" style="color:rgba(20,25,60,.4);">Medium widget &mdash; 329 &times; 141 pt</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DARK -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--dark">Dark</span></div>
+      <div class="theme-dark">
+        <div class="mockup-stage" style="background:linear-gradient(135deg,#1A2340,#2A1A40);">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="mac-widget">
+              <div class="widget-count-block">
+                <div class="widget-count-num">7</div>
+                <div class="widget-count-label">Unread</div>
+              </div>
+              <div class="widget-items-col">
+                <div class="widget-item-row">
+                  <div class="widget-item-dot video"></div>
+                  <span class="widget-p-high"></span>
+                  <div class="widget-item-title">Karpathy &mdash; Intro to LLMs</div>
+                </div>
+                <div class="widget-item-row">
+                  <div class="widget-item-dot article"></div>
+                  <span class="widget-p-high"></span>
+                  <div class="widget-item-title">The Unbundling of Search</div>
+                </div>
+                <div class="widget-item-row">
+                  <div class="widget-item-dot post"></div>
+                  <div class="widget-item-title">@levelsio on $1M ARR</div>
+                </div>
+              </div>
+            </div>
+            <div class="mockup-label" style="color:rgba(255,255,255,.4);">Medium widget &mdash; 329 &times; 141 pt</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     4. IPHONE APP
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="design-section" id="s-iphone">
+  <div class="section-label">iPhone &mdash; Full App</div>
+  <div class="section-heading">Primary mobile reading surface</div>
+  <p class="section-desc">Full-screen Expo app with search, type filter chips, priority filter row (defaults to All), scrolling list with thin left-bar priority indicators, and swipe-to-archive.</p>
+
+  <div class="theme-pair">
+
+    <!-- LIGHT -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--light">Light</span></div>
+      <div class="theme-light">
+        <div class="mockup-stage">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="iphone-frame">
+              <div class="dynamic-island"></div>
+              <div class="iphone-screen">
+                <div class="ios-status">
+                  <span class="ios-time">9:41</span>
+                  <div class="ios-status-icons">
+                    <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor" style="color:var(--text-pri)">
+                      <rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1" opacity=".3"/>
+                    </svg>
+                    <svg width="16" height="12" viewBox="0 0 16 12" fill="none" style="color:var(--text-pri)">
+                      <path d="M8 10.5a1 1 0 100 2 1 1 0 000-2z" fill="currentColor"/>
+                      <path d="M5.4 8.1a3.7 3.7 0 015.2 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                      <path d="M2.6 5.3a7.4 7.4 0 0110.8 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity=".6"/>
+                    </svg>
+                    <svg width="25" height="13" viewBox="0 0 25 13" fill="none">
+                      <rect x="0.5" y="0.5" width="21" height="12" rx="3.5" stroke="currentColor" stroke-opacity=".35"/>
+                      <rect x="2" y="2" width="16" height="9" rx="2" fill="currentColor" style="color:var(--text-pri)"/>
+                      <path d="M23 4.5v4a2 2 0 000-4z" fill="currentColor" style="color:var(--text-pri)" opacity=".4"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="app-header">
+                  <div class="app-wordmark">Stash<span class="accent">Bro</span></div>
+                  <div class="app-icon-btn">&#9881;</div>
+                </div>
+                <div class="ios-search">
+                  <span class="ios-search-icon">&#128269;</span>
+                  <input type="text" placeholder="Search your stash&hellip;" readonly>
+                </div>
+                <!-- Type filters -->
+                <div class="filter-chips-row">
+                  <div class="fc active">All</div>
+                  <div class="fc">Video</div>
+                  <div class="fc">Post</div>
+                  <div class="fc">Article</div>
+                  <div class="fc tag">#AI</div>
+                  <div class="fc tag">#startups</div>
+                </div>
+                <!-- Priority filters -->
+                <div class="priority-chips-row">
+                  <span class="priority-chips-label">Priority:</span>
+                  <div class="fc active" style="font-size:11px;padding:2px 9px;">All</div>
+                  <div class="fc" style="font-size:11px;padding:2px 9px;">High</div>
+                  <div class="fc" style="font-size:11px;padding:2px 9px;">Low</div>
+                </div>
+                <div class="app-list">
+                  <!-- HIGH -->
+                  <div class="app-item priority-high">
+                    <div class="app-thumb thumb-yt" style="font-size:18px;">&#9654;</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">Andrej Karpathy &mdash; Intro to LLMs</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">youtube.com</span>
+                        <span class="type-badge video">Video</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- HIGH -->
+                  <div class="app-item priority-high">
+                    <div class="app-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">The Great Unbundling of Search</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">stratechery.com</span>
+                        <span class="type-badge article">Article</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- MEDIUM (swipe hint) -->
+                  <div class="app-item" style="transform:translateX(-18px);position:relative;overflow:visible;">
+                    <div style="position:absolute;right:-72px;top:50%;transform:translateY(-50%);background:#6441A0;color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:6px;white-space:nowrap;">Archive</div>
+                    <div class="app-thumb thumb-x" style="font-size:14px;font-weight:700;">&#120143;</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">@levelsio: $1M ARR solo &mdash; what I'd do differently</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">x.com</span>
+                        <span class="type-badge post">Post</span>
+                        <span class="tag-chip">#startups</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- LOW -->
+                  <div class="app-item priority-low">
+                    <div class="app-thumb thumb-reddit" style="font-size:17px;">&#128007;</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">I tried a weekly review for 30 days</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">reddit.com</span>
+                        <span class="type-badge post">Post</span>
+                        <span class="tag-chip">#productivity</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- MEDIUM -->
+                  <div class="app-item">
+                    <div class="app-thumb thumb-arxiv" style="font-size:12px;font-weight:700;">ar</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">Mamba: Linear-Time Sequence Modeling</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">arxiv.org</span>
+                        <span class="type-badge article">Article</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- MEDIUM archived -->
+                  <div class="app-item archived">
+                    <div class="app-thumb thumb-pg" style="font-size:10px;font-weight:700;">PG</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">Do Things That Don't Scale</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">paulgraham.com</span>
+                        <span class="type-badge article">Article</span>
+                        <span style="font-size:10px;color:var(--text-ter);">Archived</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="ios-tab-bar">
+                  <div class="tab-item active"><span class="tab-icon">&#128218;</span><span class="tab-label" style="color:var(--accent);">Reading List</span></div>
+                  <div class="tab-item"><span class="tab-icon" style="opacity:.45;">&#128269;</span><span class="tab-label">Search</span></div>
+                  <div class="tab-item"><span class="tab-icon" style="opacity:.45;">&#9881;</span><span class="tab-label">Settings</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="mockup-label">iPhone App &mdash; Reading List</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DARK -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--dark">Dark</span></div>
+      <div class="theme-dark">
+        <div class="mockup-stage">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="iphone-frame">
+              <div class="dynamic-island"></div>
+              <div class="iphone-screen">
+                <div class="ios-status">
+                  <span class="ios-time">9:41</span>
+                  <div class="ios-status-icons">
+                    <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor" style="color:var(--text-pri)">
+                      <rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1" opacity=".3"/>
+                    </svg>
+                    <svg width="16" height="12" viewBox="0 0 16 12" fill="none" style="color:var(--text-pri)">
+                      <path d="M8 10.5a1 1 0 100 2 1 1 0 000-2z" fill="currentColor"/>
+                      <path d="M5.4 8.1a3.7 3.7 0 015.2 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                      <path d="M2.6 5.3a7.4 7.4 0 0110.8 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity=".6"/>
+                    </svg>
+                    <svg width="25" height="13" viewBox="0 0 25 13" fill="none">
+                      <rect x="0.5" y="0.5" width="21" height="12" rx="3.5" stroke="currentColor" stroke-opacity=".35"/>
+                      <rect x="2" y="2" width="16" height="9" rx="2" fill="currentColor" style="color:var(--text-pri)"/>
+                      <path d="M23 4.5v4a2 2 0 000-4z" fill="currentColor" style="color:var(--text-pri)" opacity=".4"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="app-header">
+                  <div class="app-wordmark">Stash<span class="accent">Bro</span></div>
+                  <div class="app-icon-btn">&#9881;</div>
+                </div>
+                <div class="ios-search">
+                  <span class="ios-search-icon">&#128269;</span>
+                  <input type="text" placeholder="Search your stash&hellip;" readonly>
+                </div>
+                <div class="filter-chips-row">
+                  <div class="fc active">All</div>
+                  <div class="fc">Video</div>
+                  <div class="fc">Post</div>
+                  <div class="fc">Article</div>
+                  <div class="fc tag">#AI</div>
+                  <div class="fc tag">#startups</div>
+                </div>
+                <div class="priority-chips-row">
+                  <span class="priority-chips-label">Priority:</span>
+                  <div class="fc active" style="font-size:11px;padding:2px 9px;">All</div>
+                  <div class="fc" style="font-size:11px;padding:2px 9px;">High</div>
+                  <div class="fc" style="font-size:11px;padding:2px 9px;">Low</div>
+                </div>
+                <div class="app-list">
+                  <div class="app-item priority-high">
+                    <div class="app-thumb thumb-yt" style="font-size:18px;">&#9654;</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">Andrej Karpathy &mdash; Intro to LLMs</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">youtube.com</span>
+                        <span class="type-badge video">Video</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="app-item priority-high">
+                    <div class="app-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">The Great Unbundling of Search</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">stratechery.com</span>
+                        <span class="type-badge article">Article</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="app-item" style="transform:translateX(-18px);position:relative;overflow:visible;">
+                    <div style="position:absolute;right:-72px;top:50%;transform:translateY(-50%);background:#6441A0;color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:6px;white-space:nowrap;">Archive</div>
+                    <div class="app-thumb thumb-x" style="font-size:14px;font-weight:700;">&#120143;</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">@levelsio: $1M ARR solo &mdash; what I'd do differently</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">x.com</span>
+                        <span class="type-badge post">Post</span>
+                        <span class="tag-chip">#startups</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="app-item priority-low">
+                    <div class="app-thumb thumb-reddit" style="font-size:17px;">&#128007;</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">I tried a weekly review for 30 days</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">reddit.com</span>
+                        <span class="type-badge post">Post</span>
+                        <span class="tag-chip">#productivity</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="app-item">
+                    <div class="app-thumb thumb-arxiv" style="font-size:12px;font-weight:700;">ar</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">Mamba: Linear-Time Sequence Modeling</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">arxiv.org</span>
+                        <span class="type-badge article">Article</span>
+                        <span class="tag-chip">#AI</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="app-item archived">
+                    <div class="app-thumb thumb-pg" style="font-size:10px;font-weight:700;">PG</div>
+                    <div class="app-item-info">
+                      <div class="app-item-title">Do Things That Don't Scale</div>
+                      <div class="app-item-meta">
+                        <span class="app-item-domain">paulgraham.com</span>
+                        <span class="type-badge article">Article</span>
+                        <span style="font-size:10px;color:var(--text-ter);">Archived</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="ios-tab-bar">
+                  <div class="tab-item active"><span class="tab-icon">&#128218;</span><span class="tab-label" style="color:var(--accent);">Reading List</span></div>
+                  <div class="tab-item"><span class="tab-icon" style="opacity:.45;">&#128269;</span><span class="tab-label">Search</span></div>
+                  <div class="tab-item"><span class="tab-icon" style="opacity:.45;">&#9881;</span><span class="tab-label">Settings</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="mockup-label">iPhone App &mdash; Reading List</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     5. IOS SHARE SHEET
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="design-section" id="s-share">
+  <div class="section-label">iPhone &mdash; Share Sheet</div>
+  <div class="section-heading">Save in two taps from any app</div>
+  <p class="section-desc">iOS share extension: title auto-filled, type auto-detected, optional tags. Priority segmented control (Low/Med/High) defaults to Med. Save is instant and local-first.</p>
+
+  <div class="theme-pair">
+
+    <!-- LIGHT -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--light">Light</span></div>
+      <div class="theme-light">
+        <div class="mockup-stage">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="iphone-frame">
+              <div class="dynamic-island"></div>
+              <div class="iphone-screen">
+                <div class="ios-status" style="margin-top:20px;">
+                  <span class="ios-time" style="color:#fff;">9:41</span>
+                  <div class="ios-status-icons">
+                    <svg width="17" height="12" viewBox="0 0 17 12" fill="rgba(255,255,255,.7)"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/></svg>
+                    <svg width="25" height="13" viewBox="0 0 25 13" fill="none"><rect x="0.5" y="0.5" width="21" height="12" rx="3.5" stroke="rgba(255,255,255,.5)"/><rect x="2" y="2" width="16" height="9" rx="2" fill="rgba(255,255,255,.7)"/></svg>
+                  </div>
+                </div>
+                <div class="share-backdrop" style="background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.7) 100%);">
+                  <div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;padding:90px 18px 0;opacity:.3;pointer-events:none;">
+                    <div style="height:14px;border-radius:4px;background:var(--text-sec);width:80%;"></div>
+                    <div style="height:44px;border-radius:9px;background:var(--card-bg);"></div>
+                    <div style="height:44px;border-radius:9px;background:var(--card-bg);"></div>
+                  </div>
+                  <div class="ios-share-sheet">
+                    <div class="share-sheet-indicator"></div>
+                    <div class="share-sheet-header">
+                      <div class="share-url-preview">
+                        <div class="share-favicon">S</div>
+                        <span class="share-url-text">stratechery.com/2026/the-great-unbundling-of-search</span>
+                      </div>
+                    </div>
+                    <div class="share-apps-row">
+                      <div class="share-app-tile"><div class="share-app-icon" style="font-size:22px;">&#128248;</div><div class="share-app-label">Copy</div></div>
+                      <div class="share-app-tile"><div class="share-app-icon" style="font-size:22px;">&#128172;</div><div class="share-app-label">Messages</div></div>
+                      <div class="share-app-tile">
+                        <div class="share-app-icon stashbro"><span style="font-size:22px;color:#fff;font-weight:800;">S</span></div>
+                        <div class="share-app-label" style="font-weight:600;color:var(--accent);">StashBro</div>
+                      </div>
+                      <div class="share-app-tile"><div class="share-app-icon" style="font-size:22px;">&#128233;</div><div class="share-app-label">Mail</div></div>
+                      <div class="share-app-tile"><div class="share-app-icon" style="font-size:22px;">&#128203;</div><div class="share-app-label">Notes</div></div>
+                    </div>
+                    <div class="stashbro-quicksave">
+                      <div class="quicksave-header">
+                        <div class="quicksave-appicon">S</div>
+                        <div class="quicksave-title-block">
+                          <div class="quicksave-app-name">StashBro</div>
+                          <div class="quicksave-subtitle">Quick save</div>
+                        </div>
+                      </div>
+                      <div class="quicksave-field">
+                        <div class="quicksave-field-label">Title</div>
+                        <div class="quicksave-field-val">The Great Unbundling of Search</div>
+                      </div>
+                      <div class="quicksave-field">
+                        <div class="quicksave-field-label">Type &amp; Tags</div>
+                        <div class="quicksave-field-val">
+                          <span class="type-badge article">Article</span>
+                          <div class="quicksave-tags-row" style="margin-top:5px;">
+                            <span class="tag-chip">#AI</span>
+                            <span class="tag-chip">#tech</span>
+                            <span style="font-size:11px;color:var(--text-ter);">+ add</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="quicksave-field" style="margin-bottom:0;">
+                        <div class="quicksave-field-label">Priority</div>
+                        <div style="margin-top:4px;">
+                          <div class="priority-seg">
+                            <button class="pseg-btn">Low</button>
+                            <button class="pseg-btn active">Med</button>
+                            <button class="pseg-btn">High</button>
+                          </div>
+                        </div>
+                      </div>
+                      <button class="quicksave-save-btn" style="margin-top:10px;">Save to StashBro</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mockup-label">iOS Share Extension</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DARK -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--dark">Dark</span></div>
+      <div class="theme-dark">
+        <div class="mockup-stage">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="iphone-frame">
+              <div class="dynamic-island"></div>
+              <div class="iphone-screen">
+                <div class="ios-status" style="margin-top:20px;">
+                  <span class="ios-time" style="color:#fff;">9:41</span>
+                  <div class="ios-status-icons">
+                    <svg width="17" height="12" viewBox="0 0 17 12" fill="rgba(255,255,255,.7)"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/></svg>
+                    <svg width="25" height="13" viewBox="0 0 25 13" fill="none"><rect x="0.5" y="0.5" width="21" height="12" rx="3.5" stroke="rgba(255,255,255,.5)"/><rect x="2" y="2" width="16" height="9" rx="2" fill="rgba(255,255,255,.7)"/></svg>
+                  </div>
+                </div>
+                <div class="share-backdrop" style="background:linear-gradient(180deg,rgba(0,0,0,.65) 0%,rgba(0,0,0,.82) 100%);">
+                  <div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;padding:90px 18px 0;opacity:.25;pointer-events:none;">
+                    <div style="height:14px;border-radius:4px;background:var(--text-sec);width:80%;"></div>
+                    <div style="height:44px;border-radius:9px;background:var(--card-bg);"></div>
+                    <div style="height:44px;border-radius:9px;background:var(--card-bg);"></div>
+                  </div>
+                  <div class="ios-share-sheet">
+                    <div class="share-sheet-indicator"></div>
+                    <div class="share-sheet-header">
+                      <div class="share-url-preview">
+                        <div class="share-favicon">S</div>
+                        <span class="share-url-text">stratechery.com/2026/the-great-unbundling-of-search</span>
+                      </div>
+                    </div>
+                    <div class="share-apps-row">
+                      <div class="share-app-tile"><div class="share-app-icon" style="font-size:22px;">&#128248;</div><div class="share-app-label">Copy</div></div>
+                      <div class="share-app-tile"><div class="share-app-icon" style="font-size:22px;">&#128172;</div><div class="share-app-label">Messages</div></div>
+                      <div class="share-app-tile">
+                        <div class="share-app-icon stashbro"><span style="font-size:22px;color:#fff;font-weight:800;">S</span></div>
+                        <div class="share-app-label" style="font-weight:600;color:var(--accent);">StashBro</div>
+                      </div>
+                      <div class="share-app-tile"><div class="share-app-icon" style="font-size:22px;">&#128233;</div><div class="share-app-label">Mail</div></div>
+                      <div class="share-app-tile"><div class="share-app-icon" style="font-size:22px;">&#128203;</div><div class="share-app-label">Notes</div></div>
+                    </div>
+                    <div class="stashbro-quicksave">
+                      <div class="quicksave-header">
+                        <div class="quicksave-appicon">S</div>
+                        <div class="quicksave-title-block">
+                          <div class="quicksave-app-name">StashBro</div>
+                          <div class="quicksave-subtitle">Quick save</div>
+                        </div>
+                      </div>
+                      <div class="quicksave-field">
+                        <div class="quicksave-field-label">Title</div>
+                        <div class="quicksave-field-val">The Great Unbundling of Search</div>
+                      </div>
+                      <div class="quicksave-field">
+                        <div class="quicksave-field-label">Type &amp; Tags</div>
+                        <div class="quicksave-field-val">
+                          <span class="type-badge article">Article</span>
+                          <div class="quicksave-tags-row" style="margin-top:5px;">
+                            <span class="tag-chip">#AI</span>
+                            <span class="tag-chip">#tech</span>
+                            <span style="font-size:11px;color:var(--text-ter);">+ add</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="quicksave-field" style="margin-bottom:0;">
+                        <div class="quicksave-field-label">Priority</div>
+                        <div style="margin-top:4px;">
+                          <div class="priority-seg">
+                            <button class="pseg-btn">Low</button>
+                            <button class="pseg-btn active">Med</button>
+                            <button class="pseg-btn">High</button>
+                          </div>
+                        </div>
+                      </div>
+                      <button class="quicksave-save-btn" style="margin-top:10px;">Save to StashBro</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mockup-label">iOS Share Extension</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     6. IOS WIDGETS
+     ═══════════════════════════════════════════════════════════════════════ -->
 <section class="design-section" id="s-ios-widgets">
   <div class="section-label">iPhone &mdash; Home Screen Widgets</div>
   <div class="section-heading">Glanceable count and recents</div>
-  <p class="section-desc">Small widget shows your live unread count with the StashBro accent. Medium widget adds your two most-recent items with type badges.</p>
-  <div class="mockup-stage" style="background:linear-gradient(135deg,#2C3E6E,#1A2A52); gap:24px; align-items:center;">
+  <p class="section-desc">Small widget: live unread count in StashBro copper. Medium widget: count + two most-recent items with type badges and a small high-priority dot where applicable.</p>
 
-    <!-- Small -->
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-      <div class="ios-widget-small">
-        <div class="widget-s-top">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <rect width="18" height="18" rx="4" fill="rgba(255,255,255,.2)"/>
-            <text x="9" y="13" text-anchor="middle" font-size="10" font-weight="800" fill="white" font-family="-apple-system,sans-serif">S</text>
-          </svg>
-          <span class="widget-s-appname">StashBro</span>
-        </div>
-        <div>
-          <div class="widget-s-num">7</div>
-          <div class="widget-s-label">unread</div>
+  <div class="theme-pair">
+
+    <!-- LIGHT (widget stage uses a simulated iOS Home Screen bg) -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--light">Light</span></div>
+      <div class="theme-light">
+        <div class="mockup-stage" style="background:linear-gradient(135deg,#CDD5E8,#B8C8E0);gap:24px;align-items:center;">
+          <!-- Small -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="ios-widget-small">
+              <div class="widget-s-top">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect width="18" height="18" rx="4" fill="rgba(255,255,255,.25)"/><text x="9" y="13" text-anchor="middle" font-size="10" font-weight="800" fill="white" font-family="-apple-system,sans-serif">S</text></svg>
+                <span class="widget-s-appname">StashBro</span>
+              </div>
+              <div>
+                <div class="widget-s-num">7</div>
+                <div class="widget-s-label">unread</div>
+              </div>
+            </div>
+            <div class="mockup-label" style="color:rgba(20,30,80,.4);">2&times;2 small</div>
+          </div>
+          <!-- Medium -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="ios-widget-medium">
+              <div class="widget-m-left">
+                <div class="widget-m-accent">7</div>
+                <div class="widget-m-label">Unread</div>
+                <div class="widget-m-sub">Last saved 4m ago</div>
+              </div>
+              <div class="widget-m-right">
+                <div class="widget-m-item">
+                  <div class="widget-m-thumb thumb-yt" style="font-size:14px;">&#9654;</div>
+                  <div>
+                    <div class="widget-m-title">Karpathy &mdash; Intro to LLMs</div>
+                    <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+                      <span class="widget-m-badge video">Video</span>
+                      <span class="widget-p-high"></span>
+                    </div>
+                  </div>
+                </div>
+                <div style="height:1px;background:var(--border);"></div>
+                <div class="widget-m-item">
+                  <div class="widget-m-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
+                  <div>
+                    <div class="widget-m-title">The Unbundling of Search</div>
+                    <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+                      <span class="widget-m-badge article">Article</span>
+                      <span class="widget-p-high"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mockup-label" style="color:rgba(20,30,80,.4);">4&times;2 medium</div>
+          </div>
         </div>
       </div>
-      <div class="mockup-label" style="color:rgba(255,255,255,.4);">2&times;2 small</div>
     </div>
 
-    <!-- Medium -->
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-      <div class="ios-widget-medium">
-        <div class="widget-m-left">
-          <div class="widget-m-accent">7</div>
-          <div class="widget-m-label">Unread</div>
-          <div class="widget-m-sub">Last saved 4m ago</div>
-        </div>
-        <div class="widget-m-right">
-          <div class="widget-m-item">
-            <div class="widget-m-thumb thumb-yt" style="font-size:14px;">&#9654;</div>
-            <div>
-              <div class="widget-m-title">Karpathy &mdash; Intro to LLMs</div>
-              <span class="widget-m-badge video">Video</span>
+    <!-- DARK -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--dark">Dark</span></div>
+      <div class="theme-dark">
+        <div class="mockup-stage" style="background:linear-gradient(135deg,#2C3E6E,#1A2A52);gap:24px;align-items:center;">
+          <!-- Small -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="ios-widget-small">
+              <div class="widget-s-top">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect width="18" height="18" rx="4" fill="rgba(255,255,255,.2)"/><text x="9" y="13" text-anchor="middle" font-size="10" font-weight="800" fill="white" font-family="-apple-system,sans-serif">S</text></svg>
+                <span class="widget-s-appname">StashBro</span>
+              </div>
+              <div>
+                <div class="widget-s-num">7</div>
+                <div class="widget-s-label">unread</div>
+              </div>
             </div>
+            <div class="mockup-label" style="color:rgba(255,255,255,.4);">2&times;2 small</div>
           </div>
-          <div style="height:1px;background:var(--border);"></div>
-          <div class="widget-m-item">
-            <div class="widget-m-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
-            <div>
-              <div class="widget-m-title">The Unbundling of Search</div>
-              <span class="widget-m-badge article">Article</span>
+          <!-- Medium -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="ios-widget-medium">
+              <div class="widget-m-left">
+                <div class="widget-m-accent">7</div>
+                <div class="widget-m-label">Unread</div>
+                <div class="widget-m-sub">Last saved 4m ago</div>
+              </div>
+              <div class="widget-m-right">
+                <div class="widget-m-item">
+                  <div class="widget-m-thumb thumb-yt" style="font-size:14px;">&#9654;</div>
+                  <div>
+                    <div class="widget-m-title">Karpathy &mdash; Intro to LLMs</div>
+                    <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+                      <span class="widget-m-badge video">Video</span>
+                      <span class="widget-p-high"></span>
+                    </div>
+                  </div>
+                </div>
+                <div style="height:1px;background:var(--border);"></div>
+                <div class="widget-m-item">
+                  <div class="widget-m-thumb thumb-strat" style="font-size:11px;font-weight:700;">S</div>
+                  <div>
+                    <div class="widget-m-title">The Unbundling of Search</div>
+                    <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+                      <span class="widget-m-badge article">Article</span>
+                      <span class="widget-p-high"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+            <div class="mockup-label" style="color:rgba(255,255,255,.4);">4&times;2 medium</div>
           </div>
         </div>
       </div>
-      <div class="mockup-label" style="color:rgba(255,255,255,.4);">4&times;2 medium</div>
     </div>
 
   </div>
 </section>
 
-<!-- ╔══════════════════════════════════════════════════════╗
-     ║  7. BROWSER EXTENSION                               ║
-     ╚══════════════════════════════════════════════════════╝ -->
+<!-- ═══════════════════════════════════════════════════════════════════════
+     7. BROWSER EXTENSION
+     ═══════════════════════════════════════════════════════════════════════ -->
 <section class="design-section" id="s-extension">
   <div class="section-label">Browser Extension &mdash; Chrome / Arc / Safari</div>
   <div class="section-heading">One click to stash any page</div>
-  <p class="section-desc">Toolbar button or right-click context menu opens a 300px popup. Title is auto-filled from the tab, type is auto-detected, tags carry over from your recent history. Confirmation state appears for 2 seconds, then auto-closes.</p>
-  <div class="mockup-stage" style="gap:48px; align-items:flex-start; flex-wrap:wrap;">
+  <p class="section-desc">Toolbar button opens a 288px popup. Title auto-filled, type auto-detected, tags from recent history. Priority segmented control defaults to Med. Confirmation state for 2 seconds then auto-closes.</p>
 
-    <!-- SAVE STATE -->
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-      <div class="browser-frame">
-        <div class="chrome-toolbar">
-          <div class="chrome-nav-btn">&larr;</div>
-          <div class="chrome-nav-btn" style="opacity:.4;">&rarr;</div>
-          <div class="chrome-nav-btn">&#8635;</div>
-          <div class="chrome-url-bar">
-            <span class="chrome-url-lock">&#128274;</span>
-            <span class="chrome-url-text">stratechery.com/2026/the-great-unbundling-of-search</span>
-          </div>
-          <div class="chrome-ext-area">
-            <div class="chrome-ext-icon">&#128197;</div>
-            <div class="chrome-ext-icon">&#11088;</div>
-            <div class="chrome-ext-icon active" title="StashBro">S</div>
-          </div>
-        </div>
+  <div class="theme-pair">
 
-        <div class="chrome-content-area">
-          <div class="ext-popup">
-            <div class="ext-popup-header">
-              <div class="ext-logo">S</div>
-              <div>
-                <div class="ext-popup-title">Save to StashBro</div>
-                <div class="ext-popup-subtitle">stratechery.com</div>
-              </div>
-            </div>
-            <div class="ext-popup-body">
-              <div class="ext-field">
-                <div class="ext-field-label">Title</div>
-                <textarea class="ext-field-input" rows="2" readonly>The Great Unbundling of Search</textarea>
-              </div>
-              <div class="ext-field">
-                <div class="ext-field-label">Type</div>
-                <div class="ext-type-row">
-                  <span class="ext-type-badge article">Article</span>
-                  <span class="ext-type-auto">Auto-detected from domain</span>
+    <!-- LIGHT -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--light">Light</span></div>
+      <div class="theme-light">
+        <div class="mockup-stage" style="gap:32px;align-items:flex-start;">
+
+          <!-- Save state -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="browser-frame">
+              <div class="chrome-toolbar">
+                <div class="chrome-nav-btn">&larr;</div>
+                <div class="chrome-nav-btn" style="opacity:.4;">&rarr;</div>
+                <div class="chrome-nav-btn">&#8635;</div>
+                <div class="chrome-url-bar">
+                  <span class="chrome-url-lock">&#128274;</span>
+                  <span class="chrome-url-text">stratechery.com/2026/the-great-unbundling-of-search</span>
+                </div>
+                <div class="chrome-ext-area">
+                  <div class="chrome-ext-icon">&#128197;</div>
+                  <div class="chrome-ext-icon">&#11088;</div>
+                  <div class="chrome-ext-icon active" title="StashBro" style="font-size:12px;font-weight:700;">S</div>
                 </div>
               </div>
-              <div class="ext-field">
-                <div class="ext-field-label">Tags</div>
-                <div class="ext-tags-input">
-                  <span class="ext-tag-chip">#AI &times;</span>
-                  <span class="ext-tag-chip">#tech &times;</span>
-                  <span class="ext-tag-cursor">tech|</span>
+              <div class="chrome-content-area">
+                <div class="ext-popup">
+                  <div class="ext-popup-header">
+                    <div class="ext-logo">S</div>
+                    <div>
+                      <div class="ext-popup-title">Save to StashBro</div>
+                      <div class="ext-popup-subtitle">stratechery.com</div>
+                    </div>
+                  </div>
+                  <div class="ext-popup-body">
+                    <div class="ext-field">
+                      <div class="ext-field-label">Title</div>
+                      <textarea class="ext-field-input" rows="2" readonly>The Great Unbundling of Search</textarea>
+                    </div>
+                    <div class="ext-field">
+                      <div class="ext-field-label">Type</div>
+                      <div class="ext-type-row">
+                        <span class="ext-type-badge article">Article</span>
+                        <span class="ext-type-auto">Auto-detected</span>
+                      </div>
+                    </div>
+                    <div class="ext-field">
+                      <div class="ext-field-label">Tags</div>
+                      <div class="ext-tags-input">
+                        <span class="ext-tag-chip">#AI &times;</span>
+                        <span class="ext-tag-chip">#tech &times;</span>
+                        <span class="ext-tag-cursor">|</span>
+                      </div>
+                    </div>
+                    <div class="ext-field" style="margin-bottom:0;">
+                      <div class="ext-field-label">Priority</div>
+                      <div style="margin-top:4px;">
+                        <div class="priority-seg">
+                          <button class="pseg-btn">Low</button>
+                          <button class="pseg-btn active">Med</button>
+                          <button class="pseg-btn">High</button>
+                        </div>
+                      </div>
+                    </div>
+                    <button class="ext-save-btn">Save</button>
+                  </div>
                 </div>
               </div>
-              <button class="ext-save-btn">Save</button>
+              <div class="chrome-stub"></div>
             </div>
+            <div class="mockup-label">Save state</div>
           </div>
-        </div>
 
-        <div class="chrome-stub"></div>
+          <!-- Saved state -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="browser-frame">
+              <div class="chrome-toolbar">
+                <div class="chrome-nav-btn">&larr;</div>
+                <div class="chrome-nav-btn" style="opacity:.4;">&rarr;</div>
+                <div class="chrome-nav-btn">&#8635;</div>
+                <div class="chrome-url-bar">
+                  <span class="chrome-url-lock">&#128274;</span>
+                  <span class="chrome-url-text">stratechery.com/2026/the-great-unbundling-of-search</span>
+                </div>
+                <div class="chrome-ext-area">
+                  <div class="chrome-ext-icon">&#128197;</div>
+                  <div class="chrome-ext-icon">&#11088;</div>
+                  <div class="chrome-ext-icon active" style="background:rgba(31,122,71,.2);outline:1.5px solid var(--badge-art-fg);color:var(--badge-art-fg);">&#10003;</div>
+                </div>
+              </div>
+              <div class="chrome-content-area">
+                <div class="ext-popup">
+                  <div class="ext-popup-header" style="border-bottom:none;">
+                    <div class="ext-logo" style="background:linear-gradient(145deg,var(--badge-art-fg),#0F5A30);">&#10003;</div>
+                    <div>
+                      <div class="ext-popup-title">Saved!</div>
+                      <div class="ext-popup-subtitle">Syncing to your devices</div>
+                    </div>
+                  </div>
+                  <div class="ext-saved-state">
+                    <div style="text-align:left;padding:0 0 10px;border-bottom:1px solid var(--border);">
+                      <div style="font-size:13px;font-weight:500;color:var(--text-pri);margin-bottom:4px;">The Great Unbundling of Search</div>
+                      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                        <span class="stash-domain">stratechery.com</span>
+                        <span class="type-badge article">Article</span>
+                        <span class="tag-chip">#AI</span>
+                        <span class="tag-chip">#tech</span>
+                      </div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;">
+                      <a class="ext-saved-link" href="#">View in StashBro &rarr;</a>
+                      <span style="font-size:11px;color:var(--text-ter);">Closes in 2s</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="chrome-stub"></div>
+            </div>
+            <div class="mockup-label">Saved confirmation</div>
+          </div>
+
+        </div>
       </div>
-      <div class="mockup-label">Save state</div>
     </div>
 
-    <!-- SAVED CONFIRMATION -->
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-      <div class="browser-frame">
-        <div class="chrome-toolbar">
-          <div class="chrome-nav-btn">&larr;</div>
-          <div class="chrome-nav-btn" style="opacity:.4;">&rarr;</div>
-          <div class="chrome-nav-btn">&#8635;</div>
-          <div class="chrome-url-bar">
-            <span class="chrome-url-lock">&#128274;</span>
-            <span class="chrome-url-text">stratechery.com/2026/the-great-unbundling-of-search</span>
-          </div>
-          <div class="chrome-ext-area">
-            <div class="chrome-ext-icon">&#128197;</div>
-            <div class="chrome-ext-icon">&#11088;</div>
-            <div class="chrome-ext-icon active" style="background:rgba(31,122,71,.2);outline:1.5px solid var(--badge-art-fg);color:var(--badge-art-fg);">&#10003;</div>
-          </div>
-        </div>
+    <!-- DARK -->
+    <div class="theme-col">
+      <div class="theme-col-header"><span class="theme-badge theme-badge--dark">Dark</span></div>
+      <div class="theme-dark">
+        <div class="mockup-stage" style="gap:32px;align-items:flex-start;">
 
-        <div class="chrome-content-area">
-          <div class="ext-popup">
-            <div class="ext-popup-header" style="border-bottom:none;">
-              <div class="ext-logo" style="background:linear-gradient(145deg,var(--badge-art-fg),#0F5A30);">&#10003;</div>
-              <div>
-                <div class="ext-popup-title">Saved!</div>
-                <div class="ext-popup-subtitle">Syncing to your devices</div>
-              </div>
-            </div>
-            <div class="ext-saved-state">
-              <div style="text-align:left;padding:0 0 12px;border-bottom:1px solid var(--border);">
-                <div style="font-size:13px;font-weight:500;color:var(--text-pri);margin-bottom:4px;">The Great Unbundling of Search</div>
-                <div style="display:flex;align-items:center;gap:5px;">
-                  <span class="stash-domain">stratechery.com</span>
-                  <span class="type-badge article">Article</span>
-                  <span class="tag-chip">#AI</span>
-                  <span class="tag-chip">#tech</span>
+          <!-- Save state -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="browser-frame">
+              <div class="chrome-toolbar">
+                <div class="chrome-nav-btn">&larr;</div>
+                <div class="chrome-nav-btn" style="opacity:.4;">&rarr;</div>
+                <div class="chrome-nav-btn">&#8635;</div>
+                <div class="chrome-url-bar">
+                  <span class="chrome-url-lock">&#128274;</span>
+                  <span class="chrome-url-text">stratechery.com/2026/the-great-unbundling-of-search</span>
+                </div>
+                <div class="chrome-ext-area">
+                  <div class="chrome-ext-icon">&#128197;</div>
+                  <div class="chrome-ext-icon">&#11088;</div>
+                  <div class="chrome-ext-icon active" title="StashBro" style="font-size:12px;font-weight:700;">S</div>
                 </div>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;">
-                <a class="ext-saved-link" href="#">View in StashBro &rarr;</a>
-                <span style="font-size:11px;color:var(--text-ter);">Closes in 2s</span>
+              <div class="chrome-content-area">
+                <div class="ext-popup">
+                  <div class="ext-popup-header">
+                    <div class="ext-logo">S</div>
+                    <div>
+                      <div class="ext-popup-title">Save to StashBro</div>
+                      <div class="ext-popup-subtitle">stratechery.com</div>
+                    </div>
+                  </div>
+                  <div class="ext-popup-body">
+                    <div class="ext-field">
+                      <div class="ext-field-label">Title</div>
+                      <textarea class="ext-field-input" rows="2" readonly>The Great Unbundling of Search</textarea>
+                    </div>
+                    <div class="ext-field">
+                      <div class="ext-field-label">Type</div>
+                      <div class="ext-type-row">
+                        <span class="ext-type-badge article">Article</span>
+                        <span class="ext-type-auto">Auto-detected</span>
+                      </div>
+                    </div>
+                    <div class="ext-field">
+                      <div class="ext-field-label">Tags</div>
+                      <div class="ext-tags-input">
+                        <span class="ext-tag-chip">#AI &times;</span>
+                        <span class="ext-tag-chip">#tech &times;</span>
+                        <span class="ext-tag-cursor">|</span>
+                      </div>
+                    </div>
+                    <div class="ext-field" style="margin-bottom:0;">
+                      <div class="ext-field-label">Priority</div>
+                      <div style="margin-top:4px;">
+                        <div class="priority-seg">
+                          <button class="pseg-btn">Low</button>
+                          <button class="pseg-btn active">Med</button>
+                          <button class="pseg-btn">High</button>
+                        </div>
+                      </div>
+                    </div>
+                    <button class="ext-save-btn">Save</button>
+                  </div>
+                </div>
               </div>
+              <div class="chrome-stub"></div>
             </div>
+            <div class="mockup-label">Save state</div>
           </div>
-        </div>
 
-        <div class="chrome-stub"></div>
+          <!-- Saved state -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="browser-frame">
+              <div class="chrome-toolbar">
+                <div class="chrome-nav-btn">&larr;</div>
+                <div class="chrome-nav-btn" style="opacity:.4;">&rarr;</div>
+                <div class="chrome-nav-btn">&#8635;</div>
+                <div class="chrome-url-bar">
+                  <span class="chrome-url-lock">&#128274;</span>
+                  <span class="chrome-url-text">stratechery.com/2026/the-great-unbundling-of-search</span>
+                </div>
+                <div class="chrome-ext-area">
+                  <div class="chrome-ext-icon">&#128197;</div>
+                  <div class="chrome-ext-icon">&#11088;</div>
+                  <div class="chrome-ext-icon active" style="background:rgba(31,122,71,.2);outline:1.5px solid var(--badge-art-fg);color:var(--badge-art-fg);">&#10003;</div>
+                </div>
+              </div>
+              <div class="chrome-content-area">
+                <div class="ext-popup">
+                  <div class="ext-popup-header" style="border-bottom:none;">
+                    <div class="ext-logo" style="background:linear-gradient(145deg,var(--badge-art-fg),#0F5A30);">&#10003;</div>
+                    <div>
+                      <div class="ext-popup-title">Saved!</div>
+                      <div class="ext-popup-subtitle">Syncing to your devices</div>
+                    </div>
+                  </div>
+                  <div class="ext-saved-state">
+                    <div style="text-align:left;padding:0 0 10px;border-bottom:1px solid var(--border);">
+                      <div style="font-size:13px;font-weight:500;color:var(--text-pri);margin-bottom:4px;">The Great Unbundling of Search</div>
+                      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                        <span class="stash-domain">stratechery.com</span>
+                        <span class="type-badge article">Article</span>
+                        <span class="tag-chip">#AI</span>
+                        <span class="tag-chip">#tech</span>
+                      </div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;">
+                      <a class="ext-saved-link" href="#">View in StashBro &rarr;</a>
+                      <span style="font-size:11px;color:var(--text-ter);">Closes in 2s</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="chrome-stub"></div>
+            </div>
+            <div class="mockup-label">Saved confirmation</div>
+          </div>
+
+        </div>
       </div>
-      <div class="mockup-label">Saved confirmation</div>
     </div>
 
   </div>
 </section>
 
 </main>
-
-<script>
-function toggleTheme() {
-  const root = document.documentElement;
-  const current = root.getAttribute('data-theme');
-  if (!current) {
-    // detect system preference
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.setAttribute('data-theme', prefersDark ? 'light' : 'dark');
-  } else {
-    root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
-  }
-}
-</script>
-
 </body>
 </html>
