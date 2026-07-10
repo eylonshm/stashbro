@@ -153,6 +153,42 @@ describe('POST /sync/push - edge cases', () => {
   })
 })
 
+describe('POST /sync/push - Swift client (absent nil fields)', () => {
+  it('push with deleted_at/description/thumbnail_url/favicon_url absent → 200, stored with nulls', async () => {
+    const app = createApp()
+    // Omit all 4 optional nullable fields entirely (Swift omits nil fields from JSON)
+    const swiftChange = {
+      id: 'swift-nil-test',
+      change_seq: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      url: 'https://example.com/swift',
+      title: 'Swift Item',
+      domain: 'example.com',
+      type: 'article',
+      status: 'unread',
+      priority: 'medium',
+      tag_names: [],
+    }
+    const res = await app.request('/sync/push', {
+      method: 'POST',
+      headers: AUTH,
+      body: JSON.stringify({ changes: [swiftChange] }),
+    })
+    expect(res.status).toBe(200)
+    expect((await res.json()).accepted).toBe(1)
+
+    const pull = await app.request('/sync/pull?cursor=0', { headers: AUTH })
+    const body = await pull.json()
+    const change = body.changes.find((c: { id: string }) => c.id === 'swift-nil-test')
+    expect(change).toBeDefined()
+    expect(change.deleted_at).toBeNull()
+    expect(change.description).toBeNull()
+    expect(change.thumbnail_url).toBeNull()
+    expect(change.favicon_url).toBeNull()
+  })
+})
+
 describe('POST /sync/push', () => {
   it('accepts changes and returns accepted count', async () => {
     const app = createApp()

@@ -12,12 +12,12 @@ const SyncChangeSchema = z.object({
   change_seq: z.number(),
   created_at: z.string(),
   updated_at: z.string(),
-  deleted_at: z.string().nullable(),
+  deleted_at: z.string().nullish(),
   url: z.string(),
   title: z.string(),
-  description: z.string().nullable(),
-  thumbnail_url: z.string().nullable(),
-  favicon_url: z.string().nullable(),
+  description: z.string().nullish(),
+  thumbnail_url: z.string().nullish(),
+  favicon_url: z.string().nullish(),
   domain: z.string(),
   type: z.enum(['video', 'post', 'article', 'other']),
   status: z.enum(['unread', 'archived']),
@@ -71,21 +71,21 @@ export function syncRouter() {
 
           if (existing) {
             tx.update(items).set({
-              url: change.url, title: change.title, description: change.description,
-              thumbnail_url: change.thumbnail_url, favicon_url: change.favicon_url,
+              url: change.url, title: change.title, description: change.description ?? null,
+              thumbnail_url: change.thumbnail_url ?? null, favicon_url: change.favicon_url ?? null,
               domain: change.domain, type: change.type, status: change.status,
               priority: change.priority, updated_at: change.updated_at,
-              deleted_at: change.deleted_at, change_seq: seq,
+              deleted_at: change.deleted_at ?? null, change_seq: seq,
             }).where(and(eq(items.id, change.id), eq(items.user_id, userId))).run()
           } else {
             tx.insert(items).values({
               id: change.id, user_id: userId, url: change.url, title: change.title,
-              description: change.description, thumbnail_url: change.thumbnail_url,
-              favicon_url: change.favicon_url, domain: change.domain, type: change.type,
+              description: change.description ?? null, thumbnail_url: change.thumbnail_url ?? null,
+              favicon_url: change.favicon_url ?? null, domain: change.domain, type: change.type,
               status: change.status, priority: change.priority,
               created_at: change.created_at,
               updated_at: change.updated_at,
-              deleted_at: change.deleted_at, change_seq: seq,
+              deleted_at: change.deleted_at ?? null, change_seq: seq,
             }).run()
           }
 
