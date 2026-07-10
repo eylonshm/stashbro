@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { uuidv7 } from 'uuidv7'
-import { eq, and, desc, gt } from 'drizzle-orm'
+import { eq, and, asc, desc, gt } from 'drizzle-orm'
 import { detectType, extractDomain } from '@stashbro/shared'
 import { authMiddleware } from '../middleware/auth.js'
 import { getDb } from '../db/index.js'
@@ -50,16 +50,18 @@ function itemWithTags(db: ReturnType<typeof getDb>, itemId: string, userId: stri
 }
 
 function upsertTags(db: ReturnType<typeof getDb>, userId: string, tagNames: string[], itemId: string) {
-  db.delete(item_tags).where(eq(item_tags.item_id, itemId)).run()
-  for (const name of tagNames) {
-    let tag = db.select().from(tags).where(and(eq(tags.user_id, userId), eq(tags.name, name))).all()[0]
-    if (!tag) {
-      const tagId = uuidv7()
-      db.insert(tags).values({ id: tagId, user_id: userId, name }).run()
-      tag = db.select().from(tags).where(eq(tags.id, tagId)).all()[0]!
+  db.transaction((tx) => {
+    tx.delete(item_tags).where(eq(item_tags.item_id, itemId)).run()
+    for (const name of tagNames) {
+      let tag = tx.select().from(tags).where(and(eq(tags.user_id, userId), eq(tags.name, name))).all()[0]
+      if (!tag) {
+        const tagId = uuidv7()
+        tx.insert(tags).values({ id: tagId, user_id: userId, name }).run()
+        tag = tx.select().from(tags).where(eq(tags.id, tagId)).all()[0]!
+      }
+      tx.insert(item_tags).values({ item_id: itemId, tag_id: tag.id }).onConflictDoNothing().run()
     }
-    db.insert(item_tags).values({ item_id: itemId, tag_id: tag.id }).onConflictDoNothing().run()
-  }
+  })
 }
 
 export function itemsRouter() {
@@ -109,6 +111,7 @@ export function itemsRouter() {
   })
 
   // GET /items
+  // ponytail: asc(change_seq) so since=gt(cursor) pages forward correctly; hasMore computed pre-tag-filter, can signal false "more" when tag filter is active - acceptable for Phase 1
   const listRoute = createRoute({
     method: 'get', path: '/',
     request: { query: z.object({
@@ -137,7 +140,7 @@ export function itemsRouter() {
         q.type ? eq(items.type, q.type) : undefined,
         since > 0 ? gt(items.change_seq, since) : undefined,
       ))
-      .orderBy(desc(items.change_seq))
+      .orderBy(asc(items.change_seq))
       .limit(limit + 1)
       .all()
 
@@ -202,7 +205,7 @@ export function itemsRouter() {
       ...(body.deleted_at !== undefined && { deleted_at: body.deleted_at }),
       updated_at: now,
       change_seq: seq,
-    }).where(eq(items.id, id)).run()
+    }).where(and(eq(items.id, id), eq(items.user_id, userId))).run()
 
     if (body.tag_names !== undefined) upsertTags(db, userId, body.tag_names, id)
 
