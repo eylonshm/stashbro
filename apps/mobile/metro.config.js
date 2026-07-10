@@ -1,6 +1,5 @@
 // apps/mobile/metro.config.js
 const { getDefaultConfig } = require('expo/metro-config')
-const { withShareExtension } = require('expo-share-extension/metro')
 const path = require('path')
 
 const projectRoot = __dirname
@@ -12,5 +11,7 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules'),
 ]
+// ponytail: pnpm strict symlinks need this; drop if switching to npm/yarn
+config.resolver.disableHierarchicalLookup = true
 
-module.exports = withShareExtension(config)
+module.exports = config
