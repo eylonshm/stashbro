@@ -2,6 +2,7 @@ import { OpenAPIHono } from '@hono/zod-openapi'
 import { itemsRouter } from './routes/items.js'
 import { tagsRouter } from './routes/tags.js'
 import { syncRouter } from './routes/sync.js'
+import { authRouter } from './routes/auth.js'
 
 export function createApp() {
   const app = new OpenAPIHono()
@@ -10,6 +11,7 @@ export function createApp() {
 
   app.get('/health', (c) => c.json({ ok: true }))
 
+  app.route('/auth', authRouter())
   app.route('/items', itemsRouter())
   app.route('/tags', tagsRouter())
   app.route('/sync', syncRouter())

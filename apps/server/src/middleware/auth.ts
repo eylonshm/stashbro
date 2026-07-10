@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from 'hono'
+import { verifyAccessToken } from '../services/auth.js'
 
-// ponytail: AUTH_MODE=magic-link stub always 401s until Phase 5 wires it up
 export const authMiddleware: MiddlewareHandler<{ Variables: { userId: string } }> = async (c, next) => {
   const mode = process.env['AUTH_MODE'] ?? 'token'
 
@@ -16,6 +16,14 @@ export const authMiddleware: MiddlewareHandler<{ Variables: { userId: string } }
     return next()
   }
 
-  // magic-link mode: stub - Phase 5 replaces this block
-  return c.json({ error: 'Unauthorized' }, 401)
+  // magic-link mode: fail loud on misconfiguration, then validate JWT
+  if (!process.env['JWT_SECRET']) return c.json({ error: 'JWT_SECRET not configured' }, 500)
+
+  const header = c.req.header('Authorization')
+  const token = header?.startsWith('Bearer ') ? header.slice(7) : null
+  if (!token) return c.json({ error: 'Unauthorized' }, 401)
+  const userId = await verifyAccessToken(token)
+  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  c.set('userId', userId)
+  return next()
 }

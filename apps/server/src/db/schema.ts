@@ -1,5 +1,7 @@
 import { sqliteTable, text, integer, primaryKey, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
+
+
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
@@ -36,4 +38,22 @@ export const item_tags = sqliteTable('item_tags', {
   tag_id: text('tag_id').notNull(),
 }, (t) => ({
   pk: primaryKey({ columns: [t.item_id, t.tag_id] }),
+}))
+
+export const auth_codes = sqliteTable('auth_codes', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id').notNull(),
+  code_hash: text('code_hash').notNull(),
+  expires_at: text('expires_at').notNull(),
+  used: integer('used').notNull().default(0),
+})
+
+export const refresh_tokens = sqliteTable('refresh_tokens', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id').notNull(),
+  device_id: text('device_id').notNull(),
+  token_hash: text('token_hash').notNull(),
+  expires_at: text('expires_at').notNull(),
+}, (t) => ({
+  uniqueUserDevice: uniqueIndex('rt_user_device').on(t.user_id, t.device_id),
 }))

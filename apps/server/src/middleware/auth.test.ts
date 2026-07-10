@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Hono } from 'hono'
 import { authMiddleware } from './auth.js'
+import { createAccessToken } from '../services/auth.js'
 
 let savedEnv: Record<string, string | undefined> = {}
 
@@ -8,6 +9,7 @@ beforeEach(() => {
   savedEnv = {
     AUTH_TOKEN: process.env['AUTH_TOKEN'],
     AUTH_MODE: process.env['AUTH_MODE'],
+    JWT_SECRET: process.env['JWT_SECRET'],
   }
 })
 
@@ -74,11 +76,54 @@ describe('authMiddleware token mode', () => {
 })
 
 describe('authMiddleware magic-link mode', () => {
-  it('always returns 401 (stub until Phase 5)', async () => {
-    const app = makeApp('secret-token', 'magic-link')
+  const JWT_SECRET = 'test-secret-min-32-chars-xxxxxxxxx'
+
+  it('returns 500 when JWT_SECRET is not configured', async () => {
+    delete process.env['JWT_SECRET']
+    process.env['AUTH_MODE'] = 'magic-link'
+    const app = new Hono<{ Variables: { userId: string } }>()
+    app.use('/protected/*', authMiddleware)
+    app.get('/protected/test', (c) => c.json({ userId: c.get('userId') }))
     const res = await app.request('/protected/test', {
-      headers: { Authorization: 'Bearer secret-token' },
+      headers: { Authorization: 'Bearer some-token' },
+    })
+    expect(res.status).toBe(500)
+  })
+
+  it('returns 401 with no Authorization header', async () => {
+    process.env['JWT_SECRET'] = JWT_SECRET
+    process.env['AUTH_MODE'] = 'magic-link'
+    const app = new Hono<{ Variables: { userId: string } }>()
+    app.use('/protected/*', authMiddleware)
+    app.get('/protected/test', (c) => c.json({ userId: c.get('userId') }))
+    const res = await app.request('/protected/test')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 for invalid JWT', async () => {
+    process.env['JWT_SECRET'] = JWT_SECRET
+    process.env['AUTH_MODE'] = 'magic-link'
+    const app = new Hono<{ Variables: { userId: string } }>()
+    app.use('/protected/*', authMiddleware)
+    app.get('/protected/test', (c) => c.json({ userId: c.get('userId') }))
+    const res = await app.request('/protected/test', {
+      headers: { Authorization: 'Bearer not-a-valid-jwt' },
     })
     expect(res.status).toBe(401)
+  })
+
+  it('allows request with valid JWT and sets userId', async () => {
+    process.env['JWT_SECRET'] = JWT_SECRET
+    process.env['AUTH_MODE'] = 'magic-link'
+    const accessToken = await createAccessToken('user-123')
+    const app = new Hono<{ Variables: { userId: string } }>()
+    app.use('/protected/*', authMiddleware)
+    app.get('/protected/test', (c) => c.json({ userId: c.get('userId') }))
+    const res = await app.request('/protected/test', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.userId).toBe('user-123')
   })
 })

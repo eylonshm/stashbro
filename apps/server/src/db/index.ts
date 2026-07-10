@@ -61,6 +61,26 @@ export function getDb(path = process.env['DB_PATH'] ?? '/data/stashbro.db') {
       PRIMARY KEY (item_id, tag_id)
     )
   `)
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS auth_codes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0
+    )
+  `)
+  db.run(sql`CREATE INDEX IF NOT EXISTS auth_codes_user ON auth_codes(user_id)`)
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      UNIQUE(user_id, device_id)
+    )
+  `)
 
   cache.set(path, db)
   return db
