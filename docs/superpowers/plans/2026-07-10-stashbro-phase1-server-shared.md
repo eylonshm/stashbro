@@ -2137,6 +2137,23 @@ describe('fetchOEmbed', () => {
     expect(result).toBeNull()
   })
 })
+
+describe('fetchOgMeta SSRF guard', () => {
+  it('returns {} for localhost URL (SSRF block)', async () => {
+    const result = await fetchOgMeta('http://localhost/admin')
+    expect(result).toEqual({})
+  })
+
+  it('returns {} for 192.168.x private IP', async () => {
+    const result = await fetchOgMeta('http://192.168.1.1/secret')
+    expect(result).toEqual({})
+  })
+
+  it('returns {} for 10.x private IP', async () => {
+    const result = await fetchOgMeta('http://10.0.0.1/internal')
+    expect(result).toEqual({})
+  })
+})
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2152,8 +2169,48 @@ Expected: FAIL - exports not found
 ```typescript
 // apps/server/src/services/metadata.ts
 import { eq } from 'drizzle-orm'
+import { lookup } from 'dns/promises'
 import type { AppDb } from '../db/index.js'
 import { items } from '../db/schema.js'
+
+// ponytail: SSRF guard - blocks fetches to private/loopback IPs; required since users supply URLs
+function isPrivateIP(ip: string): boolean {
+  // IPv4 private ranges + loopback
+  const privateRanges = [
+    /^127\./,                              // loopback
+    /^10\./,                               // RFC1918
+    /^192\.168\./,                         // RFC1918
+    /^172\.(1[6-9]|2\d|3[0-1])\./,       // RFC1918
+    /^169\.254\./,                         // link-local
+    /^0\./,                                // unspecified
+    /^::1$/,                               // IPv6 loopback
+    /^fc00:/,                              // IPv6 unique local
+    /^fd[0-9a-f]{2}:/i,                   // IPv6 unique local
+    /^fe80:/i,                             // IPv6 link-local
+  ]
+  return privateRanges.some(r => r.test(ip))
+}
+
+async function assertSSRFSafe(url: string): Promise<void> {
+  const parsed = new URL(url)
+  const host = parsed.hostname
+  // Block raw IP addresses that are private
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host) || host.includes(':')) {
+    if (isPrivateIP(host)) throw new Error(`SSRF: private IP blocked: ${host}`)
+    return
+  }
+  // Resolve hostname and check resolved IPs
+  try {
+    const addresses = await lookup(host, { all: true })
+    for (const { address } of addresses) {
+      if (isPrivateIP(address)) throw new Error(`SSRF: hostname resolves to private IP: ${address}`)
+    }
+  } catch (err) {
+    if ((err as Error).message.startsWith('SSRF:')) throw err
+    // DNS resolution failed - block to be safe
+    throw new Error(`SSRF: DNS resolution failed for ${host}`)
+  }
+}
 
 const OEMBED_PROVIDERS: Array<{ pattern: RegExp; endpoint: string }> = [
   { pattern: /youtube\.com|youtu\.be/, endpoint: 'https://www.youtube.com/oembed' },
@@ -2164,6 +2221,7 @@ export async function fetchOgMeta(url: string): Promise<{
   title?: string; description?: string; image?: string; favicon?: string
 }> {
   try {
+    await assertSSRFSafe(url)
     const res = await fetch(url, {
       headers: { 'User-Agent': 'StashBro/1.0 (+https://github.com/stashbro)' },
       signal: AbortSignal.timeout(8000),
@@ -2197,6 +2255,7 @@ export async function fetchOgMeta(url: string): Promise<{
 export async function fetchOEmbed(url: string): Promise<{ title?: string; thumbnail_url?: string } | null> {
   const provider = OEMBED_PROVIDERS.find(p => p.pattern.test(url))
   if (!provider) return null
+  // oEmbed endpoints are hardcoded to trusted providers - no SSRF check needed here
   try {
     const endpoint = `${provider.endpoint}?url=${encodeURIComponent(url)}&format=json`
     const res = await fetch(endpoint, { signal: AbortSignal.timeout(5000) })
@@ -2222,17 +2281,17 @@ async function enrichOnce(db: AppDb, itemId: string, url: string): Promise<void>
 }
 
 export async function enrichMetadataAsync(db: AppDb, itemId: string, url: string): Promise<void> {
-  const delays = [1000, 3000, 9000] // 3 retries, exponential backoff
+  // ponytail: immediate first attempt, then exponential backoff; 3 total attempts per spec
+  const delays = [0, 2000, 8000]
   for (const delay of delays) {
-    await new Promise(r => setTimeout(r, delay))
+    if (delay > 0) await new Promise(r => setTimeout(r, delay))
     try {
       await enrichOnce(db, itemId, url)
       return
     } catch {
-      // retry
+      // retry - URL-as-title fallback already in place from insert
     }
   }
-  // Final fallback: URL is already set as title on insert; no further action needed
 }
 ```
 
@@ -2345,7 +2404,7 @@ app.request('/openapi.json').then(async (res) => {
 
 Add to `apps/server/package.json` scripts:
 ```json
-"export-openapi": "node --input-type=module --experimental-vm-modules dist/scripts/export-openapi.js"
+"export-openapi": "node dist/scripts/export-openapi.js"
 ```
 
 - [ ] **Step 5: Generate openapi.json**

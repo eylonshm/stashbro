@@ -626,16 +626,16 @@ final class GRDBLocalStore: LocalStoreProtocol {
 
     func getChangesSince(_ cursor: Int) throws -> [SyncChange] {
         try db.dbWriter.read { dbConn in
-            let items = try StashItem
+            let fetchedItems = try StashItem
                 .filter(Column("change_seq") > cursor)
                 .order(Column("change_seq").asc)
                 .fetchAll(dbConn)
-            return try items.map { item in
-                let tagNames = try Tag
-                    .joining(required: Tag.hasMany(ItemTag.self, using: ForeignKey(["tag_id"]))
-                        .filter(Column("item_id") == item.id))
-                    .fetchAll(dbConn)
-                    .map(\.name)
+            return try fetchedItems.map { item in
+                // Two-step fetch: item_tags → tags (direct join via GRDB associations is item→itemTag→tag)
+                let links = try ItemTag.filter(Column("item_id") == item.id).fetchAll(dbConn)
+                let tagIds = links.map(\.tagId)
+                let tagNames: [String] = tagIds.isEmpty ? [] :
+                    try Tag.filter(tagIds.contains(Column("id"))).fetchAll(dbConn).map(\.name)
                 return SyncChange(
                     id: item.id, changeSeq: item.changeSeq, updatedAt: item.updatedAt,
                     deletedAt: item.deletedAt, url: item.url, title: item.title,
@@ -671,10 +671,12 @@ final class GRDBLocalStore: LocalStoreProtocol {
                 )
                 try item.save(dbConn)
 
-                // Sync tags
+                // Sync tags - filter by userId to respect per-user tag uniqueness
                 try ItemTag.filter(Column("item_id") == change.id).deleteAll(dbConn)
                 for name in change.tagNames {
-                    var tag = try Tag.filter(Column("name") == name).fetchOne(dbConn)
+                    var tag = try Tag
+                        .filter(Column("user_id") == item.userId && Column("name") == name)
+                        .fetchOne(dbConn)
                     if tag == nil {
                         tag = Tag(id: UUID().uuidString, userId: item.userId, name: name)
                         try tag!.insert(dbConn)
@@ -1286,10 +1288,11 @@ struct StashListView: View {
             }
             let fetchedItems = try query.order(Column("change_seq").desc).fetchAll(dbConn)
             return try fetchedItems.map { item in
-                let tags = try Tag
-                    .joining(required: Tag.hasMany(ItemTag.self, using: ForeignKey(["tag_id"]))
-                        .filter(Column("item_id") == item.id))
-                    .fetchAll(dbConn)
+                // Two-step fetch for tags (same pattern as GRDBLocalStore.getChangesSince)
+                let links = try ItemTag.filter(Column("item_id") == item.id).fetchAll(dbConn)
+                let tagIds = links.map(\.tagId)
+                let tags: [Tag] = tagIds.isEmpty ? [] :
+                    try Tag.filter(tagIds.contains(Column("id"))).fetchAll(dbConn)
                 return (item, tags)
             }
         }
@@ -1354,7 +1357,7 @@ final class NotchWindowController {
     private var panel: NSPanel?
     private let db: AppDatabase
     private let syncEngine: SyncEngine?
-    @State private var isExpanded = false
+    private var isExpanded = false  // plain var; @State is View-only
 
     init(db: AppDatabase, syncEngine: SyncEngine?) {
         self.db = db
@@ -1473,7 +1476,8 @@ struct NotchPillView: View {
         }
         .frame(width: 192, height: 30)
         .background(Color(red: 0.039, green: 0.039, blue: 0.047))
-        .cornerRadius(16, corners: [.bottomLeft, .bottomRight])
+        // ponytail: UnevenRoundedRectangle (macOS 13+) replaces custom UIRectCorner/NSBezierPath shape
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 16, bottomTrailingRadius: 16))
         .onHover { hovering in if hovering { onExpand() } }
         .onTapGesture { onExpand() }
         .task { await loadCount() }
@@ -1483,34 +1487,6 @@ struct NotchPillView: View {
         unreadCount = (try? await db.dbWriter.read { dbConn in
             try StashItem.filter(Column("status") == "unread" && Column("deleted_at") == nil).fetchCount(dbConn)
         }) ?? 0
-    }
-}
-
-// Corner radius helper
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-struct RoundedCorner: Shape {
-    var radius: CGFloat; var corners: UIRectCorner
-    func path(in rect: CGRect) -> Path {
-        let path = NSBezierPath()
-        let tl = corners.contains(.topLeft) ? radius : 0
-        let tr = corners.contains(.topRight) ? radius : 0
-        let bl = corners.contains(.bottomLeft) ? radius : 0
-        let br = corners.contains(.bottomRight) ? radius : 0
-        path.move(to: CGPoint(x: rect.minX + tl, y: rect.minY))
-        path.line(to: CGPoint(x: rect.maxX - tr, y: rect.minY))
-        if tr > 0 { path.appendArc(withCenter: CGPoint(x: rect.maxX - tr, y: rect.minY + tr), radius: tr, startAngle: -90, endAngle: 0, clockwise: false) }
-        path.line(to: CGPoint(x: rect.maxX, y: rect.maxY - br))
-        if br > 0 { path.appendArc(withCenter: CGPoint(x: rect.maxX - br, y: rect.maxY - br), radius: br, startAngle: 0, endAngle: 90, clockwise: false) }
-        path.line(to: CGPoint(x: rect.minX + bl, y: rect.maxY))
-        if bl > 0 { path.appendArc(withCenter: CGPoint(x: rect.minX + bl, y: rect.maxY - bl), radius: bl, startAngle: 90, endAngle: 180, clockwise: false) }
-        path.line(to: CGPoint(x: rect.minX, y: rect.minY + tl))
-        if tl > 0 { path.appendArc(withCenter: CGPoint(x: rect.minX + tl, y: rect.minY + tl), radius: tl, startAngle: 180, endAngle: 270, clockwise: false) }
-        path.close()
-        return Path(path.cgPath)
     }
 }
 ```
@@ -1563,7 +1539,7 @@ struct NotchPanelView: View {
                 Group {
                     Text("⌘").font(.system(size: 10)) + Text("⇧").font(.system(size: 10)) + Text("S").font(.system(size: 10))
                 }
-                .padding(.horizontal, 5).padding(.vertical: 1)
+                .padding(.horizontal, 5).padding(.vertical, 1)
                 .background(Color.white.opacity(0.10))
                 .cornerRadius(4)
                 .foregroundStyle(.white.opacity(0.55))
@@ -1572,7 +1548,7 @@ struct NotchPanelView: View {
         }
         .frame(width: 360)
         .background(Color(red: 0.055, green: 0.055, blue: 0.071).opacity(0.97))
-        .cornerRadius(18, corners: [.bottomLeft, .bottomRight])
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18))
         // Collapse when clicking outside is handled by AppKit event monitor in NotchWindowController
         .onTapGesture { } // absorb taps inside panel
     }
@@ -1737,12 +1713,16 @@ git commit -m "feat(mac): global hotkey Cmd+Shift+S, AppleScript browser tab gra
 **Files:**
 - Create: `apps/mac/StashBroShareExtension/ShareViewController.swift`
 - Create: `apps/mac/StashBroShareExtension/Info.plist`
-- Create: `apps/mac/StashBroShareExtension/DB/SharedAppDatabase.swift`
+- Modify: `apps/mac/StashBro/AppDelegate.swift` (add inbox ingestion on foreground)
+
+**Architecture note:** The share extension does NOT write to SQLite (avoids cross-process locking). Instead it writes one JSON file per item into an App Group "inbox" directory. The main app ingests on launch/foreground, inserts into GRDB, deletes inbox files, then triggers sync. This is the pattern used for both the macOS and iOS share extensions.
 
 **Interfaces:**
-- Consumes: `AppDatabase.makeShared(appGroupId:)` pattern; `SyncChange` struct; App Group `group.com.stashbro.app`
+- Consumes: App Group `group.com.stashbro.app`; no GRDB dependency in the extension itself
 - Produces:
-  - `ShareViewController: NSViewController` implementing `SharingServicePickerDelegate` - receives `NSExtensionItem`, extracts URL, saves to shared App Group SQLite via `AppDatabase.makeShared()`, calls `extensionContext.completeRequest`
+  - `ShareViewController: NSViewController` - receives `NSExtensionItem`, extracts URL, writes one JSON file to `<AppGroup>/inbox/<uuid>.json`, calls `extensionContext.completeRequest`
+  - Inbox JSON shape: `{ id, url, title, domain, type, priority, createdAt }` (no tags - extension has no DB access)
+  - `AppDelegate.ingestShareExtensionInbox()` - scans inbox, inserts each JSON into GRDB via `store.applyChanges`, deletes file, triggers sync
   - Share extension activation rule: `NSExtensionActivationSupportsWebURLWithMaxCount: 1`
 
 - [ ] **Step 1: Implement ShareViewController.swift**
@@ -1750,7 +1730,7 @@ git commit -m "feat(mac): global hotkey Cmd+Shift+S, AppleScript browser tab gra
 ```swift
 // apps/mac/StashBroShareExtension/ShareViewController.swift
 import Cocoa
-import GRDB
+import Foundation
 
 final class ShareViewController: NSViewController {
     override func loadView() {
@@ -1761,7 +1741,7 @@ final class ShareViewController: NSViewController {
         super.viewDidLoad()
         extractURL { [weak self] url in
             guard let self, let url else { self?.cancel(); return }
-            self.saveAndComplete(url: url)
+            self.writeInboxFile(url: url)
         }
     }
 
@@ -1781,22 +1761,35 @@ final class ShareViewController: NSViewController {
         completion(nil)
     }
 
-    private func saveAndComplete(url: URL) {
-        let db = AppDatabase.makeShared(appGroupId: "group.com.stashbro.app")
-        let domainMap: [String: ItemType] = [
-            "youtube.com": .video, "youtu.be": .video, "vimeo.com": .video,
-            "x.com": .post, "twitter.com": .post, "reddit.com": .post, "threads.net": .post,
-        ]
-        let host = url.host?.replacingOccurrences(of: "www.", with: "") ?? ""
-        let type = domainMap.first(where: { host == $0.key || host.hasSuffix(".\($0.key)") })?.value ?? .article
+    private func writeInboxFile(url: URL) {
+        guard let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "group.com.stashbro.app"
+        ) else { cancel(); return }
 
-        let item = StashItem(
-            id: UUID().uuidString, userId: "default", url: url.absoluteString,
-            title: url.absoluteString, description: nil, thumbnailUrl: nil, faviconUrl: nil,
-            domain: host, type: type, status: .unread, priority: .medium,
-            createdAt: Date(), updatedAt: Date(), deletedAt: nil, changeSeq: 0
-        )
-        try? db.dbWriter.write { dbConn in try item.insert(dbConn) }
+        let inbox = container.appendingPathComponent("inbox", isDirectory: true)
+        try? FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+
+        let host = url.host?.replacingOccurrences(of: "www.", with: "") ?? url.absoluteString
+        let typeMap: [String: String] = [
+            "youtube.com": "video", "youtu.be": "video", "vimeo.com": "video",
+            "x.com": "post", "twitter.com": "post", "reddit.com": "post", "threads.net": "post",
+        ]
+        let detectedType = typeMap.first(where: { host == $0.key || host.hasSuffix(".\($0.key)") })?.value ?? "article"
+
+        let itemId = UUID().uuidString
+        let payload: [String: String] = [
+            "id": itemId,
+            "url": url.absoluteString,
+            "title": url.absoluteString,
+            "domain": host,
+            "type": detectedType,
+            "priority": "medium",
+            "createdAt": ISO8601DateFormatter().string(from: Date()),
+        ]
+
+        let file = inbox.appendingPathComponent("\(itemId).json")
+        try? JSONEncoder().encode(payload).write(to: file, options: .atomic)
+
         extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
     }
 
@@ -1806,40 +1799,75 @@ final class ShareViewController: NSViewController {
 }
 ```
 
-Note: `StashItem`, `ItemType`, `AppDatabase` must be accessible from the share extension target. In `project.yml`, the `StashBroShareExtension` target depends on GRDB. Add shared model files (StashItem+DB.swift, Tag+DB.swift, AppDatabase.swift) as shared sources, or extract them into a `StashBroCore` framework target. The simpler path (ponytail: avoid new framework target) is to include those source files in both targets via `sources` in project.yml.
+- [ ] **Step 2: Add `ingestShareExtensionInbox()` to AppDelegate.swift**
 
-- [ ] **Step 2: Update project.yml to include shared DB sources in extension**
+Add this method to `AppDelegate` and call it from `applicationDidBecomeActive`:
 
-In `apps/mac/project.yml`, update `StashBroShareExtension.sources`:
+```swift
+// In AppDelegate.swift - add to applicationDidBecomeActive:
+// Task { await syncEngine?.sync() }  ← already there
+// Add after it:
+ingestShareExtensionInbox()
 
-```yaml
-StashBroShareExtension:
-  sources:
-    - path: StashBroShareExtension
-    - path: StashBro/DB/AppDatabase.swift
-    - path: StashBro/DB/StashItem+DB.swift
-    - path: StashBro/DB/Tag+DB.swift
+// New method:
+func ingestShareExtensionInbox() {
+    guard let container = FileManager.default.containerURL(
+        forSecurityApplicationGroupIdentifier: "group.com.stashbro.app"
+    ) else { return }
+
+    let inbox = container.appendingPathComponent("inbox", isDirectory: true)
+    guard let files = try? FileManager.default.contentsOfDirectory(
+        at: inbox, includingPropertiesForKeys: nil
+    ).filter({ $0.pathExtension == "json" }) else { return }
+
+    let store = GRDBLocalStore(db: db)
+    let iso = ISO8601DateFormatter()
+
+    for file in files {
+        guard let data = try? Data(contentsOf: file),
+              let payload = try? JSONDecoder().decode([String: String].self, from: data),
+              let id = payload["id"], let url = payload["url"],
+              let typeStr = payload["type"], let type_ = ItemType(rawValue: typeStr),
+              let priorityStr = payload["priority"], let priority = ItemPriority(rawValue: priorityStr),
+              let createdStr = payload["createdAt"], let created = iso.date(from: createdStr)
+        else {
+            try? FileManager.default.removeItem(at: file)
+            continue
+        }
+
+        let now = Date()
+        let change = SyncChange(
+            id: id, changeSeq: 0, updatedAt: now, deletedAt: nil,
+            url: url, title: payload["title"] ?? url, description: nil,
+            thumbnailUrl: nil, faviconUrl: nil,
+            domain: payload["domain"] ?? url,
+            type: type_, status: .unread, priority: priority,
+            tagNames: []
+        )
+        try? store.applyChanges([change])
+        try? FileManager.default.removeItem(at: file)
+    }
+
+    if !files.isEmpty {
+        Task { await syncEngine?.sync() }
+    }
+}
 ```
 
-Then regenerate project:
+- [ ] **Step 3: Build share extension target (no GRDB dependency needed)**
 
 ```bash
 cd apps/mac && xcodegen generate
+xcodebuild -scheme StashBroShareExtension -configuration Debug build 2>&1 | tail -5
 ```
 
-- [ ] **Step 3: Build share extension target**
-
-```bash
-cd apps/mac && xcodebuild -scheme StashBroShareExtension -configuration Debug build 2>&1 | tail -5
-```
-
-Expected: `BUILD SUCCEEDED`
+Expected: `BUILD SUCCEEDED` (extension has no GRDB dependency - only Foundation)
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/mac/StashBroShareExtension/ apps/mac/project.yml
-git commit -m "feat(mac): share extension writes to App Group SQLite, main app syncs on next launch"
+git add apps/mac/StashBroShareExtension/ apps/mac/StashBro/AppDelegate.swift apps/mac/project.yml
+git commit -m "feat(mac): share extension writes JSON inbox file; AppDelegate ingests on foreground"
 ```
 
 ---
@@ -1998,9 +2026,9 @@ final class GRDBLocalStoreTests: XCTestCase {
         try store.applyChanges([change])
 
         let tags = try db.dbWriter.read { dbConn in
-            try Tag.joining(required: Tag.hasMany(ItemTag.self, using: ForeignKey(["tag_id"]))
-                .filter(Column("item_id") == "item-2"))
-            .fetchAll(dbConn)
+            let links = try ItemTag.filter(Column("item_id") == "item-2").fetchAll(dbConn)
+            let tagIds = links.map(\.tagId)
+            return tagIds.isEmpty ? [] : try Tag.filter(tagIds.contains(Column("id"))).fetchAll(dbConn)
         }
         XCTAssertEqual(Set(tags.map(\.name)), Set(["AI", "startups"]))
     }

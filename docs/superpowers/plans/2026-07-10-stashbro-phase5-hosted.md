@@ -713,8 +713,18 @@ const detectMode = async (serverUrl: string) => {
 
 - [ ] **Step 3: Update Mac SettingsView.swift for hosted login**
 
+Add these `@State` vars and methods to `SettingsView`:
+
 ```swift
-// apps/mac/StashBro/UI/SettingsView.swift - add to Form:
+// apps/mac/StashBro/UI/SettingsView.swift
+
+// Add to SettingsView body (after existing @State vars):
+@State private var hostedEmail = ""
+@State private var magicCode = ""
+@State private var codeStep = false
+@State private var loginStatus = ""
+
+// Add to Form:
 Section("Sign In (Hosted Mode)") {
     TextField("Email", text: $hostedEmail)
         .textContentType(.emailAddress)
@@ -726,21 +736,337 @@ Section("Sign In (Hosted Mode)") {
     }
     if !loginStatus.isEmpty { Text(loginStatus).foregroundStyle(.green) }
 }
+
+// Add these methods to SettingsView:
+private func sendCode() {
+    guard let serverURL = UserDefaults.standard.string(forKey: "serverURL"),
+          let url = URL(string: "\(serverURL)/auth/request") else {
+        loginStatus = "Server URL not set"; return
+    }
+    var req = URLRequest(url: url)
+    req.httpMethod = "POST"
+    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    req.httpBody = try? JSONSerialization.data(withJSONObject: ["email": hostedEmail])
+    URLSession.shared.dataTask(with: req) { _, resp, _ in
+        DispatchQueue.main.async {
+            if (resp as? HTTPURLResponse)?.statusCode == 200 {
+                codeStep = true
+                loginStatus = "Code sent to your email"
+            } else {
+                loginStatus = "Failed to send code"
+            }
+        }
+    }.resume()
+}
+
+private func verifyCode() {
+    guard let serverURL = UserDefaults.standard.string(forKey: "serverURL"),
+          let url = URL(string: "\(serverURL)/auth/verify") else { return }
+    let deviceId: String = {
+        let key = "stashbro:deviceId"
+        if let id = UserDefaults.standard.string(forKey: key) { return id }
+        let id = UUID().uuidString
+        UserDefaults.standard.set(id, forKey: key)
+        return id
+    }()
+    var req = URLRequest(url: url)
+    req.httpMethod = "POST"
+    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    req.httpBody = try? JSONSerialization.data(withJSONObject: [
+        "email": hostedEmail, "code": magicCode, "deviceId": deviceId
+    ])
+    URLSession.shared.dataTask(with: req) { data, resp, _ in
+        guard let data,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+              let accessToken = json["accessToken"],
+              let refreshToken = json["refreshToken"],
+              (resp as? HTTPURLResponse)?.statusCode == 200
+        else {
+            DispatchQueue.main.async { loginStatus = "Invalid code" }
+            return
+        }
+        UserDefaults.standard.set(accessToken, forKey: "serverToken")
+        Self.keychainSet("stashbro.refreshToken", value: refreshToken)
+        DispatchQueue.main.async { loginStatus = "Signed in!" }
+    }.resume()
+}
+
+// Minimal Keychain helper - uses Security framework (no extra dependency)
+private static func keychainSet(_ key: String, value: String) {
+    let data = Data(value.utf8)
+    let query: [CFString: Any] = [
+        kSecClass: kSecClassGenericPassword,
+        kSecAttrAccount: key,
+        kSecValueData: data,
+    ]
+    SecItemDelete(query as CFDictionary)
+    SecItemAdd(query as CFDictionary, nil)
+}
 ```
 
-Add `@State private var hostedEmail = ""`; `@State private var magicCode = ""`; `@State private var codeStep = false`; `@State private var loginStatus = ""` to `SettingsView`.
-
-Implement `sendCode()` and `verifyCode()` as async functions calling `/auth/request` and `/auth/verify` using `URLSession`, storing access token in `UserDefaults` and refresh token in Keychain (use `KeychainAccess` or a minimal Keychain wrapper).
+Add `import Security` at the top of `SettingsView.swift`.
 
 - [ ] **Step 4: Update extension options for hosted login**
 
-Add the same email/code flow to the extension options page by extending `OptionsApp` in `packages/extension/entrypoints/options/main.tsx` with the same state machine: detect mode → show email field if magic-link → code entry → store access+refresh tokens in `browser.storage.local`.
+Replace `packages/extension/entrypoints/options/main.tsx` with the full magic-link-aware version:
 
-- [ ] **Step 5: Commit**
+```tsx
+// packages/extension/entrypoints/options/main.tsx
+import React, { useState, useEffect } from 'react'
+import { createRoot } from 'react-dom/client'
+
+type AuthMode = 'token' | 'magic-link' | 'unknown'
+type Step = 'settings' | 'email' | 'code' | 'done'
+
+function OptionsApp() {
+  const [url, setUrl] = useState('')
+  const [token, setToken] = useState('')
+  const [mode, setMode] = useState<AuthMode>('unknown')
+  const [step, setStep] = useState<Step>('settings')
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [status, setStatus] = useState('')
+
+  useEffect(() => {
+    browser.storage.local.get(['serverURL', 'serverToken']).then((s) => {
+      if (s.serverURL) setUrl(s.serverURL as string)
+      if (s.serverToken) setToken(s.serverToken as string)
+    })
+  }, [])
+
+  const detectMode = async (serverUrl: string): Promise<AuthMode> => {
+    try {
+      const res = await fetch(`${serverUrl}/health`)
+      if (!res.ok) return 'unknown'
+      const body: { mode?: string } = await res.json()
+      return body.mode === 'magic-link' ? 'magic-link' : 'token'
+    } catch { return 'unknown' }
+  }
+
+  const save = async () => {
+    const detected = await detectMode(url)
+    setMode(detected)
+    if (detected === 'magic-link') {
+      setStep('email')
+      setStatus('Hosted mode detected - sign in with email')
+    } else {
+      await browser.storage.local.set({ serverURL: url, serverToken: token })
+      setStatus('Saved!')
+      setTimeout(() => setStatus(''), 2000)
+    }
+  }
+
+  const test = async () => {
+    try {
+      const res = await fetch(`${url}/health`, { headers: { Authorization: `Bearer ${token}` } })
+      setStatus(res.ok ? 'Connected!' : `Error: ${res.status}`)
+    } catch { setStatus('Connection failed') }
+    setTimeout(() => setStatus(''), 3000)
+  }
+
+  const sendCode = async () => {
+    const res = await fetch(`${url}/auth/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    if (res.ok) { setStep('code'); setStatus('Code sent to your email') }
+    else setStatus('Failed to send code')
+  }
+
+  const verifyCode = async () => {
+    const { stashbroDeviceId } = await browser.storage.local.get('stashbroDeviceId')
+    const deviceId = (stashbroDeviceId as string | undefined) ?? crypto.randomUUID()
+    await browser.storage.local.set({ stashbroDeviceId: deviceId })
+
+    const res = await fetch(`${url}/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code, deviceId }),
+    })
+    if (!res.ok) { setStatus('Invalid code'); return }
+    const { accessToken, refreshToken } = await res.json() as { accessToken: string; refreshToken: string }
+    await browser.storage.local.set({ serverURL: url, serverToken: accessToken, refreshToken })
+    setStep('done')
+    setStatus('Signed in!')
+  }
+
+  return (
+    <div style={{ fontFamily: 'system-ui', maxWidth: 400, margin: '40px auto', padding: 24 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>StashBro Settings</h2>
+
+      {(step === 'settings' || step === 'done') && (
+        <>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Server URL</label>
+          <input value={url} onChange={e => setUrl(e.target.value)} style={inputStyle} placeholder="https://your-stashbro.fly.dev" />
+          {mode !== 'magic-link' && (
+            <>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Bearer Token</label>
+              <input value={token} onChange={e => setToken(e.target.value)} type="password" style={inputStyle} placeholder="your-secret-token" />
+            </>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={save} style={primaryBtn}>Save</button>
+            {mode !== 'magic-link' && <button onClick={test} style={secondaryBtn}>Test Connection</button>}
+          </div>
+        </>
+      )}
+
+      {step === 'email' && (
+        <>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>Email</label>
+          <input value={email} onChange={e => setEmail(e.target.value)} type="email" style={inputStyle} placeholder="you@example.com" autoComplete="email" />
+          <button onClick={sendCode} style={primaryBtn}>Send Code</button>
+        </>
+      )}
+
+      {step === 'code' && (
+        <>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>6-digit Code</label>
+          <input value={code} onChange={e => setCode(e.target.value)} style={inputStyle} placeholder="123456" maxLength={6} inputMode="numeric" />
+          <button onClick={verifyCode} style={primaryBtn}>Verify</button>
+        </>
+      )}
+
+      {status && <div style={{ marginTop: 12, fontSize: 13, color: '#1F7A47' }}>{status}</div>}
+    </div>
+  )
+}
+
+const inputStyle: React.CSSProperties = { display: 'block', width: '100%', margin: '6px 0 16px', padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd', fontSize: 14, boxSizing: 'border-box' }
+const primaryBtn: React.CSSProperties = { padding: '8px 16px', background: '#C87A38', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
+const secondaryBtn: React.CSSProperties = { padding: '8px 16px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 14, cursor: 'pointer' }
+
+createRoot(document.getElementById('root')!).render(<OptionsApp />)
+```
+
+- [ ] **Step 5: Add auto-refresh on 401 to StashBroClient (packages/shared)**
+
+Access tokens expire in 15 minutes. Add 401 interception to `packages/shared/src/client.ts` so mobile and extension clients auto-refresh transparently:
+
+```typescript
+// packages/shared/src/client.ts - update the request() method:
+async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${this.baseURL}${path}`, {
+    ...init,
+    headers: { ...this.headers, ...(init.headers ?? {}) },
+  })
+
+  if (res.status === 401) {
+    const newToken = await this.refreshAccessToken()
+    if (!newToken) throw new Error('Session expired - re-authenticate')
+    // Retry once with new token
+    const retry = await fetch(`${this.baseURL}${path}`, {
+      ...init,
+      headers: { ...this.headers, Authorization: `Bearer ${newToken}`, ...(init.headers ?? {}) },
+    })
+    if (!retry.ok) throw new Error(`HTTP ${retry.status}`)
+    return retry.json() as Promise<T>
+  }
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<T>
+}
+
+// Add refreshAccessToken() method. getRefreshToken/setAccessToken are injected via constructor:
+private async refreshAccessToken(): Promise<string | null> {
+  if (!this.onRefresh) return null
+  try {
+    const refreshToken = await this.onRefresh.getRefreshToken()
+    if (!refreshToken) return null
+    const res = await fetch(`${this.baseURL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    })
+    if (!res.ok) return null
+    const { accessToken } = await res.json() as { accessToken: string }
+    await this.onRefresh.setAccessToken(accessToken)
+    this.headers['Authorization'] = `Bearer ${accessToken}`
+    return accessToken
+  } catch { return null }
+}
+```
+
+Update `StashBroClient` constructor to accept optional `onRefresh`:
+
+```typescript
+// packages/shared/src/client.ts
+export interface TokenRefreshHooks {
+  getRefreshToken(): Promise<string | null>
+  setAccessToken(token: string): Promise<void>
+}
+
+export class StashBroClient {
+  private headers: Record<string, string>
+  private onRefresh?: TokenRefreshHooks
+
+  constructor(private readonly baseURL: string, token: string, onRefresh?: TokenRefreshHooks) {
+    this.headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    this.onRefresh = onRefresh
+  }
+  // ...
+}
+```
+
+Wire up in mobile `useSyncEngine.ts` when creating `StashBroClient`:
+
+```typescript
+// When AUTH_MODE is magic-link, pass refresh hooks:
+const client = new StashBroClient(serverURL, serverToken, {
+  getRefreshToken: async () => AsyncStorage.getItem('stashbro:refreshToken'),
+  setAccessToken: async (t) => {
+    await AsyncStorage.setItem('stashbro:serverToken', t)
+  },
+})
+```
+
+Mac uses `URLSession` directly (not `StashBroClient`). Add 401 retry to `MacSyncEngine.performSync()`:
+
+```swift
+// apps/mac/StashBro/Sync/MacSyncEngine.swift - add helper:
+private func withTokenRefresh<T>(_ op: () async throws -> T) async throws -> T {
+    do {
+        return try await op()
+    } catch let err as APIError where err.statusCode == 401 {
+        guard let refreshToken = Self.keychainGet("stashbro.refreshToken"),
+              let serverURL = UserDefaults.standard.string(forKey: "serverURL"),
+              let url = URL(string: "\(serverURL)/auth/refresh") else { throw err }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["refreshToken": refreshToken])
+        let (data, _) = try await URLSession.shared.data(for: req)
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+           let newToken = json["accessToken"] {
+            UserDefaults.standard.set(newToken, forKey: "serverToken")
+        }
+        return try await op() // retry once
+    }
+}
+
+// Minimal Keychain read helper (companion to keychainSet in SettingsView):
+static func keychainGet(_ key: String) -> String? {
+    let query: [CFString: Any] = [
+        kSecClass: kSecClassGenericPassword,
+        kSecAttrAccount: key,
+        kSecReturnData: true,
+        kSecMatchLimit: kSecMatchLimitOne,
+    ]
+    var result: AnyObject?
+    guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+          let data = result as? Data else { return nil }
+    return String(data: data, encoding: .utf8)
+}
+```
+
+Note: `APIError` must expose `statusCode`. In `MacSyncEngine`, wrap the OpenAPI client calls in `withTokenRefresh { ... }`.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add apps/server/src/app.ts apps/mobile/app/settings.tsx apps/mac/StashBro/UI/SettingsView.swift packages/extension/entrypoints/options/main.tsx
-git commit -m "feat: magic-link signup flow in all clients (mobile, mac, extension) + server mode detection"
+git add apps/server/src/app.ts apps/mobile/app/settings.tsx apps/mac/StashBro/UI/SettingsView.swift packages/extension/entrypoints/options/main.tsx packages/shared/src/client.ts apps/mac/StashBro/Sync/MacSyncEngine.swift
+git commit -m "feat: magic-link signup flow in all clients (mobile, mac, extension) + 401 auto-refresh"
 ```
 
 ---

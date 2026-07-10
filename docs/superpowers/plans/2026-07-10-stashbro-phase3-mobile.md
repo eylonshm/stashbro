@@ -989,24 +989,45 @@ git commit -m "feat(mobile): settings (server URL/token) and tag management scre
 
 **Files:**
 - Create: `apps/mobile/share-extension/index.tsx`
+- Modify: `apps/mobile/src/hooks/useSyncEngine.ts` (add inbox ingestion)
+- Modify: `apps/mobile/app/index.tsx` (call ingestInbox on AppState active)
+
+**Architecture note:** The share extension does NOT touch SQLite (no cross-process locking, no native module bridge from JS). It writes one JSON file per item to an App Group "inbox" directory (same pattern as the Mac share extension). The main app ingests on foreground: reads inbox files, inserts into expo-sqlite, deletes files, triggers sync.
 
 **Interfaces:**
-- Consumes: `expo-share-extension` (`getShareData`, `close`); `openDatabase()` from Task 2; `detectType`, `extractDomain` from `@stashbro/shared`
+- Consumes: `expo-share-extension` (`getShareData`, `close`); `detectType`, `extractDomain` from `@stashbro/shared`; App Group `group.com.stashbro.mobile`
 - Produces:
-  - Share extension root: title field (auto-filled from share data), type badge (auto-detected), tag multi-select (from DB), priority segmented control (Low/Med/High, default Med), "Save to StashBro" button
-  - On save: writes item to local SQLite DB; calls `close()` to dismiss
+  - Share extension: title field (auto-filled), type badge (auto-detected), priority segmented control (Low/Med/High, default Med), "Save to StashBro" button - writes `<AppGroup>/inbox/<uuid>.json` on save
+  - Inbox JSON shape: `{ id, url, title, domain, type, priority, createdAt }` (no tags - extension has no DB access)
+  - `ingestShareExtensionInbox(db)`: reads inbox files from App Group, inserts items into expo-sqlite, deletes files
 
-- [ ] **Step 1: Implement share-extension/index.tsx**
+Note: Getting the App Group path from a React Native / Expo context requires the `expo-file-system` package with `FileSystem.getInfoAsync` OR a native module. The simplest approach for the share extension side is to use `expo-file-system` in the extension (it runs in an Expo environment): `FileSystem.documentDirectory` is extension-sandboxed, so we write to `RNFS.AppGroupDirectoryPath('group.com.stashbro.mobile') + '/inbox/'` via `react-native-fs` OR use a small native Swift helper exposed via `expo-modules-core`. **Recommended:** add `react-native-fs` (`pnpm add react-native-fs`) which provides `RNFS.AppGroupDirectoryPath(groupId)` for reading/writing app group paths from JS.
+
+- [ ] **Step 1: Install react-native-fs**
+
+```bash
+cd apps/mobile && pnpm add react-native-fs @types/react-native-fs
+```
+
+Update `apps/mobile/package.json` dependencies to include `"react-native-fs": "^2.23.0"`.
+
+- [ ] **Step 2: Implement share-extension/index.tsx**
 
 ```tsx
 // apps/mobile/share-extension/index.tsx
 import React, { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
 import { getShareData, close } from 'expo-share-extension'
+import RNFS from 'react-native-fs'
 import { detectType, extractDomain } from '@stashbro/shared'
-import { openDatabase } from '../src/db/database.js'
 
 type Priority = 'low' | 'medium' | 'high'
+const APP_GROUP = 'group.com.stashbro.mobile'
+
+const TYPE_COLORS: Record<string, { bg: string; fg: string }> = {
+  video: { bg: '#FCEAEA', fg: '#B53030' }, post: { bg: '#EAF0FD', fg: '#2A56A8' },
+  article: { bg: '#E8F7EF', fg: '#1F7A47' }, other: { bg: '#F2EDF8', fg: '#6441A0' },
+}
 
 export default function ShareExtension() {
   const [url, setUrl] = useState('')
@@ -1014,8 +1035,6 @@ export default function ShareExtension() {
   const [detectedType, setDetectedType] = useState('article')
   const [domain, setDomain] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
-  const [availableTags, setAvailableTags] = useState<string[]>([])
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
@@ -1025,39 +1044,24 @@ export default function ShareExtension() {
     setTitle(data?.title ?? sharedUrl)
     setDetectedType(detectType(sharedUrl))
     setDomain(extractDomain(sharedUrl))
-    try {
-      const db = openDatabase()
-      setAvailableTags(db.getAllSync<{ name: string }>('SELECT name FROM tags ORDER BY name').map(t => t.name))
-    } catch { /* first-launch: no DB yet */ }
   }, [])
 
-  const save = () => {
+  const save = async () => {
     try {
-      const db = openDatabase()
+      const inboxDir = `${RNFS.AppGroupDirectoryPath(APP_GROUP)}/inbox`
+      await RNFS.mkdir(inboxDir)
       const id = crypto.randomUUID()
-      const now = new Date().toISOString()
-      db.runSync(
-        'INSERT OR IGNORE INTO items(id,user_id,url,title,domain,type,status,priority,created_at,updated_at,change_seq) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
-        [id, 'default', url, title || url, domain, detectedType, 'unread', priority, now, now, 0]
-      )
-      for (const name of selectedTags) {
-        let tag = db.getFirstSync<{ id: string }>('SELECT id FROM tags WHERE user_id=? AND name=?', ['default', name])
-        if (!tag) {
-          const tid = crypto.randomUUID()
-          db.runSync('INSERT INTO tags(id,user_id,name) VALUES(?,?,?)', [tid, 'default', name])
-          tag = { id: tid }
-        }
-        db.runSync('INSERT OR IGNORE INTO item_tags(item_id,tag_id) VALUES(?,?)', [id, tag.id])
-      }
+      const payload = JSON.stringify({
+        id, url, title: title || url, domain,
+        type: detectedType, priority,
+        createdAt: new Date().toISOString(),
+      })
+      await RNFS.writeFile(`${inboxDir}/${id}.json`, payload, 'utf8')
       setSaved(true)
       setTimeout(close, 1200)
     } catch (e) { console.error('ShareExtension save error:', e) }
   }
 
-  const TYPE_COLORS: Record<string, { bg: string; fg: string }> = {
-    video: { bg: '#FCEAEA', fg: '#B53030' }, post: { bg: '#EAF0FD', fg: '#2A56A8' },
-    article: { bg: '#E8F7EF', fg: '#1F7A47' }, other: { bg: '#F2EDF8', fg: '#6441A0' },
-  }
   const tc = TYPE_COLORS[detectedType] ?? TYPE_COLORS['article']!
 
   return (
@@ -1073,24 +1077,21 @@ export default function ShareExtension() {
       <Text style={styles.label}>Title</Text>
       <TextInput style={styles.titleInput} value={title} onChangeText={setTitle} multiline />
 
-      <Text style={styles.label}>Type & Tags</Text>
+      <Text style={styles.label}>Type</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-        <View style={[styles.badge, { backgroundColor: tc.bg }]}><Text style={[styles.badgeText, { color: tc.fg }]}>{detectedType.toUpperCase()}</Text></View>
+        <View style={[styles.badge, { backgroundColor: tc.bg }]}>
+          <Text style={[styles.badgeText, { color: tc.fg }]}>{detectedType.toUpperCase()}</Text>
+        </View>
         <Text style={{ fontSize: 12, color: '#9EA1B4' }}>{domain}</Text>
-      </View>
-      <View style={styles.tagsRow}>
-        {availableTags.map(name => (
-          <TouchableOpacity key={name} style={[styles.tagChip, selectedTags.includes(name) && styles.tagActive]} onPress={() => setSelectedTags(prev => prev.includes(name) ? prev.filter(t => t !== name) : [...prev, name])}>
-            <Text style={[styles.tagText, selectedTags.includes(name) && styles.tagTextActive]}>#{name}</Text>
-          </TouchableOpacity>
-        ))}
       </View>
 
       <Text style={styles.label}>Priority</Text>
       <View style={styles.seg}>
         {(['low', 'medium', 'high'] as Priority[]).map(p => (
           <TouchableOpacity key={p} style={[styles.segBtn, priority === p && styles.segBtnActive]} onPress={() => setPriority(p)}>
-            <Text style={[styles.segText, priority === p && styles.segTextActive]}>{p === 'medium' ? 'Med' : p.charAt(0).toUpperCase() + p.slice(1)}</Text>
+            <Text style={[styles.segText, priority === p && styles.segTextActive]}>
+              {p === 'medium' ? 'Med' : p.charAt(0).toUpperCase() + p.slice(1)}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -1113,11 +1114,6 @@ const styles = StyleSheet.create({
   titleInput: { backgroundColor: '#fff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(18,19,28,.09)', fontSize: 14, minHeight: 44 },
   badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 },
   badgeText: { fontSize: 10, fontWeight: '700' },
-  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  tagChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: '#ECEDF4' },
-  tagActive: { backgroundColor: '#C87A38' },
-  tagText: { fontSize: 12, color: '#4A4D62' },
-  tagTextActive: { color: '#fff' },
   seg: { flexDirection: 'row', backgroundColor: '#ECEDF2', borderRadius: 8, padding: 2, gap: 1, marginTop: 4 },
   segBtn: { flex: 1, paddingVertical: 6, borderRadius: 6, alignItems: 'center' },
   segBtnActive: { backgroundColor: '#fff' },
@@ -1127,7 +1123,73 @@ const styles = StyleSheet.create({
 })
 ```
 
-- [ ] **Step 2: Test via expo prebuild**
+- [ ] **Step 3: Create ingestShareExtensionInbox utility**
+
+Add `apps/mobile/src/sync/ingestInbox.ts`:
+
+```typescript
+// apps/mobile/src/sync/ingestInbox.ts
+import RNFS from 'react-native-fs'
+import type { SQLiteDatabase } from 'expo-sqlite'
+
+const APP_GROUP = 'group.com.stashbro.mobile'
+
+interface InboxItem {
+  id: string; url: string; title: string; domain: string
+  type: string; priority: string; createdAt: string
+}
+
+export async function ingestShareExtensionInbox(db: SQLiteDatabase): Promise<number> {
+  const inboxDir = `${RNFS.AppGroupDirectoryPath(APP_GROUP)}/inbox`
+  const exists = await RNFS.exists(inboxDir)
+  if (!exists) return 0
+
+  const files = (await RNFS.readdir(inboxDir)).filter(f => f.endsWith('.json'))
+  let count = 0
+
+  for (const file of files) {
+    const path = `${inboxDir}/${file}`
+    try {
+      const raw = await RNFS.readFile(path, 'utf8')
+      const item: InboxItem = JSON.parse(raw)
+      const now = item.createdAt
+
+      const existing = db.getFirstSync<{ id: string }>('SELECT id FROM items WHERE id = ?', [item.id])
+      if (!existing) {
+        db.runSync(
+          'INSERT OR IGNORE INTO items(id,user_id,url,title,domain,type,status,priority,created_at,updated_at,change_seq) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+          [item.id, 'default', item.url, item.title, item.domain, item.type, 'unread', item.priority, now, now, 0]
+        )
+        count++
+      }
+      await RNFS.unlink(path)
+    } catch { /* malformed file - delete and skip */ await RNFS.unlink(path).catch(() => {}) }
+  }
+
+  return count
+}
+```
+
+- [ ] **Step 4: Wire ingestion into app foreground handler**
+
+In `apps/mobile/src/hooks/useSyncEngine.ts`, add inbox ingestion to the AppState handler:
+
+```typescript
+// Add import at top:
+import { ingestShareExtensionInbox } from '../sync/ingestInbox.js'
+
+// In the AppState listener:
+const sub = AppState.addEventListener('change', async (state) => {
+  if (state === 'active') {
+    const db = openDatabase()
+    const ingested = await ingestShareExtensionInbox(db)
+    if (ingested > 0) void engineRef.current?.sync()
+    else void engineRef.current?.sync()
+  }
+})
+```
+
+- [ ] **Step 5: Test via expo prebuild**
 
 ```bash
 cd apps/mobile && npx expo prebuild --platform ios --clean 2>&1 | tail -10
@@ -1135,9 +1197,9 @@ cd apps/mobile && npx expo prebuild --platform ios --clean 2>&1 | tail -10
 
 Expected: `ios/` directory generated; `StashBroShareExtension` target present in Xcode project
 
-- [ ] **Step 3: Commit all mobile work**
+- [ ] **Step 6: Commit all mobile work**
 
 ```bash
 git add apps/mobile/
-git commit -m "feat(mobile): iOS share extension quick-save card (type badge, tag picker, priority segmented)"
+git commit -m "feat(mobile): iOS share extension writes JSON inbox; main app ingests on foreground"
 ```

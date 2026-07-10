@@ -53,6 +53,11 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.0.279",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@wxt-dev/module-react": "^1.0.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0",
     "wxt": "^0.19.0"
@@ -480,7 +485,13 @@ const root = document.getElementById('root')!
 createRoot(root).render(<PopupApp />)
 ```
 
-Add React to devDependencies: `pnpm add -D react react-dom @types/react @types/react-dom`
+- [ ] **Step 6a: Install dependencies**
+
+```bash
+cd packages/extension && pnpm install
+```
+
+Expected: `react`, `react-dom`, `@wxt-dev/module-react` resolved from `package.json` devDependencies (already declared in Task 1 Step 1)
 
 - [ ] **Step 7: Build and verify popup**
 
