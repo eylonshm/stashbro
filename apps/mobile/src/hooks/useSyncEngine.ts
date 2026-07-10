@@ -11,13 +11,18 @@ const APP_GROUP = 'group.com.stashbro.mobile'
 
 // ponytail: copy DB to app group after each sync so the iOS widget can read it.
 // Widget can't access the default expo-sqlite sandbox path; app group is the shared container.
-// FULL checkpoint writes all WAL data to the main DB file before copy (safe read for widget).
+// TRUNCATE checkpoint flushes + zeroes WAL; atomic tmp→rename prevents widget reading a partial file.
+// Widget freshness ceiling: 0–15 min behind sync (widget drives its own timeline clock).
+// Upgrade path: native module → WidgetCenter.shared.reloadAllTimelines() after copy for instant refresh.
 async function copyDbToAppGroup(): Promise<void> {
   try {
     const groupDir = await RNFS.pathForGroup(APP_GROUP)
     const db = openDatabase()
-    db.execSync('PRAGMA wal_checkpoint(FULL)')
-    await RNFS.copyFile(db.databasePath, `${groupDir}/stashbro.db`)
+    db.execSync('PRAGMA wal_checkpoint(TRUNCATE)')
+    const dst = `${groupDir}/stashbro.db`
+    const tmp = `${dst}.tmp`
+    await RNFS.copyFile(db.databasePath, tmp)
+    await RNFS.moveFile(tmp, dst)
   } catch {
     // non-fatal: widget shows stale or empty data until next successful copy
   }

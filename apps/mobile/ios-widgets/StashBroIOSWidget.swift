@@ -103,7 +103,7 @@ struct IOSWidgetView: View {
                 }.frame(width: 80)
                 Divider()
                 VStack(alignment: .leading, spacing: 7) {
-                    ForEach(entry.recentItems.prefix(3), id: \.0) { item in
+                    ForEach(Array(entry.recentItems.prefix(3).enumerated()), id: \.offset) { _, item in
                         HStack(spacing: 6) {
                             Circle().fill(dotColor(item.1)).frame(width: 7, height: 7)
                             if item.2 { Circle().fill(Color(red: 0.851, green: 0.353, blue: 0.157)).frame(width: 5, height: 5) }
