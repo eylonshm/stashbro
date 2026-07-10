@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { openDatabase } from '../src/db/database.js'
+import { SQLiteLocalStore, makeExpoSyncDb } from '../src/sync/SQLiteLocalStore.js'
+import { deleteTagLocal } from '../src/lib/tags.js'
+import { triggerSync } from '../src/hooks/useSyncEngine.js'
 import { router } from 'expo-router'
 import { useTheme } from '../src/hooks/useTheme.js'
 
@@ -8,7 +12,13 @@ interface Tag { id: string; name: string; count: number }
 
 export default function TagsScreen() {
   const [tags, setTags] = useState<Tag[]>([])
+  const userIdRef = useRef('local')
   const theme = useTheme()
+
+  useEffect(() => {
+    load()
+    AsyncStorage.getItem('stashbro:userId').then(id => { if (id) userIdRef.current = id })
+  }, [])
 
   const load = () => {
     const db = openDatabase()
@@ -17,16 +27,16 @@ export default function TagsScreen() {
     ))
   }
 
-  useEffect(() => { load() }, [])
-
   const deleteTag = (tag: Tag) => {
     Alert.alert('Delete Tag', `Remove "#${tag.name}"?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => {
-        const db = openDatabase()
-        db.runSync('DELETE FROM item_tags WHERE tag_id = ?', [tag.id])
-        db.runSync('DELETE FROM tags WHERE id = ?', [tag.id])
+        const rawDb = openDatabase()
+        const syncDb = makeExpoSyncDb(rawDb)
+        const store = new SQLiteLocalStore(syncDb, AsyncStorage, userIdRef.current)
+        deleteTagLocal(syncDb, store, tag.id)
         load()
+        void triggerSync()
       }},
     ])
   }

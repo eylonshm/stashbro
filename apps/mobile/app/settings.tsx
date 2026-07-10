@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { useTheme } from '../src/hooks/useTheme.js'
 import { validateServerUrl } from '../src/lib/config.js'
+import { reinitializeSyncEngine } from '../src/hooks/useSyncEngine.js'
 
 export default function SettingsScreen() {
   const [url, setUrl] = useState('')
@@ -23,10 +24,12 @@ export default function SettingsScreen() {
 
   const save = async () => {
     if (!validateServerUrl(url)) { Alert.alert('Invalid URL', 'Must start with http(s)://'); return }
+    if (!token.trim()) { Alert.alert('Missing Token', 'Bearer token cannot be empty'); return }
     await Promise.all([
       AsyncStorage.setItem('stashbro:serverURL', url),
       AsyncStorage.setItem('stashbro:serverToken', token),
     ])
+    await reinitializeSyncEngine()
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
