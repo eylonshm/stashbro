@@ -10,6 +10,11 @@ export default function SettingsScreen() {
   const [url, setUrl] = useState('')
   const [token, setToken] = useState('')
   const [saved, setSaved] = useState(false)
+  const [serverMode, setServerMode] = useState<'token' | 'magic-link' | 'unknown'>('unknown')
+  const [email, setEmail] = useState('')
+  const [codeStep, setCodeStep] = useState(false)
+  const [code, setCode] = useState('')
+  const [loginStatus, setLoginStatus] = useState('')
   const theme = useTheme()
 
   useEffect(() => {
@@ -22,8 +27,24 @@ export default function SettingsScreen() {
     })
   }, [])
 
+  const detectMode = async (serverUrl: string): Promise<'token' | 'magic-link' | 'unknown'> => {
+    try {
+      const res = await fetch(`${serverUrl.replace(/\/$/, '')}/health`)
+      if (!res.ok) return 'unknown'
+      const data = await res.json() as { mode?: string }
+      return data.mode === 'magic-link' ? 'magic-link' : 'token'
+    } catch { return 'unknown' }
+  }
+
   const save = async () => {
     if (!validateServerUrl(url)) { Alert.alert('Invalid URL', 'Must start with http(s)://'); return }
+    const mode = await detectMode(url)
+    setServerMode(mode)
+    if (mode === 'magic-link') {
+      // In magic-link mode, just save the URL and show email flow
+      await AsyncStorage.setItem('stashbro:serverURL', url)
+      return
+    }
     if (!token.trim()) { Alert.alert('Missing Token', 'Bearer token cannot be empty'); return }
     await Promise.all([
       AsyncStorage.setItem('stashbro:serverURL', url),
@@ -32,6 +53,42 @@ export default function SettingsScreen() {
     await reinitializeSyncEngine()
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  const sendCode = async () => {
+    if (!email.trim()) { setLoginStatus('Email required'); return }
+    try {
+      const base = url.replace(/\/$/, '')
+      const res = await fetch(`${base}/auth/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) { setLoginStatus('Failed to send code'); return }
+      setCodeStep(true)
+      setLoginStatus('Code sent! Check your email.')
+    } catch { setLoginStatus('Connection failed') }
+  }
+
+  const verifyCode = async () => {
+    if (!code.trim()) { setLoginStatus('Code required'); return }
+    try {
+      const base = url.replace(/\/$/, '')
+      const res = await fetch(`${base}/auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      })
+      if (!res.ok) { setLoginStatus('Invalid code'); return }
+      const data = await res.json() as { accessToken: string; refreshToken: string }
+      await Promise.all([
+        AsyncStorage.setItem('stashbro:serverToken', data.accessToken),
+        AsyncStorage.setItem('stashbro:refreshToken', data.refreshToken),
+      ])
+      await reinitializeSyncEngine()
+      setLoginStatus('Signed in!')
+      setCodeStep(false)
+    } catch { setLoginStatus('Verification failed') }
   }
 
   return (
@@ -54,20 +111,64 @@ export default function SettingsScreen() {
         autoCapitalize="none"
         autoCorrect={false}
       />
-      <Text style={[styles.label, { color: theme.meta }]}>Bearer Token</Text>
-      <TextInput
-        style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-        value={token}
-        onChangeText={setToken}
-        placeholder="your-secret-token"
-        placeholderTextColor={theme.meta}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
+      {serverMode !== 'magic-link' && (
+        <>
+          <Text style={[styles.label, { color: theme.meta }]}>Bearer Token</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
+            value={token}
+            onChangeText={setToken}
+            placeholder="your-secret-token"
+            placeholderTextColor={theme.meta}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </>
+      )}
       <TouchableOpacity style={styles.btn} onPress={save}>
         <Text style={styles.btnText}>{saved ? 'Saved!' : 'Save & Sync'}</Text>
       </TouchableOpacity>
+
+      {serverMode === 'magic-link' && (
+        <>
+          <Text style={[styles.label, { color: theme.meta, marginTop: 20 }]}>Sign In (Hosted Mode)</Text>
+          {!codeStep ? (
+            <>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={theme.meta}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity style={styles.btn} onPress={sendCode}>
+                <Text style={styles.btnText}>Send Code</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
+                value={code}
+                onChangeText={setCode}
+                placeholder="6-digit code"
+                placeholderTextColor={theme.meta}
+                keyboardType="number-pad"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity style={styles.btn} onPress={verifyCode}>
+                <Text style={styles.btnText}>Verify</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          {loginStatus ? <Text style={{ color: '#1F7A47', fontSize: 13, marginTop: 8 }}>{loginStatus}</Text> : null}
+        </>
+      )}
       <TouchableOpacity style={{ marginTop: 24, alignItems: 'center' }} onPress={() => router.push('/tags')}>
         <Text style={{ color: '#C87A38', fontSize: 15 }}>Manage Tags →</Text>
       </TouchableOpacity>

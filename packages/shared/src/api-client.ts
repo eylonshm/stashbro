@@ -5,18 +5,25 @@ export interface StashBroClientConfig {
   token: string
 }
 
+export interface TokenRefreshHooks {
+  getRefreshToken(): Promise<string | null>
+  setAccessToken(token: string): Promise<void>
+}
+
 export class StashBroClient {
   private baseUrl: string
   private headers: Record<string, string>
   private _fetch: typeof fetch
+  private onRefresh: TokenRefreshHooks | undefined
 
-  constructor(config: StashBroClientConfig, fetchImpl: typeof fetch = fetch) {
+  constructor(config: StashBroClientConfig, fetchImpl: typeof fetch = fetch, onRefresh?: TokenRefreshHooks) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '')
     this.headers = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.token}`,
     }
     this._fetch = fetchImpl
+    this.onRefresh = onRefresh
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -24,11 +31,45 @@ export class StashBroClient {
       ...init,
       headers: { ...this.headers, ...(init.headers ?? {}) },
     })
+
+    if (res.status === 401 && this.onRefresh) {
+      const newToken = await this.refreshAccessToken()
+      if (newToken) {
+        const retry = await this._fetch(`${this.baseUrl}${path}`, {
+          ...init,
+          headers: { ...this.headers, ...(init.headers ?? {}) },
+        })
+        if (!retry.ok) {
+          const body = await retry.json().catch(() => ({}))
+          throw new Error(`${retry.status}: ${JSON.stringify(body)}`)
+        }
+        return retry.json() as Promise<T>
+      }
+    }
+
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
       throw new Error(`${res.status}: ${JSON.stringify(body)}`)
     }
     return res.json() as Promise<T>
+  }
+
+  private async refreshAccessToken(): Promise<string | null> {
+    if (!this.onRefresh) return null
+    try {
+      const refreshToken = await this.onRefresh.getRefreshToken()
+      if (!refreshToken) return null
+      const res = await this._fetch(`${this.baseUrl}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      })
+      if (!res.ok) return null
+      const { accessToken } = await res.json() as { accessToken: string }
+      await this.onRefresh.setAccessToken(accessToken)
+      this.headers['Authorization'] = `Bearer ${accessToken}`
+      return accessToken
+    } catch { return null }
   }
 
   createItem(input: CreateItemInput): Promise<Item> {

@@ -9,7 +9,7 @@ export function createApp() {
 
   app.openAPIRegistry.registerComponent('securitySchemes', 'BearerAuth', { type: 'http', scheme: 'bearer' })
 
-  app.get('/health', (c) => c.json({ ok: true }))
+  app.get('/health', (c) => c.json({ ok: true, mode: process.env['AUTH_MODE'] ?? 'token' }))
 
   app.route('/auth', authRouter())
   app.route('/items', itemsRouter())

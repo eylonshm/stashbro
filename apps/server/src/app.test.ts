@@ -7,7 +7,8 @@ describe('app bootstrap', () => {
     const res = await app.request('/health')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ ok: true })
+    expect(body).toMatchObject({ ok: true })
+    expect(typeof body.mode).toBe('string')
   })
 
   it('GET /openapi.json returns valid spec', async () => {

@@ -21,6 +21,10 @@ function OptionsApp() {
   const [url, setUrl] = useState('')
   const [token, setToken] = useState('')
   const [status, setStatus] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [serverMode, setServerMode] = useState<'token' | 'magic-link' | 'unknown'>('unknown')
+  const [email, setEmail] = useState('')
+  const [codeStep, setCodeStep] = useState(false)
+  const [code, setCode] = useState('')
 
   useEffect(() => {
     browser.storage.local.get(['serverURL', 'serverToken']).then((s) => {
@@ -34,10 +38,28 @@ function OptionsApp() {
     setTimeout(() => setStatus(null), ms)
   }
 
+  const detectMode = async (serverUrl: string): Promise<'token' | 'magic-link' | 'unknown'> => {
+    try {
+      const res = await fetch(`${serverUrl.replace(/\/$/, '')}/health`)
+      if (!res.ok) return 'unknown'
+      const data = await res.json() as { mode?: string }
+      return data.mode === 'magic-link' ? 'magic-link' : 'token'
+    } catch { return 'unknown' }
+  }
+
   const save = async () => {
+    if (!url) { showStatus('Server URL required', false, 3500); return }
+    const base = url.replace(/\/$/, '')
+    const mode = await detectMode(base)
+    setServerMode(mode)
+    if (mode === 'magic-link') {
+      await browser.storage.local.set({ serverURL: base })
+      showStatus('Magic-link mode detected. Sign in below.', true, 4000)
+      return
+    }
     const err = validateOptions(url, token)
     if (err) { showStatus(err, false, 3500); return }
-    await browser.storage.local.set({ serverURL: url.replace(/\/$/, ''), serverToken: token.trim() })
+    await browser.storage.local.set({ serverURL: base, serverToken: token.trim() })
     showStatus('Saved!', true)
   }
 
@@ -48,6 +70,36 @@ function OptionsApp() {
     } catch {
       showStatus('Connection failed', false, 3000)
     }
+  }
+
+  const sendCode = async () => {
+    if (!email.trim()) { showStatus('Email required', false); return }
+    try {
+      const res = await fetch(`${url.replace(/\/$/, '')}/auth/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) { showStatus('Failed to send code', false); return }
+      setCodeStep(true)
+      showStatus('Code sent! Check your email.', true, 5000)
+    } catch { showStatus('Connection failed', false) }
+  }
+
+  const verifyCode = async () => {
+    if (!code.trim()) { showStatus('Code required', false); return }
+    try {
+      const res = await fetch(`${url.replace(/\/$/, '')}/auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      })
+      if (!res.ok) { showStatus('Invalid code', false); return }
+      const data = await res.json() as { accessToken: string; refreshToken: string }
+      await browser.storage.local.set({ serverToken: data.accessToken, refreshToken: data.refreshToken })
+      setCodeStep(false)
+      showStatus('Signed in!', true)
+    } catch { showStatus('Verification failed', false) }
   }
 
   const input: React.CSSProperties = {
@@ -81,14 +133,18 @@ function OptionsApp() {
         placeholder="https://your-stashbro.fly.dev"
       />
 
-      <label style={label}>Bearer Token</label>
-      <input
-        value={token}
-        onChange={e => setToken(e.target.value)}
-        type="password"
-        style={input}
-        placeholder="your-secret-token"
-      />
+      {serverMode !== 'magic-link' && (
+        <>
+          <label style={label}>Bearer Token</label>
+          <input
+            value={token}
+            onChange={e => setToken(e.target.value)}
+            type="password"
+            style={input}
+            placeholder="your-secret-token"
+          />
+        </>
+      )}
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button
@@ -97,13 +153,54 @@ function OptionsApp() {
         >
           Save
         </button>
-        <button
-          onClick={test}
-          style={{ padding: '8px 16px', background: TH.surface, border: `1px solid ${TH.border}`, borderRadius: 8, fontSize: 14, cursor: 'pointer', color: TH.text }}
-        >
-          Test Connection
-        </button>
+        {serverMode !== 'magic-link' && (
+          <button
+            onClick={test}
+            style={{ padding: '8px 16px', background: TH.surface, border: `1px solid ${TH.border}`, borderRadius: 8, fontSize: 14, cursor: 'pointer', color: TH.text }}
+          >
+            Test Connection
+          </button>
+        )}
       </div>
+
+      {serverMode === 'magic-link' && (
+        <div style={{ marginTop: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: TH.secondary, marginBottom: 8 }}>Sign In (Hosted Mode)</div>
+          {!codeStep ? (
+            <>
+              <input
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                type="email"
+                style={input}
+                placeholder="you@example.com"
+              />
+              <button
+                onClick={sendCode}
+                style={{ padding: '8px 16px', background: TH.copper, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Send Code
+              </button>
+            </>
+          ) : (
+            <>
+              <input
+                value={code}
+                onChange={e => setCode(e.target.value)}
+                style={input}
+                placeholder="6-digit code"
+                maxLength={6}
+              />
+              <button
+                onClick={verifyCode}
+                style={{ padding: '8px 16px', background: TH.copper, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Verify
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {status && (
         <div style={{ marginTop: 12, fontSize: 13, fontWeight: 500, color: status.ok ? TH.success : TH.error }}>
