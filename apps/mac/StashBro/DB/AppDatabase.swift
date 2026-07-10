@@ -5,6 +5,8 @@ import GRDB
 final class AppDatabase {
     let dbWriter: DatabaseWriter
 
+    static let shared = AppDatabase.makeShared()
+
     init(dbWriter: DatabaseWriter) {
         self.dbWriter = dbWriter
     }
@@ -37,7 +39,7 @@ final class AppDatabase {
         return config
     }
 
-    private func migrate() throws {
+    func migrate() throws {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1") { db in
             try db.create(table: "stash_items", ifNotExists: true) { t in
@@ -65,8 +67,8 @@ final class AppDatabase {
                 t.uniqueKey(["user_id", "name"])
             }
             try db.create(table: "item_tags", ifNotExists: true) { t in
-                t.column("item_id", .text).notNull()
-                t.column("tag_id", .text).notNull()
+                t.column("item_id", .text).notNull().references("stash_items", onDelete: .cascade)
+                t.column("tag_id", .text).notNull().references("tags", onDelete: .cascade)
                 t.primaryKey(["item_id", "tag_id"])
             }
         }
