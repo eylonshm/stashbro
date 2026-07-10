@@ -64,7 +64,7 @@ item_tags:  item_id, tag_id
 - Server keeps a per-user monotonic `change_seq`. Sync cycle: client `push` (batched local changes) then `pull?since=<cursor>`.
 - Conflict resolution: last-write-wins by `updated_at`. Deletes are tombstones (`deleted_at`), purged server-side after 90 days.
 - Sync triggers: app foreground, debounced after local write, periodic background refresh.
-- Share extensions (iOS and macOS) write to a shared app-group SQLite store; the main app syncs it.
+- Share extensions (iOS and macOS) write per-item JSON files (uuidv7 filename, atomic write) to an app-group "inbox" directory; the main app ingests them into its local store on launch/foreground and syncs. Avoids cross-process SQLite access from extensions. Widgets read the main store read-only.
 
 ## Metadata enrichment
 
