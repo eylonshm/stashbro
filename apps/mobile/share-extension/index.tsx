@@ -24,6 +24,7 @@ export default function ShareExtension({ url: sharedUrl = '', text }: InitialPro
   const [domain, setDomain] = useState(() => extractDomain(initialUrl))
   const [priority, setPriority] = useState<Priority>('medium')
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState(false)
 
   useEffect(() => {
     setDetectedType(detectType(url))
@@ -47,6 +48,8 @@ export default function ShareExtension({ url: sharedUrl = '', text }: InitialPro
       setTimeout(close, 1200)
     } catch (e) {
       console.error('ShareExtension save error:', e)
+      setSaveError(true)
+      setTimeout(close, 1500)
     }
   }
 
@@ -58,7 +61,7 @@ export default function ShareExtension({ url: sharedUrl = '', text }: InitialPro
         <View style={styles.icon}><Text style={styles.iconText}>S</Text></View>
         <View>
           <Text style={styles.appName}>StashBro</Text>
-          <Text style={styles.sub}>{saved ? 'Saved!' : 'Quick save'}</Text>
+          <Text style={styles.sub}>{saveError ? 'Save failed' : saved ? 'Saved!' : 'Quick save'}</Text>
         </View>
       </View>
 

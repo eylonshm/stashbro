@@ -64,7 +64,8 @@ export async function ingestShareExtensionInbox(
         priority: payload.priority, updated_at: payload.createdAt,
         deleted_at: null, tag_names: [],
       })
-      await fs.deleteFile(filePath)  // only delete on DB success
+      // ponytail: if deleteFile fails the item re-ingests next foreground (saveLocalItem is idempotent via UPDATE, bumps seq harmlessly)
+      await fs.deleteFile(filePath)
       count++
     } catch {
       // DB error - leave file in inbox for retry on next foreground activation

@@ -13,7 +13,6 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.1.0",
     "@stashbro/shared": "workspace:*",
-    "@types/react-native-fs": "^2.13.0",
     "expo": "~53.0.0",
     "expo-router": "~4.0.0",
     "expo-share-extension": "^1.5.0",
