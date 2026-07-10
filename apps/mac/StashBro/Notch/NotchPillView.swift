@@ -36,6 +36,7 @@ struct NotchPillView: View {
         .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 16, bottomTrailingRadius: 16))
         .onHover { hovering in if hovering { onExpand() } }
         .onTapGesture { onExpand() }
+        .onDrop(of: [.url], delegate: NotchDropDelegate())
         .task { await loadCount() }
     }
 
