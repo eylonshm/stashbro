@@ -12,8 +12,12 @@ final class AppDatabase {
     }
 
     static func makeShared(appGroupId: String = "group.com.stashbro.app") -> AppDatabase {
+        // ponytail: XCTest sets this env var; skip the app group path so the test host doesn't crash
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return makeInMemory()
+        }
         guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId) else {
-            return makeInMemory() // nil = test/sandbox (no app group entitlement)
+            return makeInMemory() // nil = no app group entitlement (e.g. unsigned dev build)
         }
         // try! intentional: disk full / corruption / migration failure must crash loudly;
         // silent in-memory fallback would hide data and lose saves on restart.

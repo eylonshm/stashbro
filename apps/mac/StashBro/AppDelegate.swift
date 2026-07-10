@@ -1,7 +1,7 @@
 import AppKit
 
-// ponytail: stub client until Task 4 wires real swift-openapi client
-private struct StubSyncClient: SyncClientProtocol {
+// ponytail: no-op client used when ServerConfig not yet set; token hardening is a later task
+private struct NoOpSyncClient: SyncClientProtocol {
     func pushChanges(_ changes: [SyncChange]) async throws -> Int { 0 }
     func pullChanges(cursor: Int) async throws -> (changes: [SyncChange], cursor: Int) { ([], 0) }
 }
@@ -11,8 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var syncTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let client: SyncClientProtocol = ServerConfig.load().map(StashBroAPIClient.init) ?? NoOpSyncClient()
+
         engine = MainActor.assumeIsolated {
-            SyncEngine(store: GRDBLocalStore(db: .shared), client: StubSyncClient())
+            SyncEngine(store: GRDBLocalStore(db: .shared), client: client)
         }
 
         NotificationCenter.default.addObserver(
