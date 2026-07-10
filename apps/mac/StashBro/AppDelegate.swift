@@ -67,8 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menubarController = MenubarController(db: db, syncEngine: { [weak self] in self?.syncEngine })
         startSyncTimer()
 
-        // C2: menubar always active; notch only when pref==notch AND hardware has notch
-        applyPrimarySurface()
+        // C2: menubar always active; notch only when showInNotch==true AND hardware has notch
+        applyNotchSurface()
         NotificationCenter.default.addObserver(
             self, selector: #selector(defaultsChanged),
             name: UserDefaults.didChangeNotification, object: nil
@@ -79,12 +79,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // C2: create or tear down notchController based on current primarySurface pref
-    @objc private func defaultsChanged() { applyPrimarySurface() }
+    // C2: key-filtered - bail early when showInNotch didn't actually change
+    @objc private func defaultsChanged() {
+        let want = UserDefaults.standard.bool(forKey: "showInNotch")
+        guard want != (notchController != nil) else { return }
+        applyNotchSurface()
+    }
 
-    private func applyPrimarySurface() {
-        let pref = UserDefaults.standard.string(forKey: "primarySurface") ?? "notch"
-        if pref == "notch" {
+    private func applyNotchSurface() {
+        if UserDefaults.standard.bool(forKey: "showInNotch") {
             if notchController == nil {
                 notchController = NotchWindowController(db: db, syncEngine: { [weak self] in self?.syncEngine })
             }

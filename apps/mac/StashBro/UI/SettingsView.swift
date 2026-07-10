@@ -14,9 +14,12 @@ func validatedConfig(urlString: String, token: String) -> ServerConfig? {
 struct SettingsView: View {
     @AppStorage("serverURL") private var serverURL = ""
     @AppStorage("serverToken") private var serverToken = ""
-    @AppStorage("primarySurface") private var primarySurface = "menubar"
+    @AppStorage("showInNotch") private var showInNotch = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var launchAtLoginError: String? = nil
+
+    // ponytail: computed at render time; static per session but correct
+    private var hasNotch: Bool { (NSScreen.main?.safeAreaInsets.top ?? 0) > 0 }
 
     var body: some View {
         Form {
@@ -28,9 +31,12 @@ struct SettingsView: View {
             }
 
             Section("Appearance") {
-                Picker("Primary Surface", selection: $primarySurface) {
-                    Text("Menubar Popover").tag("menubar")
-                    Text("Notch (requires notch Mac)").tag("notch")
+                Toggle("Show in notch", isOn: $showInNotch)
+                    .disabled(!hasNotch)
+                if !hasNotch {
+                    Text("No notch detected")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
