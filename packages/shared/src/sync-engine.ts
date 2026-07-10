@@ -47,6 +47,7 @@ export class SyncEngine {
   private onSyncComplete: (() => void) | undefined
   private onSyncError: ((err: Error) => void) | undefined
   private syncing = false
+  private pendingSync = false
 
   constructor(config: SyncEngineConfig) {
     this.client = config.client
@@ -60,7 +61,7 @@ export class SyncEngine {
   }
 
   async sync(): Promise<void> {
-    if (this.syncing) return
+    if (this.syncing) { this.pendingSync = true; return }
     this.syncing = true
     try {
       const cursor = await this.store.getCursor()
@@ -80,6 +81,7 @@ export class SyncEngine {
       this.onSyncError?.(err instanceof Error ? err : new Error(String(err)))
     } finally {
       this.syncing = false
+      if (this.pendingSync) { this.pendingSync = false; void this.sync() }
     }
   }
 }

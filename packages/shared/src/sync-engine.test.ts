@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { SyncEngine, OfflineQueue } from './sync-engine.js'
 import type { LocalStore } from './sync-engine.js'
 import type { SyncChange } from './types.js'
@@ -67,6 +67,45 @@ describe('SyncEngine', () => {
     const engine = new SyncEngine({ client: client as any, store, onSyncError: onError })
     await engine.sync()
     expect(onError).toHaveBeenCalledWith(expect.any(Error))
+  })
+
+  it('onLocalWrite triggers sync', async () => {
+    const store = makeStore()
+    const client = makeClient()
+    const onComplete = vi.fn()
+    const engine = new SyncEngine({ client: client as any, store, onSyncComplete: onComplete })
+    engine.onLocalWrite(makeChange())
+    // flush microtasks so the void sync() promise runs
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(client.pullChanges).toHaveBeenCalled()
+  })
+
+  it('write during in-flight sync schedules a second cycle', async () => {
+    const store = makeStore()
+    let resolvePull!: () => void
+    const client = {
+      pushChanges: vi.fn(async () => ({ accepted: 0 })),
+      pullChanges: vi.fn(() => new Promise<{ changes: SyncChange[]; cursor: number }>(resolve => {
+        resolvePull = () => resolve({ changes: [], cursor: 1 })
+      })),
+    }
+    const engine = new SyncEngine({ client: client as any, store })
+
+    // start first sync - stalls at pullChanges
+    const firstSync = engine.sync()
+    // flush microtasks so sync() progresses through getCursor/getChangesSince and enters pullChanges
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    // write arrives while pullChanges is in-flight - sets pendingSync
+    engine.onLocalWrite(makeChange())
+
+    // release pullChanges; first sync completes, then pendingSync triggers second sync
+    resolvePull()
+    await firstSync
+    // flush so the void second sync() runs to completion
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(client.pullChanges).toHaveBeenCalledTimes(2)
   })
 })
 
