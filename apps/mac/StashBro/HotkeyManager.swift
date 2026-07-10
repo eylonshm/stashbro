@@ -9,9 +9,9 @@ extension KeyboardShortcuts.Name {
 enum HotkeyManager {
     static func register(handler: @escaping (URL) -> Void) {
         KeyboardShortcuts.onKeyDown(for: .saveCurrentTab) {
-            Task {
+            Task { @MainActor in
                 guard let url = await BrowserTabGrabber.grab() else { return }
-                await MainActor.run { handler(url) }
+                handler(url)
             }
         }
     }
