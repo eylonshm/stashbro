@@ -1,0 +1,650 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		05BA4D5619F768C5CC31E38A /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = FE10C7E914F19A79A53A64B4 /* KeyboardShortcuts */; };
+		1698A780925ABCEFEF14E6D2 /* openapi-generator-config.yaml in Resources */ = {isa = PBXBuildFile; fileRef = B25444420F33966578FBCE3B /* openapi-generator-config.yaml */; };
+		1DE1A2D48E7F9403F64ADA53 /* OpenAPIRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = 803192BC22B3806772CFF865 /* OpenAPIRuntime */; };
+		2722ACFB5EBFC14F08199286 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9FCDB647AD5D90346A32621 /* AppDelegate.swift */; };
+		29BF32CE7F3BAF65A957523D /* openapi.yaml in Resources */ = {isa = PBXBuildFile; fileRef = 3082C3B5B6F044993F3F0C05 /* openapi.yaml */; };
+		4E77BD432E32DD1091B1BD52 /* StashBroTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2275B2232314556C04D49093 /* StashBroTests.swift */; };
+		564E292999E4CF9ECE1A69E8 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 98DB5FA5A468DC602D0DBECA /* GRDB */; };
+		71038D462FF1411C2BC437F4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7868B0171B9E536624FF121F /* Assets.xcassets */; };
+		815434F69D66F1E4619F3594 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = AFFC2A87A95357059A5447E4 /* GRDB */; };
+		8EB8C844AA8717027CDC2115 /* StashBroApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43E576BCED510A7E98D4AEFA /* StashBroApp.swift */; };
+		A8BED86D91F794949FE9F5E1 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738CC3849778BA7F57A49A03 /* ShareViewController.swift */; };
+		BA67AF1305243061FCC67622 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D2304D10444FD1644C7D949 /* SettingsView.swift */; };
+		EE95509D1E6A76942BBC2FEE /* OpenAPIURLSession in Frameworks */ = {isa = PBXBuildFile; productRef = DA8C2F1A835ED9E4F40DCD43 /* OpenAPIURLSession */; };
+		F079CB9E3C91382294CCAD47 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = D04BAC0F06152F91B7E27426 /* GRDB */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		88E04D4B3508BD1B2D730A1D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 244DA0978D1E0D14C0C02CB7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 46BCDF2EB2D21CA505A4D5B4;
+			remoteInfo = StashBro;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		1D2304D10444FD1644C7D949 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		2275B2232314556C04D49093 /* StashBroTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StashBroTests.swift; sourceTree = "<group>"; };
+		3082C3B5B6F044993F3F0C05 /* openapi.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = openapi.yaml; sourceTree = "<group>"; };
+		3A0A04096571BE1810C56F5D /* StashBroShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StashBroShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		43E576BCED510A7E98D4AEFA /* StashBroApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StashBroApp.swift; sourceTree = "<group>"; };
+		4F1C4F81BE12927B1BF472C5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		738CC3849778BA7F57A49A03 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		77C1875A8B33A5A2515C1722 /* StashBro.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StashBro.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7868B0171B9E536624FF121F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		917EE03F267A37AE808CC736 /* StashBroTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StashBroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B25444420F33966578FBCE3B /* openapi-generator-config.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = "openapi-generator-config.yaml"; sourceTree = "<group>"; };
+		B9FCDB647AD5D90346A32621 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		E273C905E616C7E7C8881714 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B679ED81A2DB926771CFE3B4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				564E292999E4CF9ECE1A69E8 /* GRDB in Frameworks */,
+				1DE1A2D48E7F9403F64ADA53 /* OpenAPIRuntime in Frameworks */,
+				EE95509D1E6A76942BBC2FEE /* OpenAPIURLSession in Frameworks */,
+				05BA4D5619F768C5CC31E38A /* KeyboardShortcuts in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CD4E6B982E1E7802B1691C75 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F079CB9E3C91382294CCAD47 /* GRDB in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D01869356B29A46C0EC71186 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				815434F69D66F1E4619F3594 /* GRDB in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0F5673F576CCF1F7125E5B58 = {
+			isa = PBXGroup;
+			children = (
+				10039486449F380B6443C16C /* StashBro */,
+				E08392BBFF8C1070F06EFF41 /* StashBroShareExtension */,
+				3E2E4BFF246FAB2BCA361288 /* StashBroTests */,
+				3BF3786C4DDF5C49C3923492 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		10039486449F380B6443C16C /* StashBro */ = {
+			isa = PBXGroup;
+			children = (
+				B9FCDB647AD5D90346A32621 /* AppDelegate.swift */,
+				7868B0171B9E536624FF121F /* Assets.xcassets */,
+				4F1C4F81BE12927B1BF472C5 /* Info.plist */,
+				B25444420F33966578FBCE3B /* openapi-generator-config.yaml */,
+				3082C3B5B6F044993F3F0C05 /* openapi.yaml */,
+				1D2304D10444FD1644C7D949 /* SettingsView.swift */,
+				43E576BCED510A7E98D4AEFA /* StashBroApp.swift */,
+			);
+			path = StashBro;
+			sourceTree = "<group>";
+		};
+		3BF3786C4DDF5C49C3923492 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				77C1875A8B33A5A2515C1722 /* StashBro.app */,
+				3A0A04096571BE1810C56F5D /* StashBroShareExtension.appex */,
+				917EE03F267A37AE808CC736 /* StashBroTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3E2E4BFF246FAB2BCA361288 /* StashBroTests */ = {
+			isa = PBXGroup;
+			children = (
+				2275B2232314556C04D49093 /* StashBroTests.swift */,
+			);
+			path = StashBroTests;
+			sourceTree = "<group>";
+		};
+		E08392BBFF8C1070F06EFF41 /* StashBroShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				E273C905E616C7E7C8881714 /* Info.plist */,
+				738CC3849778BA7F57A49A03 /* ShareViewController.swift */,
+			);
+			path = StashBroShareExtension;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		262CA479086082F97713D4C9 /* StashBroTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7469BA6189D63988B6788DE2 /* Build configuration list for PBXNativeTarget "StashBroTests" */;
+			buildPhases = (
+				B8C8AC2E3FA1D5E1CAACD6B3 /* Sources */,
+				D01869356B29A46C0EC71186 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1831670D9443FD82452ECC22 /* PBXTargetDependency */,
+			);
+			name = StashBroTests;
+			packageProductDependencies = (
+				AFFC2A87A95357059A5447E4 /* GRDB */,
+			);
+			productName = StashBroTests;
+			productReference = 917EE03F267A37AE808CC736 /* StashBroTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		375D64718A3E52B7EA86A234 /* StashBroShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 879CEA8BA28BC210C81563DA /* Build configuration list for PBXNativeTarget "StashBroShareExtension" */;
+			buildPhases = (
+				63AAE76A7CEE0C53A145CE9A /* Sources */,
+				CD4E6B982E1E7802B1691C75 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StashBroShareExtension;
+			packageProductDependencies = (
+				D04BAC0F06152F91B7E27426 /* GRDB */,
+			);
+			productName = StashBroShareExtension;
+			productReference = 3A0A04096571BE1810C56F5D /* StashBroShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		46BCDF2EB2D21CA505A4D5B4 /* StashBro */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6D9876B635DA027B0B899198 /* Build configuration list for PBXNativeTarget "StashBro" */;
+			buildPhases = (
+				82C7A8387E3C6BB0C0766ADA /* Sources */,
+				30B4175C1F8FF10765C56816 /* Resources */,
+				B679ED81A2DB926771CFE3B4 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2EA63F182746B8CC34A8875F /* PBXTargetDependency */,
+			);
+			name = StashBro;
+			packageProductDependencies = (
+				98DB5FA5A468DC602D0DBECA /* GRDB */,
+				803192BC22B3806772CFF865 /* OpenAPIRuntime */,
+				DA8C2F1A835ED9E4F40DCD43 /* OpenAPIURLSession */,
+				FE10C7E914F19A79A53A64B4 /* KeyboardShortcuts */,
+			);
+			productName = StashBro;
+			productReference = 77C1875A8B33A5A2515C1722 /* StashBro.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		244DA0978D1E0D14C0C02CB7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					262CA479086082F97713D4C9 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					375D64718A3E52B7EA86A234 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					46BCDF2EB2D21CA505A4D5B4 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = FAE1A45722A679404234CDFD /* Build configuration list for PBXProject "StashBro" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 0F5673F576CCF1F7125E5B58;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5BD4522278F861016186D8F7 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				81099164EA75EF9161A78BF7 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+				3081BDC091539381A2C04275 /* XCRemoteSwiftPackageReference "swift-openapi-generator" */,
+				605019AD1CA415A92BBE3441 /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */,
+				97F62F92D11E4848671BB2AB /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 3BF3786C4DDF5C49C3923492 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				46BCDF2EB2D21CA505A4D5B4 /* StashBro */,
+				375D64718A3E52B7EA86A234 /* StashBroShareExtension */,
+				262CA479086082F97713D4C9 /* StashBroTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		30B4175C1F8FF10765C56816 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				71038D462FF1411C2BC437F4 /* Assets.xcassets in Resources */,
+				1698A780925ABCEFEF14E6D2 /* openapi-generator-config.yaml in Resources */,
+				29BF32CE7F3BAF65A957523D /* openapi.yaml in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		63AAE76A7CEE0C53A145CE9A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A8BED86D91F794949FE9F5E1 /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		82C7A8387E3C6BB0C0766ADA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2722ACFB5EBFC14F08199286 /* AppDelegate.swift in Sources */,
+				BA67AF1305243061FCC67622 /* SettingsView.swift in Sources */,
+				8EB8C844AA8717027CDC2115 /* StashBroApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B8C8AC2E3FA1D5E1CAACD6B3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4E77BD432E32DD1091B1BD52 /* StashBroTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1831670D9443FD82452ECC22 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 46BCDF2EB2D21CA505A4D5B4 /* StashBro */;
+			targetProxy = 88E04D4B3508BD1B2D730A1D /* PBXContainerItemProxy */;
+		};
+		2EA63F182746B8CC34A8875F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = F691397997AD4E127757302A /* OpenAPIGenerator */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		00FDAABEDAC00F3FC8834303 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.stashbro.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/StashBro.app/Contents/MacOS/StashBro";
+			};
+			name = Debug;
+		};
+		2447FA79E66FDCE057B330E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = StashBroShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stashbro.app.shareextension;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		27CC62D645EFA325BD96D94B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.stashbro.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/StashBro.app/Contents/MacOS/StashBro";
+			};
+			name = Release;
+		};
+		5BF97EE1231F4A31A413C985 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = StashBroShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stashbro.app.shareextension;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		A39E3DDB67B490F292A2B0ED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Release;
+		};
+		CB1FC949249B26416E2DD836 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = StashBro/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stashbro.app;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		D2D65B834962C145C6CC81B5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = StashBro/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stashbro.app;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		D92FB71A625EE2C8E38F4580 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6D9876B635DA027B0B899198 /* Build configuration list for PBXNativeTarget "StashBro" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D2D65B834962C145C6CC81B5 /* Debug */,
+				CB1FC949249B26416E2DD836 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7469BA6189D63988B6788DE2 /* Build configuration list for PBXNativeTarget "StashBroTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00FDAABEDAC00F3FC8834303 /* Debug */,
+				27CC62D645EFA325BD96D94B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		879CEA8BA28BC210C81563DA /* Build configuration list for PBXNativeTarget "StashBroShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5BF97EE1231F4A31A413C985 /* Debug */,
+				2447FA79E66FDCE057B330E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FAE1A45722A679404234CDFD /* Build configuration list for PBXProject "StashBro" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D92FB71A625EE2C8E38F4580 /* Debug */,
+				A39E3DDB67B490F292A2B0ED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		3081BDC091539381A2C04275 /* XCRemoteSwiftPackageReference "swift-openapi-generator" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-generator";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.6.0;
+			};
+		};
+		5BD4522278F861016186D8F7 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.29.0;
+			};
+		};
+		605019AD1CA415A92BBE3441 /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-runtime";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.7.0;
+			};
+		};
+		81099164EA75EF9161A78BF7 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.2.0;
+			};
+		};
+		97F62F92D11E4848671BB2AB /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-urlsession";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		803192BC22B3806772CFF865 /* OpenAPIRuntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 605019AD1CA415A92BBE3441 /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */;
+			productName = OpenAPIRuntime;
+		};
+		98DB5FA5A468DC602D0DBECA /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5BD4522278F861016186D8F7 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+		AFFC2A87A95357059A5447E4 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5BD4522278F861016186D8F7 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+		D04BAC0F06152F91B7E27426 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5BD4522278F861016186D8F7 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+		DA8C2F1A835ED9E4F40DCD43 /* OpenAPIURLSession */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 97F62F92D11E4848671BB2AB /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */;
+			productName = OpenAPIURLSession;
+		};
+		F691397997AD4E127757302A /* OpenAPIGenerator */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3081BDC091539381A2C04275 /* XCRemoteSwiftPackageReference "swift-openapi-generator" */;
+			productName = "plugin:OpenAPIGenerator";
+		};
+		FE10C7E914F19A79A53A64B4 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 81099164EA75EF9161A78BF7 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 244DA0978D1E0D14C0C02CB7 /* Project object */;
+}

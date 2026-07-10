@@ -1,0 +1,918 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "StashBro API",
+    "version": "1.0.0"
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {},
+    "parameters": {}
+  },
+  "paths": {
+    "/items": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "video",
+                      "post",
+                      "article",
+                      "other"
+                    ]
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  },
+                  "tag_names": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "url"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "user_id": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "thumbnail_url": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "favicon_url": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "video",
+                        "post",
+                        "article",
+                        "other"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "unread",
+                        "archived"
+                      ]
+                    },
+                    "priority": {
+                      "type": "string",
+                      "enum": [
+                        "low",
+                        "medium",
+                        "high"
+                      ]
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "deleted_at": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "change_seq": {
+                      "type": "number"
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "user_id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "user_id",
+                          "name"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "user_id",
+                    "url",
+                    "title",
+                    "description",
+                    "thumbnail_url",
+                    "favicon_url",
+                    "domain",
+                    "type",
+                    "status",
+                    "priority",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "change_seq",
+                    "tags"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "unread",
+                "archived"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "video",
+                "post",
+                "article",
+                "other"
+              ]
+            },
+            "required": false,
+            "name": "type",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "tag",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "since",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "user_id": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "thumbnail_url": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "favicon_url": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "domain": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "video",
+                              "post",
+                              "article",
+                              "other"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "unread",
+                              "archived"
+                            ]
+                          },
+                          "priority": {
+                            "type": "string",
+                            "enum": [
+                              "low",
+                              "medium",
+                              "high"
+                            ]
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "deleted_at": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "change_seq": {
+                            "type": "number"
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "user_id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "user_id",
+                                "name"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "user_id",
+                          "url",
+                          "title",
+                          "description",
+                          "thumbnail_url",
+                          "favicon_url",
+                          "domain",
+                          "type",
+                          "status",
+                          "priority",
+                          "created_at",
+                          "updated_at",
+                          "deleted_at",
+                          "change_seq",
+                          "tags"
+                        ]
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "number",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{id}": {
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "video",
+                      "post",
+                      "article",
+                      "other"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "unread",
+                      "archived"
+                    ]
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  },
+                  "deleted_at": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "tag_names": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "user_id": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "thumbnail_url": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "favicon_url": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "video",
+                        "post",
+                        "article",
+                        "other"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "unread",
+                        "archived"
+                      ]
+                    },
+                    "priority": {
+                      "type": "string",
+                      "enum": [
+                        "low",
+                        "medium",
+                        "high"
+                      ]
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "deleted_at": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "change_seq": {
+                      "type": "number"
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "user_id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "user_id",
+                          "name"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "user_id",
+                    "url",
+                    "title",
+                    "description",
+                    "thumbnail_url",
+                    "favicon_url",
+                    "domain",
+                    "type",
+                    "status",
+                    "priority",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at",
+                    "change_seq",
+                    "tags"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tags": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "user_id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "user_id",
+                      "name"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created tag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "user_id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "user_id",
+                    "name"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync/push": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "changes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "change_seq": {
+                          "type": "number"
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "updated_at": {
+                          "type": "string"
+                        },
+                        "deleted_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "url": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "thumbnail_url": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "favicon_url": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "domain": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "video",
+                            "post",
+                            "article",
+                            "other"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "unread",
+                            "archived"
+                          ]
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "medium",
+                            "high"
+                          ]
+                        },
+                        "tag_names": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "change_seq",
+                        "created_at",
+                        "updated_at",
+                        "deleted_at",
+                        "url",
+                        "title",
+                        "description",
+                        "thumbnail_url",
+                        "favicon_url",
+                        "domain",
+                        "type",
+                        "status",
+                        "priority",
+                        "tag_names"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "changes"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Push result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "accepted"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync/pull": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "default": "0"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pull result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "changes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "change_seq": {
+                            "type": "number"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "deleted_at": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "thumbnail_url": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "favicon_url": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "domain": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "video",
+                              "post",
+                              "article",
+                              "other"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "unread",
+                              "archived"
+                            ]
+                          },
+                          "priority": {
+                            "type": "string",
+                            "enum": [
+                              "low",
+                              "medium",
+                              "high"
+                            ]
+                          },
+                          "tag_names": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "change_seq",
+                          "created_at",
+                          "updated_at",
+                          "deleted_at",
+                          "url",
+                          "title",
+                          "description",
+                          "thumbnail_url",
+                          "favicon_url",
+                          "domain",
+                          "type",
+                          "status",
+                          "priority",
+                          "tag_names"
+                        ]
+                      }
+                    },
+                    "cursor": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "changes",
+                    "cursor"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

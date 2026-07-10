@@ -1,0 +1,105 @@
+# apps/mac/project.yml
+name: StashBro
+options:
+  bundleIdPrefix: com.stashbro
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""  # Set to your Apple Developer Team ID
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: 6.29.0
+  swift-openapi-generator:
+    url: https://github.com/apple/swift-openapi-generator
+    from: 1.6.0
+  swift-openapi-runtime:
+    url: https://github.com/apple/swift-openapi-runtime
+    from: 1.7.0
+  swift-openapi-urlsession:
+    url: https://github.com/apple/swift-openapi-urlsession
+    from: 1.0.2
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: 2.2.0
+
+targets:
+  StashBro:
+    type: application
+    platform: macOS
+    sources:
+      - path: StashBro
+    resources:
+      - StashBro/Assets.xcassets
+      - StashBro/openapi.yaml
+      - StashBro/openapi-generator-config.yaml
+    info:
+      path: StashBro/Info.plist
+      properties:
+        CFBundleName: StashBro
+        CFBundleIdentifier: com.stashbro.app
+        NSPrincipalClass: NSApplication
+        LSUIElement: true
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        NSAppleEventsUsageDescription: "StashBro reads the current browser tab URL to save links."
+        com.apple.security.application-groups:
+          - group.com.stashbro.app
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.stashbro.app
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+    dependencies:
+      - package: GRDB
+      - package: swift-openapi-runtime
+        product: OpenAPIRuntime
+      - package: swift-openapi-urlsession
+        product: OpenAPIURLSession
+      - package: KeyboardShortcuts
+    buildToolPlugins:
+      - package: swift-openapi-generator
+        plugin: OpenAPIGenerator
+
+  StashBroShareExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: StashBroShareExtension
+    info:
+      path: StashBroShareExtension/Info.plist
+      properties:
+        CFBundleIdentifier: com.stashbro.app.shareextension
+        NSExtension:
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+        com.apple.security.application-groups:
+          - group.com.stashbro.app
+    dependencies:
+      - package: GRDB
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.stashbro.app.shareextension
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+  StashBroTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: StashBroTests
+    dependencies:
+      - target: StashBro
+      - package: GRDB
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.stashbro.tests
