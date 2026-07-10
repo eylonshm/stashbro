@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-native",
+    "lib": ["ESNext"],
+    "paths": { "@stashbro/shared": ["../../packages/shared/src/index.ts"] }
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}
