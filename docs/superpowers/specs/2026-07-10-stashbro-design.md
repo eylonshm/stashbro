@@ -73,7 +73,7 @@ Save is instant with only the URL (title falls back to the URL). The server enri
 Mac (all four in v1):
 1. Global hotkey ⌘⇧S - grabs frontmost browser tab URL via AppleScript (Safari/Chrome/Arc), clipboard-URL fallback.
 2. Drag a link onto the notch - notch area accepts URL drags.
-3. macOS share menu extension.
+  3. macOS share menu extension.
 4. Browser extension - toolbar button + right-click context menu.
 
 iOS:
