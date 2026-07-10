@@ -135,7 +135,6 @@ targets:
       - path: StashBroWidget
       - path: StashBro/DB/AppDatabase.swift
       - path: StashBro/DB/StashItem+DB.swift
-      - path: StashBro/DB/Tag+DB.swift
     info:
       path: StashBroWidget/Info.plist
       properties:

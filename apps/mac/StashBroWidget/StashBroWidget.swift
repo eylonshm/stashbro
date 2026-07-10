@@ -35,7 +35,10 @@ struct StashBroProvider: TimelineProvider {
     }
 
     private func loadEntry() -> StashBroEntry {
-        let db = AppDatabase.makeShared()
+        // ponytail: readonly reader - no write path, no migration, returns nil if DB absent
+        guard let db = AppDatabase.makeSharedReader() else {
+            return StashBroEntry(date: Date(), unreadCount: 0, recentItems: [])
+        }
         do {
             let (count, items) = try db.dbWriter.read { dbConn -> (Int, [WidgetItem]) in
                 let count = try StashItem
@@ -115,7 +118,7 @@ struct StashBroWidgetView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 7) {
-                ForEach(entry.recentItems.prefix(3), id: \.title) { item in
+                ForEach(Array(entry.recentItems.prefix(3).enumerated()), id: \.offset) { _, item in
                     HStack(spacing: 6) {
                         Circle().fill(typeColor(item.type)).frame(width: 7, height: 7)
                         if item.isHighPriority {

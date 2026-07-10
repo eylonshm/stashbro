@@ -9,6 +9,20 @@ final class AppDatabase {
         self.dbWriter = dbWriter
     }
 
+    /// Widget-only: opens the existing DB read-only. Returns nil if the file doesn't exist yet
+    /// (app hasn't launched) or the entitlement is missing. Never creates/migrates the DB.
+    static func makeSharedReader(appGroupId: String = "group.com.stashbro.app") -> AppDatabase? {
+        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId) else {
+            return nil
+        }
+        let path = container.appendingPathComponent("stashbro.db").path
+        guard FileManager.default.fileExists(atPath: path) else { return nil }
+        var config = Configuration()
+        config.readonly = true
+        guard let queue = try? DatabaseQueue(path: path, configuration: config) else { return nil }
+        return AppDatabase(dbWriter: queue)
+    }
+
     static func makeShared(appGroupId: String = "group.com.stashbro.app") -> AppDatabase {
         // ponytail: XCTest sets this env var; skip the app group path so the test host doesn't crash
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {

@@ -52,8 +52,3 @@ struct StashItem: Identifiable, Codable, FetchableRecord, PersistableRecord {
     }
 }
 
-// Relationship to tags
-extension StashItem {
-    static let itemTags = hasMany(ItemTag.self, using: ForeignKey(["item_id"]))
-    static let tags = hasMany(Tag.self, through: itemTags, using: ItemTag.tag)
-}
