@@ -86,12 +86,15 @@ export async function fetchOgMeta(url: string): Promise<{
     if (favicon && !favicon.startsWith('http')) {
       try { favicon = new URL(favicon, url).href } catch { favicon = undefined }
     }
-    return {
-      title: get('og:title') ?? get('twitter:title'),
-      description: get('og:description') ?? get('twitter:description'),
-      image: get('og:image') ?? get('twitter:image'),
-      favicon,
-    }
+    const result: { title?: string; description?: string; image?: string; favicon?: string } = {}
+    const title = get('og:title') ?? get('twitter:title')
+    const description = get('og:description') ?? get('twitter:description')
+    const image = get('og:image') ?? get('twitter:image')
+    if (title) result.title = title
+    if (description) result.description = description
+    if (image) result.image = image
+    if (favicon) result.favicon = favicon
+    return result
   } catch {
     return {}
   }

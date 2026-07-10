@@ -138,7 +138,7 @@ describe('enrichMetadataAsync - LWW guards and sync visibility', () => {
     const db = insertItem()
     mockFetch.mockResolvedValueOnce(htmlResponse('<html><head><meta property="og:title" content="Enriched Title"></head></html>'))
     await enrichMetadataAsync(db, 'item-1', URL)
-    const [item] = db.select().from(items).where(eq(items.id, 'item-1')).all()
+    const item = db.select().from(items).where(eq(items.id, 'item-1')).all()[0]!
     expect(item.change_seq).toBeGreaterThan(1)
     expect(item.title).toBe('Enriched Title')
   })
@@ -147,7 +147,7 @@ describe('enrichMetadataAsync - LWW guards and sync visibility', () => {
     const db = insertItem({ title: 'My Custom Title' })
     mockFetch.mockResolvedValueOnce(htmlResponse('<html><head><meta property="og:title" content="OG Title"></head></html>'))
     await enrichMetadataAsync(db, 'item-1', URL)
-    const [item] = db.select().from(items).where(eq(items.id, 'item-1')).all()
+    const item = db.select().from(items).where(eq(items.id, 'item-1')).all()[0]!
     expect(item.title).toBe('My Custom Title')
   })
 
@@ -156,7 +156,7 @@ describe('enrichMetadataAsync - LWW guards and sync visibility', () => {
     const db = insertItem()
     mockFetch.mockResolvedValueOnce(htmlResponse('<html><head><meta property="og:image" content="https://example.com/img.jpg"></head></html>'))
     await enrichMetadataAsync(db, 'item-1', URL)
-    const [item1] = db.select().from(items).where(eq(items.id, 'item-1')).all()
+    const item1 = db.select().from(items).where(eq(items.id, 'item-1')).all()[0]!
     expect(item1.thumbnail_url).toBe('https://example.com/img.jpg')
 
     // item-2: already has thumbnail - should not be overwritten
@@ -167,7 +167,7 @@ describe('enrichMetadataAsync - LWW guards and sync visibility', () => {
     }).run()
     mockFetch.mockResolvedValueOnce(htmlResponse('<html><head><meta property="og:image" content="https://new.com/img.jpg"></head></html>'))
     await enrichMetadataAsync(db, 'item-2', URL)
-    const [item2] = db.select().from(items).where(eq(items.id, 'item-2')).all()
+    const item2 = db.select().from(items).where(eq(items.id, 'item-2')).all()[0]!
     expect(item2.thumbnail_url).toBe('https://existing.com/thumb.jpg')
   })
 })

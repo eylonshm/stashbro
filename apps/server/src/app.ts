@@ -6,6 +6,8 @@ import { syncRouter } from './routes/sync.js'
 export function createApp() {
   const app = new OpenAPIHono()
 
+  app.openAPIRegistry.registerComponent('securitySchemes', 'BearerAuth', { type: 'http', scheme: 'bearer' })
+
   app.get('/health', (c) => c.json({ ok: true }))
 
   app.route('/items', itemsRouter())
@@ -15,9 +17,6 @@ export function createApp() {
   app.doc('/openapi.json', {
     openapi: '3.1.0',
     info: { title: 'StashBro API', version: '1.0.0' },
-    components: {
-      securitySchemes: { BearerAuth: { type: 'http', scheme: 'bearer' } },
-    },
     security: [{ BearerAuth: [] }],
   })
 

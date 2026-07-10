@@ -172,7 +172,7 @@ export function itemsRouter() {
 
   // PATCH /items/:id
   const patchRoute = createRoute({
-    method: 'patch', path: '/:id',
+    method: 'patch', path: '/{id}',
     request: {
       params: z.object({ id: z.string() }),
       body: { content: { 'application/json': { schema: z.object({
