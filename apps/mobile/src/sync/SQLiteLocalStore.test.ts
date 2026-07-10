@@ -283,3 +283,24 @@ describe('cursor - keyed per user', () => {
     expect(await storeB.getCursor()).toBe(0)
   })
 })
+
+describe('archive mutation (MAX+1 seq - mirrors index.tsx archive callback)', () => {
+  it('archived item appears in getChangesSince with bumped change_seq', async () => {
+    const db = freshDb()
+    const store = makeStore(db)
+    db.prepare(`INSERT INTO items (id,user_id,url,title,domain,change_seq,updated_at,created_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('i1', 'u1', 'https://a.com', 'A', 'a.com', 5, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+    await store.setCursor(5)
+
+    // Simulate the archive mutation: MAX+1 seq allocation (same logic as archive in index.tsx)
+    const maxSeq = (db.prepare('SELECT MAX(change_seq) as seq FROM items').get() as any).seq + 1
+    db.prepare('UPDATE items SET status=?, updated_at=?, change_seq=? WHERE id=?')
+      .run('archived', new Date().toISOString(), maxSeq, 'i1')
+
+    const changes = await store.getChangesSince(5)
+    expect(changes).toHaveLength(1)
+    expect(changes[0]?.id).toBe('i1')
+    expect(changes[0]?.status).toBe('archived')
+    expect(changes[0]?.change_seq).toBe(6)
+  })
+})

@@ -34,7 +34,10 @@ export default function HomeScreen() {
 
   const archive = useCallback((id: string) => {
     const db = openDatabase()
-    db.runSync('UPDATE items SET status=?, updated_at=? WHERE id=?', ['archived', new Date().toISOString(), id])
+    // Allocate MAX+1 change_seq so getChangesSince picks this up and pushes to server
+    const nextSeq = ((db.getFirstSync<{ seq: number | null }>('SELECT MAX(change_seq) as seq FROM items', [])?.seq) ?? 0) + 1
+    db.runSync('UPDATE items SET status=?, updated_at=?, change_seq=? WHERE id=?',
+      ['archived', new Date().toISOString(), nextSeq, id])
     refresh()
     void engine?.sync()
   }, [engine, refresh])
