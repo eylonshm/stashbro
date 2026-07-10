@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { uuidv7 } from 'uuidv7'
-import { eq, and, gt, lte, desc } from 'drizzle-orm'
+import { eq, and, gt, lt, desc } from 'drizzle-orm'
 import { authMiddleware } from '../middleware/auth.js'
 import { getDb } from '../db/index.js'
 import { items, tags, item_tags } from '../db/schema.js'
@@ -65,43 +65,47 @@ export function syncRouter() {
     let accepted = 0
 
     for (const change of changes) {
-      const existing = db.select().from(items).where(and(eq(items.id, change.id), eq(items.user_id, userId))).all()[0]
-      if (existing && existing.updated_at >= change.updated_at) continue // LWW: server wins
+      try {
+        const existing = db.select().from(items).where(and(eq(items.id, change.id), eq(items.user_id, userId))).all()[0]
+        if (existing && existing.updated_at >= change.updated_at) continue // LWW: server wins
 
-      const seq = nextSeqForUser(db, userId)
-      if (existing) {
-        db.update(items).set({
-          url: change.url, title: change.title, description: change.description,
-          thumbnail_url: change.thumbnail_url, favicon_url: change.favicon_url,
-          domain: change.domain, type: change.type, status: change.status,
-          priority: change.priority, updated_at: change.updated_at,
-          deleted_at: change.deleted_at, change_seq: seq,
-        }).where(eq(items.id, change.id)).run()
-      } else {
-        const now = new Date().toISOString()
-        db.insert(items).values({
-          id: change.id, user_id: userId, url: change.url, title: change.title,
-          description: change.description, thumbnail_url: change.thumbnail_url,
-          favicon_url: change.favicon_url, domain: change.domain, type: change.type,
-          status: change.status, priority: change.priority,
-          created_at: now, updated_at: change.updated_at,
-          deleted_at: change.deleted_at, change_seq: seq,
-        }).run()
-      }
-
-      // Sync tags
-      db.delete(item_tags).where(eq(item_tags.item_id, change.id)).run()
-      for (const name of change.tag_names) {
-        let tag = db.select().from(tags).where(and(eq(tags.user_id, userId), eq(tags.name, name))).all()[0]
-        if (!tag) {
-          const tagId = uuidv7()
-          db.insert(tags).values({ id: tagId, user_id: userId, name }).run()
-          tag = db.select().from(tags).where(eq(tags.id, tagId)).all()[0]!
+        const seq = nextSeqForUser(db, userId)
+        if (existing) {
+          db.update(items).set({
+            url: change.url, title: change.title, description: change.description,
+            thumbnail_url: change.thumbnail_url, favicon_url: change.favicon_url,
+            domain: change.domain, type: change.type, status: change.status,
+            priority: change.priority, updated_at: change.updated_at,
+            deleted_at: change.deleted_at, change_seq: seq,
+          }).where(and(eq(items.id, change.id), eq(items.user_id, userId))).run() // defense-in-depth: scoped to userId
+        } else {
+          const now = new Date().toISOString()
+          db.insert(items).values({
+            id: change.id, user_id: userId, url: change.url, title: change.title,
+            description: change.description, thumbnail_url: change.thumbnail_url,
+            favicon_url: change.favicon_url, domain: change.domain, type: change.type,
+            status: change.status, priority: change.priority,
+            created_at: now, updated_at: change.updated_at,
+            deleted_at: change.deleted_at, change_seq: seq,
+          }).run()
         }
-        db.insert(item_tags).values({ item_id: change.id, tag_id: tag.id }).onConflictDoNothing().run()
-      }
 
-      accepted++
+        // ponytail: item+tag not atomic - process-kill between the two leaves an orphan item with no tags; upgrade path: wrap block in db.transaction()
+        db.delete(item_tags).where(eq(item_tags.item_id, change.id)).run()
+        for (const name of change.tag_names) {
+          let tag = db.select().from(tags).where(and(eq(tags.user_id, userId), eq(tags.name, name))).all()[0]
+          if (!tag) {
+            const tagId = uuidv7()
+            db.insert(tags).values({ id: tagId, user_id: userId, name }).run()
+            tag = db.select().from(tags).where(eq(tags.id, tagId)).all()[0]!
+          }
+          db.insert(item_tags).values({ item_id: change.id, tag_id: tag.id }).onConflictDoNothing().run()
+        }
+
+        accepted++
+      } catch {
+        // PK collision (e.g. another user's item UUID) or constraint error - skip this change, batch continues
+      }
     }
 
     return c.json({ accepted })
@@ -119,9 +123,9 @@ export function syncRouter() {
     const db = getDb()
     const cursor = parseInt(c.req.valid('query').cursor, 10)
 
-    // Purge tombstones older than 90 days
+    // Purge tombstones strictly older than 90 days (exactly 90d is kept)
     const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-    db.delete(items).where(and(eq(items.user_id, userId), lte(items.deleted_at, cutoff))).run()
+    db.delete(items).where(and(eq(items.user_id, userId), lt(items.deleted_at, cutoff))).run()
 
     const rows = db.select().from(items)
       .where(and(eq(items.user_id, userId), gt(items.change_seq, cursor)))
