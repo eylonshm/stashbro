@@ -92,7 +92,8 @@ final class NotchWindowController {
         )
         panel.contentView = NSHostingView(rootView: expandedView)
 
-        // Collapse on click outside the panel
+        // Collapse on click outside the panel; guard against double-expand leaking a monitor
+        if let old = outsideClickMonitor { NSEvent.removeMonitor(old) }
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             guard let self else { return }
             let mouseLoc = NSEvent.mouseLocation
