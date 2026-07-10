@@ -12,11 +12,13 @@ final class AppDatabase {
     }
 
     static func makeShared(appGroupId: String = "group.com.stashbro.app") -> AppDatabase {
-        if let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId),
-           let db = try? makeAt(path: container.appendingPathComponent("stashbro.db").path) {
-            return db
+        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId) else {
+            return makeInMemory() // nil = test/sandbox (no app group entitlement)
         }
-        return makeInMemory() // ponytail: fallback for test/sandbox environments
+        // try! intentional: disk full / corruption / migration failure must crash loudly;
+        // silent in-memory fallback would hide data and lose saves on restart.
+        // User-facing error UI comes in a later task.
+        return try! makeAt(path: container.appendingPathComponent("stashbro.db").path)
     }
 
     static func makeInMemory() -> AppDatabase {
