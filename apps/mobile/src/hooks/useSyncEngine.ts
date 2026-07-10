@@ -1,9 +1,21 @@
 import { useEffect, useRef, useCallback, useMemo } from 'react'
 import { AppState } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import RNFS from 'react-native-fs'
 import { SyncEngine, StashBroClient } from '@stashbro/shared'
 import { openDatabase } from '../db/database.js'
 import { SQLiteLocalStore, makeExpoSyncDb } from '../sync/SQLiteLocalStore.js'
+import { ingestShareExtensionInbox, type InboxFS } from '../sync/ingestInbox.js'
+
+const APP_GROUP = 'group.com.stashbro.mobile'
+
+// ponytail: RNFS adapter defined once at module level; only referenced in prod (never in tests)
+const rnfsInboxFS: InboxFS = {
+  exists: (p) => RNFS.exists(p),
+  listFiles: (dir) => RNFS.readdir(dir),
+  readFile: (p) => RNFS.readFile(p, 'utf8'),
+  deleteFile: (p) => RNFS.unlink(p),
+}
 
 // ponytail: module-level refs so settings screen can reinit/sync without context wiring
 // Mobile has one active session; these are always the home screen's engine refs.
@@ -39,8 +51,16 @@ export function useSyncEngine(onSyncComplete?: () => void) {
     _syncFn = () => engineRef.current?.sync() ?? Promise.resolve()
     void init()
 
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void engineRef.current?.sync()
+    const sub = AppState.addEventListener('change', async (state) => {
+      if (state === 'active') {
+        if (storeRef.current) {
+          // pathForGroup is async; safe to await here since AppState handler is already async
+          const groupDir = await RNFS.pathForGroup(APP_GROUP)
+          const inboxDir = `${groupDir}/inbox`
+          await ingestShareExtensionInbox(storeRef.current, inboxDir, rnfsInboxFS)
+        }
+        void engineRef.current?.sync()
+      }
     })
     return () => {
       _initFn = null
