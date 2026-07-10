@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { lookup } from 'dns/promises'
 import type { AppDb } from '../db/index.js'
 import { items } from '../db/schema.js'
@@ -98,16 +98,38 @@ export async function fetchOEmbed(url: string): Promise<{ title?: string; thumbn
 
 async function enrichOnce(db: AppDb, itemId: string, url: string): Promise<void> {
   const [og, oembed] = await Promise.all([fetchOgMeta(url), fetchOEmbed(url)])
-  const update: Record<string, string | null> = {}
+
+  // Re-read fresh - item may have been edited since enrichment started
+  const [current] = db.select().from(items).where(eq(items.id, itemId)).all()
+  if (!current) return // deleted
+
+  const update: Record<string, unknown> = {}
+
+  // Only overwrite title when it's still the URL fallback (user hasn't edited it)
   const title = oembed?.title ?? og.title
-  if (title) update['title'] = title
-  if (og.description) update['description'] = og.description
-  const thumbnail = oembed?.thumbnail_url ?? og.image ?? null
-  if (thumbnail !== undefined) update['thumbnail_url'] = thumbnail
-  if (og.favicon) update['favicon_url'] = og.favicon
-  if (Object.keys(update).length > 0) {
-    db.update(items).set({ ...update, updated_at: new Date().toISOString() }).where(eq(items.id, itemId)).run()
-  }
+  if (title && current.title === url) update.title = title
+
+  // Only fill nullable fields when currently empty (never clobber existing values)
+  if (og.description && !current.description) update.description = og.description
+  const thumbnail = oembed?.thumbnail_url ?? og.image
+  if (thumbnail && !current.thumbnail_url) update.thumbnail_url = thumbnail
+  if (og.favicon && !current.favicon_url) update.favicon_url = og.favicon
+
+  if (Object.keys(update).length === 0) return
+
+  // Allocate new change_seq so enriched item appears in next sync pull
+  const seqRow = db.select({ seq: items.change_seq })
+    .from(items)
+    .where(eq(items.user_id, current.user_id))
+    .orderBy(desc(items.change_seq))
+    .limit(1)
+    .all()[0]
+  const seq = (seqRow?.seq ?? 0) + 1
+
+  db.update(items)
+    .set({ ...update, updated_at: new Date().toISOString(), change_seq: seq })
+    .where(eq(items.id, itemId))
+    .run()
 }
 
 export async function enrichMetadataAsync(db: AppDb, itemId: string, url: string): Promise<void> {

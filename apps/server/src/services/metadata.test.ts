@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchOgMeta, fetchOEmbed } from './metadata.js'
+import { eq } from 'drizzle-orm'
+import { fetchOgMeta, fetchOEmbed, enrichMetadataAsync } from './metadata.js'
+import { getDb, clearDbCache } from '../db/index.js'
+import { items } from '../db/schema.js'
+
+process.env['DB_PATH'] = ':memory:'
 
 // mock fetch globally for this test file
 const mockFetch = vi.fn()
@@ -50,6 +55,66 @@ describe('fetchOEmbed', () => {
   it('returns null for non-oEmbed URLs', async () => {
     const result = await fetchOEmbed('https://stratechery.com/article')
     expect(result).toBeNull()
+  })
+})
+
+describe('enrichMetadataAsync - LWW guards and sync visibility', () => {
+  const URL = 'https://example.com/article'
+
+  beforeEach(() => { clearDbCache(); mockFetch.mockReset() })
+
+  function insertItem(overrides: { title?: string; thumbnail_url?: string | null } = {}) {
+    const db = getDb()
+    db.insert(items).values({
+      id: 'item-1',
+      user_id: 'user-1',
+      url: URL,
+      title: overrides.title ?? URL, // default fallback = url
+      domain: 'example.com',
+      type: 'article',
+      status: 'unread',
+      priority: 'medium',
+      change_seq: 1,
+      thumbnail_url: overrides.thumbnail_url ?? null,
+    }).run()
+    return db
+  }
+
+  it('(a) change_seq advances after enrichment - item visible in next sync pull', async () => {
+    const db = insertItem()
+    mockFetch.mockResolvedValueOnce(htmlResponse('<html><head><meta property="og:title" content="Enriched Title"></head></html>'))
+    await enrichMetadataAsync(db, 'item-1', URL)
+    const [item] = db.select().from(items).where(eq(items.id, 'item-1')).all()
+    expect(item.change_seq).toBeGreaterThan(1)
+    expect(item.title).toBe('Enriched Title')
+  })
+
+  it('(b) user-edited title (title != url) is not overwritten by enrichment', async () => {
+    const db = insertItem({ title: 'My Custom Title' })
+    mockFetch.mockResolvedValueOnce(htmlResponse('<html><head><meta property="og:title" content="OG Title"></head></html>'))
+    await enrichMetadataAsync(db, 'item-1', URL)
+    const [item] = db.select().from(items).where(eq(items.id, 'item-1')).all()
+    expect(item.title).toBe('My Custom Title')
+  })
+
+  it('(c) empty thumbnail gets filled; existing thumbnail is untouched', async () => {
+    // item-1: no thumbnail - should be filled
+    const db = insertItem()
+    mockFetch.mockResolvedValueOnce(htmlResponse('<html><head><meta property="og:image" content="https://example.com/img.jpg"></head></html>'))
+    await enrichMetadataAsync(db, 'item-1', URL)
+    const [item1] = db.select().from(items).where(eq(items.id, 'item-1')).all()
+    expect(item1.thumbnail_url).toBe('https://example.com/img.jpg')
+
+    // item-2: already has thumbnail - should not be overwritten
+    db.insert(items).values({
+      id: 'item-2', user_id: 'user-1', url: URL, title: URL,
+      domain: 'example.com', type: 'article', status: 'unread',
+      priority: 'medium', change_seq: 5, thumbnail_url: 'https://existing.com/thumb.jpg',
+    }).run()
+    mockFetch.mockResolvedValueOnce(htmlResponse('<html><head><meta property="og:image" content="https://new.com/img.jpg"></head></html>'))
+    await enrichMetadataAsync(db, 'item-2', URL)
+    const [item2] = db.select().from(items).where(eq(items.id, 'item-2')).all()
+    expect(item2.thumbnail_url).toBe('https://existing.com/thumb.jpg')
   })
 })
 
