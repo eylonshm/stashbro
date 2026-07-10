@@ -7,6 +7,7 @@ import GRDB
 protocol LocalStoreProtocol {
     func getChangesSince(_ cursor: Int) throws -> [SyncChange]
     func applyChanges(_ changes: [SyncChange]) throws
+    func saveLocalItem(_ item: StashItem) throws
     func getCursor() -> Int
     func setCursor(_ cursor: Int)
 }

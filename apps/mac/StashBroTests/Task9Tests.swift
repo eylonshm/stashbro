@@ -3,6 +3,16 @@ import XCTest
 import GRDB
 @testable import StashBro
 
+// MARK: - Test helpers
+
+private final class FailingStore: LocalStoreProtocol {
+    func getChangesSince(_ cursor: Int) throws -> [SyncChange] { [] }
+    func applyChanges(_ changes: [SyncChange]) throws {}
+    func saveLocalItem(_ item: StashItem) throws { throw CocoaError(.fileWriteUnknown) }
+    func getCursor() -> Int { 0 }
+    func setCursor(_ cursor: Int) {}
+}
+
 final class ShareExtensionInboxTests: XCTestCase {
 
     // MARK: - helpers
@@ -96,6 +106,27 @@ final class ShareExtensionInboxTests: XCTestCase {
 
         let items = try db.dbWriter.read { try StashItem.fetchAll($0) }
         XCTAssertTrue(items.isEmpty)
+    }
+
+    func testSaveFailureLeaveFileForRetry() throws {
+        let inbox = try makeInbox()
+        let itemId = UUID().uuidString
+        let file = try writeInboxJSON(to: inbox, id: itemId)
+
+        // Store that always throws on saveLocalItem
+        let count = processShareInbox(at: inbox, into: FailingStore())
+
+        XCTAssertEqual(count, 0)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))  // file NOT deleted
+
+        // Retry with working store - item saved, file gone
+        let db = AppDatabase.makeInMemory()
+        let store = GRDBLocalStore(db: db, defaults: UserDefaults(suiteName: "test.\(UUID().uuidString)")!)
+        let count2 = processShareInbox(at: inbox, into: store)
+        XCTAssertEqual(count2, 1)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        let item = try db.dbWriter.read { try StashItem.fetchOne($0, key: itemId) }
+        XCTAssertNotNil(item)
     }
 
     func testEmptyInboxReturnsZero() throws {

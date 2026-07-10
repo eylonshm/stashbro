@@ -12,6 +12,7 @@ final class MockLocalStore: LocalStoreProtocol {
 
     func getChangesSince(_ c: Int) throws -> [SyncChange] { localChanges.filter { $0.changeSeq > c } }
     func applyChanges(_ changes: [SyncChange]) throws { appliedChanges.append(contentsOf: changes) }
+    func saveLocalItem(_ item: StashItem) throws {}  // ponytail: SyncEngine never calls this
     func getCursor() -> Int { cursor }
     func setCursor(_ c: Int) { cursor = c }
 }

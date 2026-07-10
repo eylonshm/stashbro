@@ -4,7 +4,7 @@ import SwiftUI
 
 // ponytail: top-level so tests can call directly without instantiating AppDelegate
 @discardableResult
-func processShareInbox(at inbox: URL, into store: GRDBLocalStore) -> Int {
+func processShareInbox(at inbox: URL, into store: LocalStoreProtocol) -> Int {
     guard let files = try? FileManager.default.contentsOfDirectory(
         at: inbox, includingPropertiesForKeys: nil
     ).filter({ $0.pathExtension == "json" }) else { return 0 }
@@ -12,14 +12,17 @@ func processShareInbox(at inbox: URL, into store: GRDBLocalStore) -> Int {
     let iso = ISO8601DateFormatter()
     var count = 0
     for file in files {
-        defer { try? FileManager.default.removeItem(at: file) }
         guard let data = try? Data(contentsOf: file),
               let payload = try? JSONDecoder().decode([String: String].self, from: data),
               let id = payload["id"], let url = payload["url"],
               let typeStr = payload["type"], let type_ = ItemType(rawValue: typeStr),
               let priorityStr = payload["priority"], let priority = ItemPriority(rawValue: priorityStr),
               let createdStr = payload["createdAt"], let created = iso.date(from: createdStr)
-        else { continue }
+        else {
+            // Malformed - delete so it doesn't block future ingests
+            try? FileManager.default.removeItem(at: file)
+            continue
+        }
 
         let now = Date()
         let stashItem = StashItem(
@@ -31,8 +34,13 @@ func processShareInbox(at inbox: URL, into store: GRDBLocalStore) -> Int {
             createdAt: created, updatedAt: now, deletedAt: nil,
             changeSeq: 0  // ponytail: saveLocalItem overwrites with MAX(change_seq)+1
         )
-        try? store.saveLocalItem(stashItem)
-        count += 1
+        do {
+            try store.saveLocalItem(stashItem)
+            try? FileManager.default.removeItem(at: file)  // only delete on success
+            count += 1
+        } catch {
+            // DB error - leave file in inbox for retry on next foreground activation
+        }
     }
     return count
 }
@@ -75,10 +83,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             forSecurityApplicationGroupIdentifier: "group.com.stashbro.app"
         ), let store else { return }
         let inbox = container.appendingPathComponent("inbox", isDirectory: true)
-        let count = processShareInbox(at: inbox, into: store)
-        if count > 0 {
-            Task { @MainActor in await syncEngine?.sync() }
-        }
+        processShareInbox(at: inbox, into: store)
+        // ponytail: no extra sync here; applicationDidBecomeActive fires one right after
     }
 
     private func startSyncTimer(engine: SyncEngine) {

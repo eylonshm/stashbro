@@ -19,14 +19,20 @@ final class ShareViewController: NSViewController {
         guard let item = extensionContext?.inputItems.first as? NSExtensionItem else {
             completion(nil); return
         }
-        for provider in item.attachments ?? [] {
-            if provider.hasItemConformingToTypeIdentifier("public.url") {
-                provider.loadItem(forTypeIdentifier: "public.url") { (data, _) in
-                    let url = data as? URL ?? (data as? String).flatMap(URL.init(string:))
-                    completion(url)
-                }
-                return
+        let attachments = item.attachments ?? []
+        // Prefer explicit URL type
+        for provider in attachments where provider.hasItemConformingToTypeIdentifier("public.url") {
+            provider.loadItem(forTypeIdentifier: "public.url") { (data, _) in
+                completion(data as? URL ?? (data as? String).flatMap(URL.init(string:)))
             }
+            return
+        }
+        // Fallback: some apps share URLs as plain text
+        for provider in attachments where provider.hasItemConformingToTypeIdentifier("public.plain-text") {
+            provider.loadItem(forTypeIdentifier: "public.plain-text") { (data, _) in
+                completion((data as? String).flatMap(URL.init(string:)))
+            }
+            return
         }
         completion(nil)
     }
@@ -37,7 +43,8 @@ final class ShareViewController: NSViewController {
         ) else { cancel(); return }
 
         let inbox = container.appendingPathComponent("inbox", isDirectory: true)
-        try? FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+        do { try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true) }
+        catch { cancel(); return }
 
         let host = url.host?.replacingOccurrences(of: "www.", with: "") ?? url.absoluteString
         let typeMap: [String: String] = [
@@ -58,7 +65,9 @@ final class ShareViewController: NSViewController {
         ]
 
         let file = inbox.appendingPathComponent("\(itemId).json")
-        try? JSONEncoder().encode(payload).write(to: file, options: .atomic)
+        guard let data = try? JSONEncoder().encode(payload) else { cancel(); return }
+        do { try data.write(to: file, options: .atomic) }
+        catch { cancel(); return }
 
         extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
     }
