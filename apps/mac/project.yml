@@ -93,6 +93,24 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.stashbro.app.shareextension
         MACOSX_DEPLOYMENT_TARGET: "14.0"
 
+  StashBroSafariExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: "StashBroSafariExtension/macOS (Extension)"
+      - path: "StashBroSafariExtension/Shared (Extension)"
+    info:
+      path: "StashBroSafariExtension/macOS (Extension)/Info.plist"
+      properties:
+        CFBundleIdentifier: com.stashbro.app.extension
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.Safari.web-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SafariWebExtensionHandler
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.stashbro.app.extension
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+
   StashBroTests:
     type: bundle.unit-test
     platform: macOS

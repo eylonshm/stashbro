@@ -14,6 +14,7 @@ export default defineConfig({
       default_popup: 'popup/index.html',
       default_icon: { '16': 'icon/16.png', '32': 'icon/32.png', '48': 'icon/48.png', '128': 'icon/128.png' },
     },
+    options_ui: { page: 'options/index.html', open_in_tab: true },
   },
   vite: () => ({}),
 })
