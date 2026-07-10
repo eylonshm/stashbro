@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
 import { createApp } from '../app.js'
 
 process.env['AUTH_TOKEN'] = 'test'
@@ -26,5 +27,13 @@ describe('OpenAPI spec', () => {
     const res = await app.request('/openapi.json')
     const spec = await res.json()
     expect(spec.paths['/sync/push']).toBeDefined()
+  })
+
+  it('committed openapi.json matches live spec (staleness guard)', async () => {
+    const app = createApp()
+    const res = await app.request('/openapi.json')
+    const live = await res.json()
+    const committed = JSON.parse(readFileSync(new URL('../../openapi.json', import.meta.url), 'utf-8'))
+    expect(live).toEqual(committed)
   })
 })
