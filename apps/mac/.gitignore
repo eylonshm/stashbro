@@ -1,5 +1,3 @@
 # apps/mac/.gitignore
-*.xcworkspace/xcuserdata/
+*.xcodeproj/
 DerivedData/
-*.xcodeproj/xcuserdata/
-*.xcodeproj/project.xcworkspace/xcuserdata/
