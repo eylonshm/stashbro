@@ -6,12 +6,24 @@ import { items } from '../db/schema.js'
 
 process.env['DB_PATH'] = ':memory:'
 
-// mock fetch globally for this test file
+// I3: mock DNS - no real network in any test
+vi.mock('dns/promises', () => ({
+  lookup: vi.fn((host: string) => {
+    // localhost resolves to loopback (matches real DNS), everything else gets a public IP
+    const ip = host === 'localhost' ? '127.0.0.1' : '93.184.216.34'
+    return Promise.resolve([{ address: ip, family: 4 }])
+  }),
+}))
+
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
 function htmlResponse(html: string) {
   return { ok: true, text: async () => html, headers: { get: () => 'text/html' } }
+}
+
+function redirectResponse(location: string, status = 301) {
+  return { ok: false, status, headers: { get: (h: string) => h === 'location' ? location : null } }
 }
 
 describe('fetchOgMeta', () => {
@@ -49,12 +61,54 @@ describe('fetchOEmbed', () => {
     })
     const result = await fetchOEmbed('https://youtube.com/watch?v=abc')
     expect(result?.title).toBe('YT Video')
-    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('youtube.com/oembed'))
+    // I1: fixed - fetch called with (url, options) so use expect.anything() for second arg
+    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('youtube.com/oembed'), expect.anything())
   })
 
   it('returns null for non-oEmbed URLs', async () => {
     const result = await fetchOEmbed('https://stratechery.com/article')
     expect(result).toBeNull()
+  })
+})
+
+describe('fetchOgMeta SSRF guard', () => {
+  beforeEach(() => mockFetch.mockReset())
+
+  it('returns {} for localhost URL (SSRF block)', async () => {
+    const result = await fetchOgMeta('http://localhost/admin')
+    expect(result).toEqual({})
+  })
+
+  it('returns {} for 192.168.x private IP', async () => {
+    const result = await fetchOgMeta('http://192.168.1.1/secret')
+    expect(result).toEqual({})
+  })
+
+  it('returns {} for 10.x private IP', async () => {
+    const result = await fetchOgMeta('http://10.0.0.1/internal')
+    expect(result).toEqual({})
+  })
+
+  it('C1: blocks redirect to private IP (169.254.x cloud metadata)', async () => {
+    mockFetch.mockResolvedValueOnce(redirectResponse('http://169.254.169.254/latest/meta-data/'))
+    const result = await fetchOgMeta('https://example.com/evil')
+    expect(result).toEqual({})
+  })
+
+  it('C1: follows redirect to public URL and parses response', async () => {
+    mockFetch.mockResolvedValueOnce(redirectResponse('https://example.com/final'))
+    mockFetch.mockResolvedValueOnce(htmlResponse('<html><head><meta property="og:title" content="Redirected Title"></head></html>'))
+    const result = await fetchOgMeta('https://example.com/start')
+    expect(result.title).toBe('Redirected Title')
+  })
+
+  it('C1: gives up after >3 redirect hops', async () => {
+    // 4 redirect responses trigger the cap (hops 0-3 each see a redirect, hops=3 >= MAX_REDIRECTS=3)
+    for (let i = 0; i < 4; i++) {
+      mockFetch.mockResolvedValueOnce(redirectResponse('https://example.com/loop'))
+    }
+    const result = await fetchOgMeta('https://example.com/start')
+    expect(result).toEqual({})
   })
 })
 
@@ -115,22 +169,5 @@ describe('enrichMetadataAsync - LWW guards and sync visibility', () => {
     await enrichMetadataAsync(db, 'item-2', URL)
     const [item2] = db.select().from(items).where(eq(items.id, 'item-2')).all()
     expect(item2.thumbnail_url).toBe('https://existing.com/thumb.jpg')
-  })
-})
-
-describe('fetchOgMeta SSRF guard', () => {
-  it('returns {} for localhost URL (SSRF block)', async () => {
-    const result = await fetchOgMeta('http://localhost/admin')
-    expect(result).toEqual({})
-  })
-
-  it('returns {} for 192.168.x private IP', async () => {
-    const result = await fetchOgMeta('http://192.168.1.1/secret')
-    expect(result).toEqual({})
-  })
-
-  it('returns {} for 10.x private IP', async () => {
-    const result = await fetchOgMeta('http://10.0.0.1/internal')
-    expect(result).toEqual({})
   })
 })
