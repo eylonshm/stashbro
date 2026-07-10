@@ -6,6 +6,7 @@ export interface SyncDb {
   queryAll<T>(sql: string, params: unknown[]): T[]
   queryOne<T>(sql: string, params: unknown[]): T | undefined
   run(sql: string, params: unknown[]): void
+  transaction(fn: () => void): void
 }
 
 // Cursor storage abstraction - allows headless testing without AsyncStorage
@@ -33,7 +34,7 @@ export class SQLiteLocalStore implements LocalStore {
   private storage: CursorStorage
   private userId: string
 
-  constructor(db: SyncDb, storage: CursorStorage, userId = 'default') {
+  constructor(db: SyncDb, storage: CursorStorage, userId: string) {
     this.db = db
     this.storage = storage
     this.userId = userId
@@ -49,7 +50,7 @@ export class SQLiteLocalStore implements LocalStore {
       id: string; change_seq: number; created_at: string; updated_at: string; deleted_at: string | null
       url: string; title: string; description: string | null; thumbnail_url: string | null
       favicon_url: string | null; domain: string; type: string; status: string; priority: string
-    }>('SELECT * FROM items WHERE user_id = ? AND change_seq > ? ORDER BY change_seq ASC', [this.userId, cursor])
+    }>('SELECT id,change_seq,created_at,updated_at,deleted_at,url,title,description,thumbnail_url,favicon_url,domain,type,status,priority FROM items WHERE user_id = ? AND change_seq > ? ORDER BY change_seq ASC', [this.userId, cursor])
 
     return rows.map(row => {
       const tagRows = this.db.queryAll<{ name: string }>(
@@ -69,31 +70,33 @@ export class SQLiteLocalStore implements LocalStore {
   }
 
   async applyChanges(changes: SyncChange[]): Promise<void> {
-    for (const change of changes) {
-      const existing = this.db.queryOne<{ updated_at: string; created_at: string }>(
-        'SELECT updated_at, created_at FROM items WHERE id = ?', [change.id]
-      )
-      if (!shouldApplyChange(change, existing?.updated_at ?? null)) continue
+    this.db.transaction(() => {
+      for (const change of changes) {
+        const existing = this.db.queryOne<{ updated_at: string; created_at: string }>(
+          'SELECT updated_at, created_at FROM items WHERE id = ? AND user_id = ?', [change.id, this.userId]
+        )
+        if (!shouldApplyChange(change, existing?.updated_at ?? null)) continue
 
-      // Preserve server's change_seq so these items stay <= newCursor and are never re-pushed
-      if (existing) {
-        this.db.run(
-          'UPDATE items SET url=?,title=?,description=?,thumbnail_url=?,favicon_url=?,domain=?,type=?,status=?,priority=?,updated_at=?,deleted_at=?,change_seq=? WHERE id=?',
-          [change.url, change.title, change.description, change.thumbnail_url, change.favicon_url,
-           change.domain, change.type, change.status, change.priority, change.updated_at,
-           change.deleted_at, change.change_seq, change.id]
-        )
-      } else {
-        this.db.run(
-          'INSERT INTO items(id,user_id,url,title,description,thumbnail_url,favicon_url,domain,type,status,priority,created_at,updated_at,deleted_at,change_seq) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-          [change.id, this.userId, change.url, change.title, change.description, change.thumbnail_url,
-           change.favicon_url, change.domain, change.type, change.status, change.priority,
-           change.created_at, change.updated_at, change.deleted_at, change.change_seq]
-        )
+        // Preserve server's change_seq so these items stay <= newCursor and are never re-pushed
+        if (existing) {
+          this.db.run(
+            'UPDATE items SET url=?,title=?,description=?,thumbnail_url=?,favicon_url=?,domain=?,type=?,status=?,priority=?,updated_at=?,deleted_at=?,change_seq=? WHERE id=?',
+            [change.url, change.title, change.description, change.thumbnail_url, change.favicon_url,
+             change.domain, change.type, change.status, change.priority, change.updated_at,
+             change.deleted_at, change.change_seq, change.id]
+          )
+        } else {
+          this.db.run(
+            'INSERT INTO items(id,user_id,url,title,description,thumbnail_url,favicon_url,domain,type,status,priority,created_at,updated_at,deleted_at,change_seq) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+            [change.id, this.userId, change.url, change.title, change.description, change.thumbnail_url,
+             change.favicon_url, change.domain, change.type, change.status, change.priority,
+             change.created_at, change.updated_at, change.deleted_at, change.change_seq]
+          )
+        }
+
+        this.upsertTags(change.id, change.tag_names)
       }
-
-      this.upsertTags(change.id, change.tag_names)
-    }
+    })
   }
 
   // Local-origin write: allocates MAX(change_seq)+1 so item appears in next getChangesSince
@@ -168,5 +171,6 @@ export function makeExpoSyncDb(db: any): SyncDb {
     queryAll: (sql, params) => db.getAllSync(sql, params),
     queryOne: (sql, params) => db.getFirstSync(sql, params) ?? undefined,
     run: (sql, params) => db.runSync(sql, params),
+    transaction: (fn) => db.withTransactionSync(fn),
   }
 }

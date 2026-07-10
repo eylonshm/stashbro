@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import type { SyncChange } from '@stashbro/shared'
 import { shouldApplyChange, cursorFromChanges, SQLiteLocalStore } from './SQLiteLocalStore.js'
 import type { SyncDb, CursorStorage } from './SQLiteLocalStore.js'
@@ -32,6 +32,7 @@ function makeSyncDb(db: Database.Database): SyncDb {
     queryAll: (sql, params) => db.prepare(sql).all(...params) as any[],
     queryOne: (sql, params) => db.prepare(sql).get(...params) as any ?? undefined,
     run: (sql, params) => { db.prepare(sql).run(...params) },
+    transaction: (fn) => db.transaction(fn)(),
   }
 }
 
@@ -180,6 +181,30 @@ describe('applyChanges - LWW', () => {
       `SELECT t.name FROM tags t JOIN item_tags it ON it.tag_id=t.id WHERE it.item_id='i1'`
     ).all() as any[]
     expect(tags.map(r => r.name)).toEqual(['new-tag'])
+  })
+
+  it('rolls back entire batch on failure - no partial tag state', async () => {
+    const db = freshDb()
+    // inject a SyncDb whose transaction wraps but the second change throws mid-apply
+    const base = makeSyncDb(db)
+    let callCount = 0
+    const faultySyncDb: SyncDb = {
+      ...base,
+      run: (sql, params) => {
+        // Throw on the second item_tags insert to simulate crash mid-batch
+        if (sql.includes('item_tags') && sql.startsWith('INSERT') && ++callCount === 2) throw new Error('crash')
+        base.run(sql, params)
+      },
+    }
+    const store = new SQLiteLocalStore(faultySyncDb, makeCursorStorage(), 'u1')
+    const changes = [
+      makeChange({ id: 'i1', tag_names: ['tag-a'] }),
+      makeChange({ id: 'i2', tag_names: ['tag-b'] }),
+    ]
+    await expect(store.applyChanges(changes)).rejects.toThrow('crash')
+    // transaction rolled back - neither item should exist
+    const count = (db.prepare(`SELECT COUNT(*) as n FROM items`).get() as any).n
+    expect(count).toBe(0)
   })
 
   it('server-applied items not re-pushed (change_seq <= cursor after setCursor)', async () => {
