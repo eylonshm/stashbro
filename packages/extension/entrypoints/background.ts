@@ -1,4 +1,13 @@
 // packages/extension/entrypoints/background.ts
+import { StashBroClient, detectType } from '@stashbro/shared'
+import type { CreateItemInput } from '@stashbro/shared'
+
+interface QueuedItem extends CreateItemInput {
+  queuedAt: number
+}
+
+type StorageConfig = { serverURL?: string; serverToken?: string }
+
 export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(() => {
     browser.contextMenus.create({
@@ -11,25 +20,21 @@ export default defineBackground(() => {
   browser.contextMenus.onClicked.addListener(async (info) => {
     const url = info.linkUrl ?? info.pageUrl
     if (!url) return
-    const settings = await browser.storage.local.get(['serverURL', 'serverToken'])
-    if (!settings.serverURL || !settings.serverToken) return
-    await saveWithRetry({ url, title: url })
+    const config = await browser.storage.local.get(['serverURL', 'serverToken']) as StorageConfig
+    // ponytail: title falls back to url; context menu lacks tab title; upgrade: browser.tabs.query active tab
+    await saveWithRetry({ url, title: url }, config)
   })
 })
 
-export async function saveWithRetry(item: { url: string; title?: string; tag_names?: string[]; priority?: string }): Promise<boolean> {
-  const settings = await browser.storage.local.get(['serverURL', 'serverToken'])
+export async function saveWithRetry(item: CreateItemInput, config?: StorageConfig): Promise<boolean> {
+  const settings = config ?? (await browser.storage.local.get(['serverURL', 'serverToken']) as StorageConfig)
   if (!settings.serverURL || !settings.serverToken) {
     await enqueueOffline(item)
     return false
   }
+  const client = new StashBroClient({ baseUrl: settings.serverURL, token: settings.serverToken })
   try {
-    const res = await fetch(`${settings.serverURL}/items`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.serverToken}` },
-      body: JSON.stringify(item),
-    })
-    if (!res.ok) { await enqueueOffline(item); return false }
+    await client.createItem({ type: detectType(item.url), ...item })
     return true
   } catch {
     await enqueueOffline(item)
@@ -37,8 +42,9 @@ export async function saveWithRetry(item: { url: string; title?: string; tag_nam
   }
 }
 
-async function enqueueOffline(item: object) {
+async function enqueueOffline(item: CreateItemInput) {
   const { offlineQueue = [] } = await browser.storage.local.get('offlineQueue')
-  offlineQueue.push({ ...item, queuedAt: Date.now() })
+  const queued: QueuedItem = { ...item, queuedAt: Date.now() }
+  offlineQueue.push(queued)
   await browser.storage.local.set({ offlineQueue })
 }
