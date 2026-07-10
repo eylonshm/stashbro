@@ -37,7 +37,7 @@ final class StashListQueryTests: XCTestCase {
         try db.dbWriter.write { d in try unread.insert(d); try archived.insert(d) }
 
         let results = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: nil, priority: nil, search: "")
+            try stashListQuery(in: d, type: nil, priority: nil, tag: nil, search: "")
         }
         XCTAssertEqual(results.count, 1)
         XCTAssertEqual(results[0].0.id, "a")
@@ -49,7 +49,7 @@ final class StashListQueryTests: XCTestCase {
         try db.dbWriter.write { d in try live.insert(d); try deleted.insert(d) }
 
         let results = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: nil, priority: nil, search: "")
+            try stashListQuery(in: d, type: nil, priority: nil, tag: nil, search: "")
         }
         XCTAssertEqual(results.count, 1)
         XCTAssertEqual(results[0].0.id, "a")
@@ -61,7 +61,7 @@ final class StashListQueryTests: XCTestCase {
         try db.dbWriter.write { d in try video.insert(d); try article.insert(d) }
 
         let results = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: .video, priority: nil, search: "")
+            try stashListQuery(in: d, type: .video, priority: nil, tag: nil, search: "")
         }
         XCTAssertEqual(results.count, 1)
         XCTAssertEqual(results[0].0.id, "v")
@@ -74,13 +74,13 @@ final class StashListQueryTests: XCTestCase {
         try db.dbWriter.write { d in try high.insert(d); try low.insert(d); try med.insert(d) }
 
         let highResults = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: nil, priority: .high, search: "")
+            try stashListQuery(in: d, type: nil, priority: .high, tag: nil, search: "")
         }
         XCTAssertEqual(highResults.count, 1)
         XCTAssertEqual(highResults[0].0.id, "h")
 
         let lowResults = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: nil, priority: .low, search: "")
+            try stashListQuery(in: d, type: nil, priority: .low, tag: nil, search: "")
         }
         XCTAssertEqual(lowResults.count, 1)
         XCTAssertEqual(lowResults[0].0.id, "l")
@@ -92,7 +92,7 @@ final class StashListQueryTests: XCTestCase {
         try db.dbWriter.write { d in try match.insert(d); try noMatch.insert(d) }
 
         let results = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: nil, priority: nil, search: "swift")
+            try stashListQuery(in: d, type: nil, priority: nil, tag: nil, search: "swift")
         }
         XCTAssertEqual(results.count, 1)
         XCTAssertEqual(results[0].0.id, "a")
@@ -104,7 +104,7 @@ final class StashListQueryTests: XCTestCase {
         try db.dbWriter.write { d in try match.insert(d); try noMatch.insert(d) }
 
         let results = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: nil, priority: nil, search: "swift.org")
+            try stashListQuery(in: d, type: nil, priority: nil, tag: nil, search: "swift.org")
         }
         XCTAssertEqual(results.count, 1)
         XCTAssertEqual(results[0].0.id, "a")
@@ -116,7 +116,7 @@ final class StashListQueryTests: XCTestCase {
         try db.dbWriter.write { d in try first.insert(d); try second.insert(d) }
 
         let results = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: nil, priority: nil, search: "")
+            try stashListQuery(in: d, type: nil, priority: nil, tag: nil, search: "")
         }
         XCTAssertEqual(results.map { $0.0.id }, ["second", "first"])
     }
@@ -132,7 +132,7 @@ final class StashListQueryTests: XCTestCase {
         }
 
         let results = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: nil, priority: nil, search: "")
+            try stashListQuery(in: d, type: nil, priority: nil, tag: nil, search: "")
         }
         XCTAssertEqual(results.count, 1)
         XCTAssertEqual(results[0].1.map(\.name), ["swift"])
@@ -147,10 +147,71 @@ final class StashListQueryTests: XCTestCase {
         }
 
         let results = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: .video, priority: .high, search: "")
+            try stashListQuery(in: d, type: .video, priority: .high, tag: nil, search: "")
         }
         XCTAssertEqual(results.count, 1)
         XCTAssertEqual(results[0].0.id, "vh")
+    }
+
+    func testTagFilter() throws {
+        let tagged = makeItem(id: "tagged")
+        let untagged = makeItem(id: "untagged")
+        let tag = Tag(id: "t1", userId: "u", name: "swift")
+        try db.dbWriter.write { d in
+            try tagged.insert(d); try untagged.insert(d)
+            try tag.insert(d)
+            try ItemTag(itemId: "tagged", tagId: "t1").insert(d)
+        }
+
+        let results = try db.dbWriter.read { d in
+            try stashListQuery(in: d, type: nil, priority: nil, tag: "swift", search: "")
+        }
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results[0].0.id, "tagged")
+    }
+
+    func testTagFilterNoMatchReturnsEmpty() throws {
+        let item = makeItem(id: "i1")
+        try db.dbWriter.write { d in try item.insert(d) }
+
+        let results = try db.dbWriter.read { d in
+            try stashListQuery(in: d, type: nil, priority: nil, tag: "nonexistent", search: "")
+        }
+        XCTAssertTrue(results.isEmpty)
+    }
+
+    func testTagFilterCombinedWithType() throws {
+        let videoTagged = makeItem(id: "vt", type: .video)
+        let articleTagged = makeItem(id: "at", type: .article)
+        let tag = Tag(id: "t1", userId: "u", name: "ai")
+        try db.dbWriter.write { d in
+            try videoTagged.insert(d); try articleTagged.insert(d)
+            try tag.insert(d)
+            try ItemTag(itemId: "vt", tagId: "t1").insert(d)
+            try ItemTag(itemId: "at", tagId: "t1").insert(d)
+        }
+
+        let results = try db.dbWriter.read { d in
+            try stashListQuery(in: d, type: .video, priority: nil, tag: "ai", search: "")
+        }
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results[0].0.id, "vt")
+    }
+
+    func testLoadAvailableTags() throws {
+        let item = makeItem(id: "i1")
+        let archived = makeItem(id: "i2", status: .archived)
+        let tag1 = Tag(id: "t1", userId: "u", name: "swift")
+        let tag2 = Tag(id: "t2", userId: "u", name: "grdb")
+        try db.dbWriter.write { d in
+            try item.insert(d); try archived.insert(d)
+            try tag1.insert(d); try tag2.insert(d)
+            try ItemTag(itemId: "i1", tagId: "t1").insert(d)
+            try ItemTag(itemId: "i2", tagId: "t2").insert(d) // archived - should not appear
+        }
+
+        let tags = try db.dbWriter.read { d in try loadAvailableTags(in: d) }
+        XCTAssertEqual(tags.map(\.name), ["swift"])
     }
 }
 
@@ -193,7 +254,7 @@ final class ArchiveItemTests: XCTestCase {
         try archiveItem(item, in: db)
 
         let results = try db.dbWriter.read { d in
-            try stashListQuery(in: d, type: nil, priority: nil, search: "")
+            try stashListQuery(in: d, type: nil, priority: nil, tag: nil, search: "")
         }
         XCTAssertTrue(results.isEmpty)
     }

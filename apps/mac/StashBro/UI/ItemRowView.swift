@@ -67,29 +67,22 @@ struct ItemRowView: View {
 
 struct TypeBadgeView: View {
     let type: ItemType
+    // ponytail: NSColor system colors adapt light/dark automatically; no colorScheme env needed.
+    private var typeColor: Color {
+        switch type {
+        case .video: return Color(NSColor.systemRed)
+        case .post: return Color(NSColor.systemBlue)
+        case .article: return Color(NSColor.systemGreen)
+        case .other: return Color(NSColor.systemPurple)
+        }
+    }
     var body: some View {
         Text(type.rawValue.capitalized)
             .font(.system(size: 10, weight: .semibold))
             .padding(.horizontal, 6).padding(.vertical, 1)
-            .background(badgeBackground)
-            .foregroundStyle(badgeForeground)
+            .background(typeColor.opacity(0.12))
+            .foregroundStyle(typeColor)
             .cornerRadius(4)
-    }
-    private var badgeBackground: Color {
-        switch type {
-        case .video: return Color(red: 0.988, green: 0.918, blue: 0.918)
-        case .post: return Color(red: 0.918, green: 0.941, blue: 0.992)
-        case .article: return Color(red: 0.910, green: 0.969, blue: 0.937)
-        case .other: return Color(red: 0.949, green: 0.929, blue: 0.973)
-        }
-    }
-    private var badgeForeground: Color {
-        switch type {
-        case .video: return Color(red: 0.710, green: 0.188, blue: 0.188)
-        case .post: return Color(red: 0.165, green: 0.337, blue: 0.659)
-        case .article: return Color(red: 0.122, green: 0.478, blue: 0.278)
-        case .other: return Color(red: 0.392, green: 0.255, blue: 0.627)
-        }
     }
 }
 
@@ -99,8 +92,8 @@ struct TagChipView: View {
         Text("#\(name)")
             .font(.system(size: 10, weight: .medium))
             .padding(.horizontal, 7).padding(.vertical, 1)
-            .background(Color(red: 0.925, green: 0.929, blue: 0.957))
-            .foregroundStyle(Color(red: 0.290, green: 0.302, blue: 0.384))
+            .background(Color(NSColor.separatorColor).opacity(0.6))
+            .foregroundStyle(Color.secondary)
             .cornerRadius(99)
     }
 }
