@@ -1,12 +1,12 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { getDb } from './index.js'
+import { getDb, clearDbCache } from './index.js'
 import { items, tags, item_tags } from './schema.js'
 import { eq } from 'drizzle-orm'
 
 let db: ReturnType<typeof getDb>
 
 afterEach(() => {
-  // In-memory DB is discarded after each test
+  clearDbCache() // reset singleton so each test gets a fresh :memory: db
 })
 
 describe('DB schema', () => {

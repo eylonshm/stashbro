@@ -23,6 +23,9 @@ importers:
       '@hono/zod-openapi':
         specifier: ^0.18.0
         version: 0.18.4(hono@4.12.29)(zod@3.25.76)
+      '@stashbro/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       better-sqlite3:
         specifier: ^11.5.0
         version: 11.10.0

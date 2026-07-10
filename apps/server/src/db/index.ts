@@ -5,7 +5,13 @@ import { sql } from 'drizzle-orm'
 
 export type AppDb = ReturnType<typeof getDb>
 
+// ponytail: singleton per path - SQLite is single-writer, one connection is correct; swap for pool if moving to libsql
+const cache = new Map<string, ReturnType<typeof drizzle>>()
+
+export function clearDbCache() { cache.clear() }
+
 export function getDb(path = process.env['DB_PATH'] ?? '/data/stashbro.db') {
+  if (cache.has(path)) return cache.get(path)!
   const sqlite = new Database(path)
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
@@ -56,5 +62,6 @@ export function getDb(path = process.env['DB_PATH'] ?? '/data/stashbro.db') {
     )
   `)
 
+  cache.set(path, db)
   return db
 }
