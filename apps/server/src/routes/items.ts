@@ -111,7 +111,7 @@ export function itemsRouter() {
   })
 
   // GET /items
-  // ponytail: asc(change_seq) so since=gt(cursor) pages forward correctly; hasMore computed pre-tag-filter, can signal false "more" when tag filter is active - acceptable for Phase 1
+  // ponytail: asc(change_seq) so since=gt(cursor) pages forward correctly; hasMore computed pre-tag-filter - when tag filter empties a whole page, advance cursor to end of dead page so client doesn't stop early
   const listRoute = createRoute({
     method: 'get', path: '/',
     request: { query: z.object({
@@ -161,9 +161,11 @@ export function itemsRouter() {
 
     const withTags = filtered.map(r => itemWithTags(db, r.id, userId)).filter((r): r is NonNullable<typeof r> => r !== null)
 
+    // If tag filter empties the whole page but there are more rows, advance past dead page
+    const deadPageCursor = rows[rows.length - 1]?.change_seq ?? null
     return c.json({
       items: withTags,
-      nextCursor: hasMore ? (withTags[withTags.length - 1]?.change_seq ?? null) : null,
+      nextCursor: hasMore ? (withTags[withTags.length - 1]?.change_seq ?? deadPageCursor) : null,
     })
   })
 

@@ -187,6 +187,44 @@ describe('GET /items', () => {
     expect(seen.size).toBe(12)
   })
 
+  it('tag filter across dead pages returns all tagged items exactly once', async () => {
+    const a = app()
+    // seq 1-9; tag 'sparse' on seq 1,2,8,9 - middle items 3-7 are untagged dead pages
+    for (let i = 1; i <= 9; i++) {
+      await a.request('/items', {
+        method: 'POST',
+        headers: { ...AUTH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: `https://example.com/${i}`,
+          tag_names: (i <= 2 || i >= 8) ? ['sparse'] : [],
+        }),
+      })
+    }
+
+    const seen = new Set<string>()
+    let cursor = 0
+    let pages = 0
+
+    while (true) {
+      const url = `/items?tag=sparse&limit=3${cursor > 0 ? `&since=${cursor}` : ''}`
+      const res = await a.request(url, { headers: AUTH })
+      expect(res.status).toBe(200)
+      const body = await res.json()
+
+      for (const item of body.items) {
+        expect(seen.has(item.id)).toBe(false)
+        seen.add(item.id)
+      }
+
+      pages++
+      if (body.nextCursor === null) break
+      cursor = body.nextCursor
+      if (pages > 20) throw new Error('pagination loop detected')
+    }
+
+    expect(seen.size).toBe(4) // items 1,2,8,9
+  })
+
   it('does not return another user item', async () => {
     const db = getDb()
     db.insert(items).values({
