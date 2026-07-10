@@ -57,11 +57,7 @@ func archiveItem(_ item: StashItem, in db: AppDatabase) throws {
     var updated = item
     updated.status = .archived
     updated.updatedAt = Date()
-    try db.dbWriter.write { dbConn in
-        let maxSeq = try Int.fetchOne(dbConn, sql: "SELECT MAX(change_seq) FROM stash_items") ?? 0
-        updated.changeSeq = maxSeq + 1
-        try updated.save(dbConn)
-    }
+    try GRDBLocalStore(db: db).saveLocalItem(updated)
 }
 
 struct StashListView: View {

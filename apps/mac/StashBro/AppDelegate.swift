@@ -22,15 +22,16 @@ func processShareInbox(at inbox: URL, into store: GRDBLocalStore) -> Int {
         else { continue }
 
         let now = Date()
-        let change = SyncChange(
-            id: id, changeSeq: 0, createdAt: created, updatedAt: now, deletedAt: nil,
+        let stashItem = StashItem(
+            id: id, userId: "default",
             url: url, title: payload["title"] ?? url, description: nil,
             thumbnailUrl: nil, faviconUrl: nil,
             domain: payload["domain"] ?? url,
             type: type_, status: .unread, priority: priority,
-            tagNames: []
+            createdAt: created, updatedAt: now, deletedAt: nil,
+            changeSeq: 0  // ponytail: saveLocalItem overwrites with MAX(change_seq)+1
         )
-        try? store.applyChanges([change])
+        try? store.saveLocalItem(stashItem)
         count += 1
     }
     return count
@@ -89,15 +90,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func saveURL(_ url: URL) {
         guard let store else { return }
         let now = Date()
-        let change = SyncChange(
-            id: UUID().uuidString, changeSeq: 0, createdAt: now, updatedAt: now, deletedAt: nil,
+        let item = StashItem(
+            id: UUID().uuidString, userId: "default",
             url: url.absoluteString, title: url.absoluteString,
             description: nil, thumbnailUrl: nil, faviconUrl: nil,
             domain: url.host ?? url.absoluteString,
             type: detectItemType(url: url.absoluteString), status: .unread,
-            priority: .medium, tagNames: []
+            priority: .medium, createdAt: now, updatedAt: now, deletedAt: nil,
+            changeSeq: 0  // ponytail: saveLocalItem overwrites with MAX(change_seq)+1
         )
-        try? store.applyChanges([change])
+        try? store.saveLocalItem(item)
         Task { @MainActor in await syncEngine?.sync() }
     }
 }

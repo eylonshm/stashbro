@@ -90,6 +90,18 @@ final class GRDBLocalStore: LocalStoreProtocol {
         }
     }
 
+    /// Local-origin write: allocates MAX(change_seq)+1 inside a single transaction so
+    /// the item is always picked up by getChangesSince(cursor) on the next sync.
+    /// Do NOT use for server-applied changes - use applyChanges so server seq is preserved.
+    func saveLocalItem(_ item: StashItem) throws {
+        try db.dbWriter.write { dbConn in
+            let maxSeq = try Int.fetchOne(dbConn, sql: "SELECT MAX(change_seq) FROM stash_items") ?? 0
+            var i = item
+            i.changeSeq = maxSeq + 1
+            try i.save(dbConn)
+        }
+    }
+
     func getCursor() -> Int { defaults.integer(forKey: cursorKey) }
     func setCursor(_ cursor: Int) { defaults.set(cursor, forKey: cursorKey) }
 }
