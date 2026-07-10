@@ -7,6 +7,9 @@ import { SQLiteLocalStore, makeExpoSyncDb } from '../sync/SQLiteLocalStore.js'
 
 export function useSyncEngine(onSyncComplete?: () => void) {
   const engineRef = useRef<SyncEngine | null>(null)
+  // ponytail: callback ref keeps engine init stable across filter changes
+  const onSyncCompleteRef = useRef(onSyncComplete)
+  useEffect(() => { onSyncCompleteRef.current = onSyncComplete })
 
   useEffect(() => {
     async function init() {
@@ -19,7 +22,7 @@ export function useSyncEngine(onSyncComplete?: () => void) {
       const rawDb = openDatabase()
       const store = new SQLiteLocalStore(makeExpoSyncDb(rawDb), AsyncStorage, userId ?? 'local')
       const client = new StashBroClient({ baseUrl: url, token })
-      engineRef.current = new SyncEngine({ client, store, ...(onSyncComplete && { onSyncComplete }) })
+      engineRef.current = new SyncEngine({ client, store, onSyncComplete: () => onSyncCompleteRef.current?.() })
       void engineRef.current.sync()
     }
     void init()
@@ -28,7 +31,7 @@ export function useSyncEngine(onSyncComplete?: () => void) {
       if (state === 'active') void engineRef.current?.sync()
     })
     return () => sub.remove()
-  }, [onSyncComplete])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return engineRef.current
 }
