@@ -48,6 +48,7 @@ items:      id (uuidv7), user_id, url, title, description,
             thumbnail_url, favicon_url, domain,
             type   (video | post | article | other),
             status (unread | archived),
+            priority (low | medium | high, default medium),
             created_at, updated_at, deleted_at (tombstone)
 tags:       id, user_id, name (unique per user)
 item_tags:  item_id, tag_id
@@ -55,6 +56,7 @@ item_tags:  item_id, tag_id
 
 - Type is auto-detected from a domain map (youtube/vimeo → video; x/twitter/reddit/threads → post; else article) and user-editable.
 - Tags are free-form with autocomplete in clients.
+- Priority defaults to medium on save; settable at capture time (optional) and editable in list UIs. Priority filter defaults to "all".
 
 ## Sync protocol (local-first)
 
