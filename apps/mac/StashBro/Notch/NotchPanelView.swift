@@ -23,7 +23,7 @@ struct NotchPanelView: View {
                         .foregroundStyle(.white.opacity(0.9))
                 }
                 Spacer()
-                Button("Open App") { NSApp.activate(ignoringOtherApps: true) }
+                Button("Open App") { NSApp.activate() } // macOS 14+ API; deployment target is 14
                     .buttonStyle(.plain)
                     .font(.system(size: 11))
                     .foregroundStyle(Color(red: 0.784, green: 0.478, blue: 0.220))

@@ -55,7 +55,7 @@ final class NotchWindowController {
             backing: .buffered,
             defer: false
         )
-        // ponytail: maximumWindow + 1 keeps the pill above system overlays including Spotlight
+        // CGWindowLevelForKey(.maximumWindow) is Int32 ~2147483630; +1 fits in Int, no overflow
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)) + 1)
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         panel.isOpaque = false
@@ -78,20 +78,6 @@ final class NotchWindowController {
         guard let panel, let screen = NSScreen.main else { return }
         let frame = Self.panelFrame(for: screen.frame)
 
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.2
-            panel.animator().setFrame(
-                NSRect(x: frame.origin.x, y: frame.origin.y, width: frame.width, height: frame.height),
-                display: true
-            )
-        }
-
-        let expandedView = NotchPanelView(
-            db: db, syncEngine: syncEngine,
-            onCollapse: { [weak self] in self?.collapsePanel() }
-        )
-        panel.contentView = NSHostingView(rootView: expandedView)
-
         // Collapse on click outside the panel; guard against double-expand leaking a monitor
         if let old = outsideClickMonitor { NSEvent.removeMonitor(old) }
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -101,6 +87,21 @@ final class NotchWindowController {
                 Task { @MainActor in self.collapsePanel() }
             }
         }
+
+        // Swap content only after animation completes to avoid clipped layout during resize
+        let expandedView = NotchPanelView(
+            db: db, syncEngine: syncEngine,
+            onCollapse: { [weak self] in self?.collapsePanel() }
+        )
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.2
+            panel.animator().setFrame(
+                NSRect(x: frame.origin.x, y: frame.origin.y, width: frame.width, height: frame.height),
+                display: true
+            )
+        }, completionHandler: {
+            panel.contentView = NSHostingView(rootView: expandedView)
+        })
     }
 
     func collapsePanel() {
@@ -112,19 +113,26 @@ final class NotchWindowController {
         guard let panel, let screen = NSScreen.main else { return }
         let frame = Self.pillFrame(for: screen.frame)
 
-        NSAnimationContext.runAnimationGroup { ctx in
+        // Swap content only after animation completes to avoid clipped layout during resize
+        let pillView = NotchPillView(
+            db: db, syncEngine: syncEngine,
+            onExpand: { [weak self] in self?.expandPanel() },
+            onCollapse: { [weak self] in self?.collapsePanel() } // ponytail: Task 8 close-button hook
+        )
+        NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
             panel.animator().setFrame(
                 NSRect(x: frame.origin.x, y: frame.origin.y, width: frame.width, height: frame.height),
                 display: true
             )
-        }
+        }, completionHandler: {
+            panel.contentView = NSHostingView(rootView: pillView)
+        })
+    }
 
-        let pillView = NotchPillView(
-            db: db, syncEngine: syncEngine,
-            onExpand: { [weak self] in self?.expandPanel() },
-            onCollapse: { [weak self] in self?.collapsePanel() }
-        )
-        panel.contentView = NSHostingView(rootView: pillView)
+    deinit {
+        if let monitor = outsideClickMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
     }
 }
