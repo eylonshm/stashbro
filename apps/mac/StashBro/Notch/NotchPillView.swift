@@ -4,7 +4,6 @@ import GRDB
 
 struct NotchPillView: View {
     let db: AppDatabase
-    let syncEngine: SyncEngine?
     let onExpand: () -> Void
     let onCollapse: () -> Void
 

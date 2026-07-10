@@ -7,9 +7,9 @@ final class MenubarController {
     private var statusItem: NSStatusItem
     private var popover: NSPopover
     private let db: AppDatabase
-    private let syncEngine: SyncEngine?
+    private let syncEngine: () -> SyncEngine?  // ponytail: closure for live engine after reconnect
 
-    init(db: AppDatabase, syncEngine: SyncEngine?) {
+    init(db: AppDatabase, syncEngine: @escaping () -> SyncEngine?) {
         self.db = db
         self.syncEngine = syncEngine
 

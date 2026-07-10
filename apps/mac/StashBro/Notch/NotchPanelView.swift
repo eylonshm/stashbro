@@ -3,7 +3,7 @@ import SwiftUI
 
 struct NotchPanelView: View {
     let db: AppDatabase
-    let syncEngine: SyncEngine?
+    let syncEngine: () -> SyncEngine?  // ponytail: closure for live engine after reconnect
     let onCollapse: () -> Void
 
     var body: some View {

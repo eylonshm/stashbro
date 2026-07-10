@@ -62,7 +62,7 @@ func archiveItem(_ item: StashItem, in db: AppDatabase) throws {
 
 struct StashListView: View {
     let db: AppDatabase
-    let syncEngine: SyncEngine?
+    let syncEngine: () -> SyncEngine?  // ponytail: closure so callers always get the current engine after reconnect
     let style: ListStyle
 
     @State private var searchText = ""
@@ -158,7 +158,7 @@ struct StashListView: View {
             try archiveItem(item, in: db)
             Task {
                 await loadItems()
-                await syncEngine?.sync()
+                await syncEngine()?.sync()
             }
         } catch {
             // Keep item visible - do not reload on failure

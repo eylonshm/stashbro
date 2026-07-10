@@ -2,23 +2,40 @@
 import XCTest
 @testable import StashBro
 
-// Tests headless-verifiable logic from SettingsView:
-// - reconnect() guard: URL(string:) + !token.isEmpty
-// - ServerConfig save/load roundtrip (the save path in reconnect())
+// Tests headless-verifiable logic from SettingsView.
+// M2: real tests of validatedConfig (M1 guard: scheme must be http/https).
+// C1 + C2: logic is in AppDelegate/NotchWindowController; smoke-tested via build.
 final class SettingsReconnectValidationTests: XCTestCase {
 
     private func freshDefaults() -> UserDefaults {
         UserDefaults(suiteName: "test.\(UUID().uuidString)")!
     }
 
-    // Empty string → URL(string:) returns nil → guard skips reconnect
-    func testEmptyURLSkipsReconnect() {
-        XCTAssertNil(URL(string: ""))
+    // M1+M2: valid https URL + token returns a config
+    func testValidHTTPSReturnsConfig() {
+        let cfg = validatedConfig(urlString: "https://api.example.com", token: "tok")
+        XCTAssertNotNil(cfg)
+        XCTAssertEqual(cfg?.baseURL.scheme, "https")
     }
 
-    // Empty token → guard skips reconnect
-    func testEmptyTokenSkipsReconnect() {
-        XCTAssertTrue("".isEmpty)
+    // M1+M2: valid http URL also accepted
+    func testValidHTTPReturnsConfig() {
+        XCTAssertNotNil(validatedConfig(urlString: "http://localhost:8080", token: "tok"))
+    }
+
+    // M1+M2: non-http/https scheme rejected (M1 guard)
+    func testFTPSchemeReturnsNil() {
+        XCTAssertNil(validatedConfig(urlString: "ftp://files.example.com", token: "tok"))
+    }
+
+    // M2: empty URL rejected
+    func testEmptyURLReturnsNil() {
+        XCTAssertNil(validatedConfig(urlString: "", token: "tok"))
+    }
+
+    // M2: empty token rejected
+    func testEmptyTokenReturnsNil() {
+        XCTAssertNil(validatedConfig(urlString: "https://api.example.com", token: ""))
     }
 
     // Valid URL + token → config saved and re-loaded correctly (the save path in reconnect())

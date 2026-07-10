@@ -21,7 +21,7 @@ func extractDroppedURL(from pasteboard: NSPasteboard) -> URL? {
 final class NotchWindowController {
     private var panel: NSPanel?
     private let db: AppDatabase
-    private let syncEngine: SyncEngine?
+    private let syncEngine: () -> SyncEngine?  // ponytail: closure for live engine after reconnect
     private var outsideClickMonitor: Any?
 
     // Static geometry - pure math, headless testable.
@@ -36,7 +36,7 @@ final class NotchWindowController {
         return CGRect(x: screenFrame.midX - w / 2, y: screenFrame.maxY - h, width: w, height: h)
     }
 
-    init(db: AppDatabase, syncEngine: SyncEngine?) {
+    init(db: AppDatabase, syncEngine: @escaping () -> SyncEngine?) {
         self.db = db
         self.syncEngine = syncEngine
 
@@ -65,7 +65,6 @@ final class NotchWindowController {
 
         let contentView = NotchPillView(
             db: db,
-            syncEngine: syncEngine,
             onExpand: { [weak self] in self?.expandPanel() },
             onCollapse: { [weak self] in self?.collapsePanel() }
         )
@@ -115,7 +114,7 @@ final class NotchWindowController {
 
         // Swap content only after animation completes to avoid clipped layout during resize
         let pillView = NotchPillView(
-            db: db, syncEngine: syncEngine,
+            db: db,
             onExpand: { [weak self] in self?.expandPanel() },
             onCollapse: { [weak self] in self?.collapsePanel() } // ponytail: Task 8 close-button hook
         )

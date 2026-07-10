@@ -60,16 +60,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let config = ServerConfig.load() {
             let client = StashBroAPIClient(config: config)
-            let engine = SyncEngine(store: s, client: client)
-            self.syncEngine = engine
-            startSyncTimer(engine: engine)
+            self.syncEngine = SyncEngine(store: s, client: client)
         }
 
-        menubarController = MenubarController(db: db, syncEngine: syncEngine)
-        notchController = NotchWindowController(db: db, syncEngine: syncEngine)
+        // C1: closures so reconnect() swapping syncEngine is always picked up
+        menubarController = MenubarController(db: db, syncEngine: { [weak self] in self?.syncEngine })
+        startSyncTimer()
+
+        // C2: menubar always active; notch only when pref==notch AND hardware has notch
+        applyPrimarySurface()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(defaultsChanged),
+            name: UserDefaults.didChangeNotification, object: nil
+        )
 
         HotkeyManager.register { [weak self] url in
             self?.saveURL(url)
+        }
+    }
+
+    // C2: create or tear down notchController based on current primarySurface pref
+    @objc private func defaultsChanged() { applyPrimarySurface() }
+
+    private func applyPrimarySurface() {
+        let pref = UserDefaults.standard.string(forKey: "primarySurface") ?? "notch"
+        if pref == "notch" {
+            if notchController == nil {
+                notchController = NotchWindowController(db: db, syncEngine: { [weak self] in self?.syncEngine })
+            }
+        } else {
+            notchController = nil
         }
     }
 
@@ -87,9 +107,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // ponytail: no extra sync here; applicationDidBecomeActive fires one right after
     }
 
-    private func startSyncTimer(engine: SyncEngine) {
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { _ in
-            Task { @MainActor in await engine.sync() }
+    private func startSyncTimer() {
+        // ponytail: reads self.syncEngine each fire so reconnect() swap is picked up automatically
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            Task { @MainActor in await self?.syncEngine?.sync() }
         }
     }
 
