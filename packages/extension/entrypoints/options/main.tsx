@@ -1,6 +1,7 @@
 // packages/extension/entrypoints/options/main.tsx
 import React, { useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
+import { validateOptions } from '../../src/validateOptions.js'
 
 // ponytail: one-time read at module load; same pattern as popup TH token map
 const DARK = window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -34,15 +35,9 @@ function OptionsApp() {
   }
 
   const save = async () => {
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      showStatus('URL must start with http:// or https://', false, 3500)
-      return
-    }
-    if (!token.trim()) {
-      showStatus('Token cannot be empty', false, 3500)
-      return
-    }
-    await browser.storage.local.set({ serverURL: url.replace(/\/$/, ''), serverToken: token })
+    const err = validateOptions(url, token)
+    if (err) { showStatus(err, false, 3500); return }
+    await browser.storage.local.set({ serverURL: url.replace(/\/$/, ''), serverToken: token.trim() })
     showStatus('Saved!', true)
   }
 

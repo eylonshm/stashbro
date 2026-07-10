@@ -67,6 +67,9 @@ targets:
       - target: StashBroShareExtension
         embed: true
         codeSign: true
+      - target: StashBroSafariExtension
+        embed: true
+        codeSign: true
     buildToolPlugins:
       - package: swift-openapi-generator
         plugin: OpenAPIGenerator
@@ -102,7 +105,6 @@ targets:
     info:
       path: "StashBroSafariExtension/macOS (Extension)/Info.plist"
       properties:
-        CFBundleIdentifier: com.stashbro.app.extension
         NSExtension:
           NSExtensionPointIdentifier: com.apple.Safari.web-extension
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SafariWebExtensionHandler
@@ -110,6 +112,18 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.stashbro.app.extension
         MACOSX_DEPLOYMENT_TARGET: "14.0"
+    postBuildScripts:
+      - name: Copy Web Extension Resources
+        script: |
+          set -e
+          SRC="${SRCROOT}/../../packages/extension/.output/safari-mv2"
+          DEST="${TARGET_BUILD_DIR}/${FULL_PRODUCT_NAME}/Contents/Resources"
+          if [ ! -d "$SRC" ]; then
+            echo "error: Safari extension build missing. Run: pnpm --filter @stashbro/extension build:safari" >&2
+            exit 1
+          fi
+          mkdir -p "$DEST"
+          cp -R "$SRC/" "$DEST/"
 
   StashBroTests:
     type: bundle.unit-test

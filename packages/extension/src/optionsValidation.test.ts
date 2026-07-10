@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest'
-
-// Inline the validation logic matching options/main.tsx save()
-function validateOptions(url: string, token: string): string | null {
-  if (!url.startsWith('http://') && !url.startsWith('https://')) return 'URL must start with http:// or https://'
-  if (!token.trim()) return 'Token cannot be empty'
-  return null
-}
+import { validateOptions } from './validateOptions.js'
 
 describe('options validation', () => {
   it('accepts valid https URL and token', () => {
