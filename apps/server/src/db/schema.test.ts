@@ -38,6 +38,25 @@ describe('DB schema', () => {
     ).toThrow()
   })
 
+  it('defaults created_at/updated_at to ISO timestamps when omitted', () => {
+    db = getDb(':memory:')
+    db.insert(items).values({
+      id: 'ts-test',
+      user_id: 'user-1',
+      url: 'https://example.com',
+      title: 'TS Test',
+      domain: 'example.com',
+      type: 'article',
+      status: 'unread',
+      priority: 'medium',
+      change_seq: 1,
+    }).run()
+    const [row] = db.select().from(items).where(eq(items.id, 'ts-test')).all()
+    const isoRe = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z$/
+    expect(row?.created_at).toMatch(isoRe)
+    expect(row?.updated_at).toMatch(isoRe)
+  })
+
   it('allows same tag name for different users', () => {
     db = getDb(':memory:')
     db.insert(tags).values({ id: 't1', user_id: 'u1', name: 'AI' }).run()

@@ -17,8 +17,8 @@ export const items = sqliteTable('items', {
   type: text('type', { enum: ['video', 'post', 'article', 'other'] }).notNull().default('article'),
   status: text('status', { enum: ['unread', 'archived'] }).notNull().default('unread'),
   priority: text('priority', { enum: ['low', 'medium', 'high'] }).notNull().default('medium'),
-  created_at: text('created_at').notNull().default(''),
-  updated_at: text('updated_at').notNull().default(''),
+  created_at: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updated_at: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
   deleted_at: text('deleted_at'),
   change_seq: integer('change_seq').notNull().default(0),
 })

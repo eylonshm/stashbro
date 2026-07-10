@@ -13,6 +13,7 @@ export function getDb(path = process.env['DB_PATH'] ?? '/data/stashbro.db') {
   const db = drizzle(sqlite, { schema })
 
   // ponytail: inline DDL instead of migration runner - simple enough for SQLite, add drizzle-kit push if schema gets complex
+  // WARNING: this DDL (with CHECK constraints) is the source of truth. Do NOT use `drizzle-kit push` - it strips CHECK constraints and will diverge.
   db.run(sql`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -32,8 +33,8 @@ export function getDb(path = process.env['DB_PATH'] ?? '/data/stashbro.db') {
       type TEXT NOT NULL DEFAULT 'article' CHECK(type IN ('video','post','article','other')),
       status TEXT NOT NULL DEFAULT 'unread' CHECK(status IN ('unread','archived')),
       priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high')),
-      created_at TEXT NOT NULL DEFAULT '',
-      updated_at TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+      updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       deleted_at TEXT,
       change_seq INTEGER NOT NULL DEFAULT 0
     )
