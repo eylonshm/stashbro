@@ -10,3 +10,4 @@ dist/
 .env
 .env.local
 apps/mac/dd/
+apps/mac/build/
