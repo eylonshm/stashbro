@@ -32,7 +32,11 @@ final class MenubarController {
 
     @objc func togglePopover() {
         guard let button = statusItem.button else { return }
-        if popover.isShown { popover.performClose(nil) }
-        else { popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY) }
+        if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            Task { await syncEngine()?.sync() }
+        }
     }
 }

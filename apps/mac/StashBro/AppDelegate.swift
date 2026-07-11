@@ -112,7 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startSyncTimer() {
         // ponytail: reads self.syncEngine each fire so reconnect() swap is picked up automatically
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.syncEngine?.sync() }
         }
     }
