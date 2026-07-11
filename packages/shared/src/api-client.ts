@@ -16,7 +16,7 @@ export class StashBroClient {
   private _fetch: typeof fetch
   private onRefresh: TokenRefreshHooks | undefined
 
-  constructor(config: StashBroClientConfig, fetchImpl: typeof fetch = fetch, onRefresh?: TokenRefreshHooks) {
+  constructor(config: StashBroClientConfig, fetchImpl: typeof fetch = (...args) => fetch(...args), onRefresh?: TokenRefreshHooks) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '')
     this.headers = {
       'Content-Type': 'application/json',

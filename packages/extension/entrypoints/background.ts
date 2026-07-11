@@ -28,6 +28,7 @@ export default defineBackground(() => {
 
 export async function saveWithRetry(item: CreateItemInput, config?: StorageConfig): Promise<boolean> {
   const settings = config ?? (await browser.storage.local.get(['serverURL', 'serverToken']) as StorageConfig)
+  console.log('[StashBro] saveWithRetry settings:', settings.serverURL ? 'url set' : 'NO URL', settings.serverToken ? 'token set' : 'NO TOKEN')
   if (!settings.serverURL || !settings.serverToken) {
     await offlineQueue.enqueue(item)
     return false
@@ -36,7 +37,8 @@ export async function saveWithRetry(item: CreateItemInput, config?: StorageConfi
   try {
     await client.createItem({ type: detectType(item.url), ...item })
     return true
-  } catch {
+  } catch (err) {
+    console.error('[StashBro] createItem failed:', err)
     await offlineQueue.enqueue(item)
     return false
   }
