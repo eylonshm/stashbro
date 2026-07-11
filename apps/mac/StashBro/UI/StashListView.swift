@@ -74,9 +74,11 @@ struct StashListView: View {
     // ponytail: token held in @State so it lives with SwiftUI's storage and cancels on view removal
     @State private var observationToken: AnyDatabaseCancellable?
 
+    @State private var settingsWindow: NSWindow?
+
     var body: some View {
         VStack(spacing: 0) {
-            // Search
+            // Search + settings
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.tertiary)
@@ -84,6 +86,12 @@ struct StashListView: View {
                 TextField("Search your stash\u{2026}", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
+                Button(action: openSettings) {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(Color(NSColor.controlBackgroundColor))
@@ -165,11 +173,22 @@ struct StashListView: View {
     private func archive(_ item: StashItem) {
         do {
             try archiveItem(item, in: db)
-            // Observation fires automatically on DB change; just trigger sync
             Task { await syncEngine()?.sync() }
         } catch {
-            // Keep item visible - do not reload on failure
             print("[StashBro] archive failed for \(item.id): \(error)")
         }
+    }
+
+    private func openSettings() {
+        if let w = settingsWindow, w.isVisible { w.makeKeyAndOrderFront(nil); return }
+        let w = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 340),
+            styleMask: [.titled, .closable], backing: .buffered, defer: false
+        )
+        w.title = "StashBro Settings"
+        w.contentView = NSHostingView(rootView: SettingsView())
+        w.center()
+        w.makeKeyAndOrderFront(nil)
+        settingsWindow = w
     }
 }
