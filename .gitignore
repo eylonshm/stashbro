@@ -11,3 +11,4 @@ dist/
 .env.local
 apps/mac/dd/
 apps/mac/build/
+*.profraw

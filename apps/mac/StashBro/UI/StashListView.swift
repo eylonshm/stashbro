@@ -180,14 +180,20 @@ struct StashListView: View {
     }
 
     private func openSettings() {
-        if let w = settingsWindow, w.isVisible { w.makeKeyAndOrderFront(nil); return }
+        if let w = settingsWindow, w.isVisible {
+            NSApp.activate(ignoringOtherApps: true)
+            w.makeKeyAndOrderFront(nil)
+            return
+        }
         let w = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 420, height: 340),
             styleMask: [.titled, .closable], backing: .buffered, defer: false
         )
         w.title = "StashBro Settings"
+        w.level = .floating
         w.contentView = NSHostingView(rootView: SettingsView())
         w.center()
+        NSApp.activate(ignoringOtherApps: true)
         w.makeKeyAndOrderFront(nil)
         settingsWindow = w
     }

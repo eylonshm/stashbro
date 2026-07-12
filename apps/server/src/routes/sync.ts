@@ -4,6 +4,7 @@ import { eq, and, gt, lt, desc } from 'drizzle-orm'
 import { authMiddleware } from '../middleware/auth.js'
 import { getDb } from '../db/index.js'
 import { items, tags, item_tags } from '../db/schema.js'
+import { enrichMetadataAsync } from '../services/metadata.js'
 
 type Env = { Variables: { userId: string } }
 
@@ -60,7 +61,7 @@ export function syncRouter() {
 
     for (const change of changes) {
       try {
-        const applied = db.transaction((tx) => {
+        const applied = db.transaction((tx): 'insert' | 'update' | false => {
           const existing = tx.select().from(items).where(and(eq(items.id, change.id), eq(items.user_id, userId))).all()[0]
           if (existing && existing.updated_at >= change.updated_at) return false // LWW: server wins
 
@@ -100,9 +101,15 @@ export function syncRouter() {
             tx.insert(item_tags).values({ item_id: change.id, tag_id: tag.id }).onConflictDoNothing().run()
           }
 
-          return true
+          return existing ? 'update' : 'insert'
         })
-        if (applied) accepted++
+        if (applied) {
+          accepted++
+          // Fire enrichment for new items where title is still the URL (Mac app default before enrichment)
+          if (applied === 'insert' && change.title === change.url) {
+            enrichMetadataAsync(db, change.id, change.url).catch(() => {})
+          }
+        }
       } catch {
         // PK collision (e.g. another user's item UUID) or constraint error - skip this change, batch continues
       }

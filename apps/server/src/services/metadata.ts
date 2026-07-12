@@ -161,8 +161,9 @@ export async function enrichMetadataAsync(db: AppDb, itemId: string, url: string
     try {
       await enrichOnce(db, itemId, url)
       return
-    } catch {
+    } catch (err) {
       // retry - URL-as-title fallback already in place from insert
+      console.error(`[enrichMetadata] attempt failed for ${url}:`, err)
     }
   }
 }

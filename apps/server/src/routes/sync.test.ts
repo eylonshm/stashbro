@@ -1,7 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createApp } from '../app.js'
 import { clearDbCache, getDb } from '../db/index.js'
 import { items } from '../db/schema.js'
+
+// Mock metadata so enrichment tests don't make real network calls
+vi.mock('../services/metadata.js', () => ({
+  enrichMetadataAsync: vi.fn().mockResolvedValue(undefined),
+}))
 
 process.env['AUTH_TOKEN'] = 'test'
 process.env['AUTH_MODE'] = 'token'
@@ -31,6 +36,35 @@ function makeChange(overrides: Record<string, unknown> = {}) {
     ...overrides,
   }
 }
+
+describe('POST /sync/push - enrichment trigger', () => {
+  it('triggers enrichment for new item where title === url (Mac app default)', async () => {
+    const { enrichMetadataAsync } = await import('../services/metadata.js')
+    const mockEnrich = vi.mocked(enrichMetadataAsync)
+    mockEnrich.mockClear()
+    const app = createApp()
+    const url = 'https://github.com/conductor-oss/conductor'
+    await app.request('/sync/push', {
+      method: 'POST',
+      headers: AUTH,
+      body: JSON.stringify({ changes: [makeChange({ id: 'gh-item', url, title: url, domain: 'github.com' })] }),
+    })
+    expect(mockEnrich).toHaveBeenCalledWith(expect.anything(), 'gh-item', url)
+  })
+
+  it('does not trigger enrichment when title is already enriched', async () => {
+    const { enrichMetadataAsync } = await import('../services/metadata.js')
+    const mockEnrich = vi.mocked(enrichMetadataAsync)
+    mockEnrich.mockClear()
+    const app = createApp()
+    await app.request('/sync/push', {
+      method: 'POST',
+      headers: AUTH,
+      body: JSON.stringify({ changes: [makeChange({ title: 'GitHub - conductor-oss/conductor: ...' })] }),
+    })
+    expect(mockEnrich).not.toHaveBeenCalled()
+  })
+})
 
 describe('I2: created_at round-trip', () => {
   it('push item with explicit created_at stores it verbatim', async () => {
