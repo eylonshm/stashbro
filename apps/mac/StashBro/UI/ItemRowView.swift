@@ -18,6 +18,12 @@ struct ItemRowView: View {
         }
     }
 
+    private var displayTitle: String {
+        let t = item.title
+        if t.isEmpty || t == item.url { return item.domain }
+        return t
+    }
+
     var body: some View {
         HStack(spacing: 9) {
             // Priority bar
@@ -27,7 +33,6 @@ struct ItemRowView: View {
                     .frame(width: 3)
                     .padding(.vertical, 9)
             } else {
-                // Keep spacing consistent when no bar (medium priority)
                 Color.clear.frame(width: 3)
             }
             // Thumbnail
@@ -40,21 +45,27 @@ struct ItemRowView: View {
                         RoundedRectangle(cornerRadius: 7).fill(thumbnailGradient)
                     }
                 }
-                .frame(width: 34, height: 34)
+                .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 7))
             } else {
                 RoundedRectangle(cornerRadius: 7)
                     .fill(thumbnailGradient)
-                    .frame(width: 34, height: 34)
+                    .frame(width: 48, height: 48)
             }
             // Info
-            VStack(alignment: .leading, spacing: 3) {
-                Text(item.title)
-                    .font(.system(size: 12, weight: .medium))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(displayTitle)
+                    .font(.system(size: 12, weight: .semibold))
                     .lineLimit(2)
+                if let desc = item.description, !desc.isEmpty {
+                    Text(desc)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
                 HStack(spacing: 5) {
                     Text(item.domain)
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                     TypeBadgeView(type: item.type)
                     ForEach(tags, id: \.id) { tag in
@@ -64,7 +75,7 @@ struct ItemRowView: View {
             }
             Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 5)
         .contentShape(Rectangle())
     }
 
