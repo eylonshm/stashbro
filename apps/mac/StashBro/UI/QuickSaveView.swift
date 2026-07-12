@@ -14,6 +14,7 @@ struct QuickSaveView: View {
     @State private var ogDescription: String? = nil
     @State private var ogImageURL: String? = nil
     @State private var ogLoading = true
+    @State private var shimmerOn = false  // ponytail: single bool drives all skeleton opacity
 
     private let defaultTitle: String
 
@@ -35,6 +36,7 @@ struct QuickSaveView: View {
                 .padding(.horizontal, 14)
                 .padding(.top, 14)
                 .padding(.bottom, 10)
+                .animation(.easeOut(duration: 0.25), value: ogLoading)
 
             Divider()
 
@@ -90,21 +92,31 @@ struct QuickSaveView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(previewTitle)
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let desc = ogDescription, !desc.isEmpty {
-                    Text(desc)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                if ogLoading {
+                    skeletonBar(height: 13)
+                    HStack(spacing: 0) {
+                        skeletonBar(height: 10)
+                        Spacer(minLength: 0).frame(width: 36)
+                    }
+                    .transition(.opacity)
+                } else {
+                    Text(previewTitle)
+                        .font(.system(size: 13, weight: .semibold))
                         .lineLimit(2)
-                }
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
 
-                Text(url.host ?? url.absoluteString)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+                    if let desc = ogDescription, !desc.isEmpty {
+                        Text(desc)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    Text(url.host ?? url.absoluteString)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
             }
             Spacer(minLength: 0)
         }
@@ -119,7 +131,16 @@ struct QuickSaveView: View {
 
     @ViewBuilder
     private var thumbnailView: some View {
-        if let imgStr = ogImageURL, let imgURL = URL(string: imgStr) {
+        if ogLoading {
+            RoundedRectangle(cornerRadius: 0)
+                .fill(Color.secondary.opacity(shimmerOn ? 0.15 : 0.07))
+                .transition(.opacity)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                        shimmerOn = true
+                    }
+                }
+        } else if let imgStr = ogImageURL, let imgURL = URL(string: imgStr) {
             AsyncImage(url: imgURL) { phase in
                 switch phase {
                 case .success(let image):
@@ -128,9 +149,17 @@ struct QuickSaveView: View {
                     typeGradient
                 }
             }
+            .transition(.opacity)
         } else {
             typeGradient
+                .transition(.opacity)
         }
+    }
+
+    private func skeletonBar(height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(Color.secondary.opacity(shimmerOn ? 0.15 : 0.07))
+            .frame(height: height)
     }
 
     private var typeGradient: some View {
@@ -162,75 +191,26 @@ struct QuickSaveView: View {
 
     // MARK: - OG fetch
 
+    // ponytail: @MainActor ensures all @State assignments run on main thread - fixes silent image drop
+    @MainActor
     private func loadOG() async {
         defer { ogLoading = false }
-        var req = URLRequest(url: url, timeoutInterval: 3)
-        req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
+        var req = URLRequest(url: url, timeoutInterval: 5)
+        req.setValue(
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            forHTTPHeaderField: "User-Agent"
+        )
         guard let (data, _) = try? await URLSession.shared.data(for: req) else { return }
         let html = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? ""
         guard !html.isEmpty else { return }
 
-        let fetchedTitle = ogMetaContent(html, property: "og:title") ?? htmlTitleTag(html)
-        let fetchedDesc  = ogMetaContent(html, property: "og:description") ?? metaNameContent(html, name: "description")
-        let fetchedImg   = ogMetaContent(html, property: "og:image")
+        let meta = parseOGMetadata(html: html, baseURL: url)
 
-        // Only auto-fill title if user hasn't modified from the default
-        if editTitle == defaultTitle, let t = fetchedTitle, !t.isEmpty {
+        if editTitle == defaultTitle, let t = meta.title, !t.isEmpty {
             editTitle = t
         }
-        ogTitle = fetchedTitle
-        ogDescription = fetchedDesc
-        ogImageURL = fetchedImg
-    }
-}
-
-// MARK: - HTML parsing helpers (file-private)
-
-/// Match <meta property="og:X" content="..."> in either attribute order.
-private func ogMetaContent(_ html: String, property: String) -> String? {
-    let esc = NSRegularExpression.escapedPattern(for: property)
-    let pats = [
-        #"<meta[^>]+property=[\"']\#(esc)[\"'][^>]+content=[\"']([^\"'<>]+)[\"']"#,
-        #"<meta[^>]+content=[\"']([^\"'<>]+)[\"'][^>]+property=[\"']\#(esc)[\"']"#,
-    ]
-    return firstCapture(html, patterns: pats)
-}
-
-private func metaNameContent(_ html: String, name: String) -> String? {
-    let esc = NSRegularExpression.escapedPattern(for: name)
-    let pats = [
-        #"<meta[^>]+name=[\"']\#(esc)[\"'][^>]+content=[\"']([^\"'<>]+)[\"']"#,
-        #"<meta[^>]+content=[\"']([^\"'<>]+)[\"'][^>]+name=[\"']\#(esc)[\"']"#,
-    ]
-    return firstCapture(html, patterns: pats)
-}
-
-private func htmlTitleTag(_ html: String) -> String? {
-    firstCapture(html, patterns: [#"<title[^>]*>([^<]+)</title>"#])
-}
-
-private func firstCapture(_ html: String, patterns: [String]) -> String? {
-    let nsRange = NSRange(html.startIndex..., in: html)
-    for pat in patterns {
-        guard let re = try? NSRegularExpression(pattern: pat, options: .caseInsensitive),
-              let m = re.firstMatch(in: html, range: nsRange),
-              let r = Range(m.range(at: 1), in: html)
-        else { continue }
-        return String(html[r]).htmlEntityDecoded
-    }
-    return nil
-}
-
-private extension String {
-    var htmlEntityDecoded: String {
-        self
-            .replacingOccurrences(of: "&amp;", with: "&")
-            .replacingOccurrences(of: "&lt;", with: "<")
-            .replacingOccurrences(of: "&gt;", with: ">")
-            .replacingOccurrences(of: "&quot;", with: "\"")
-            .replacingOccurrences(of: "&#39;", with: "'")
-            .replacingOccurrences(of: "&apos;", with: "'")
-            .replacingOccurrences(of: "&#x27;", with: "'")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        ogTitle = meta.title
+        ogDescription = meta.description
+        ogImageURL = meta.image
     }
 }
