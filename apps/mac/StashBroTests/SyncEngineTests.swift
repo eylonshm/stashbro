@@ -13,6 +13,7 @@ final class MockLocalStore: LocalStoreProtocol {
     func getChangesSince(_ c: Int) throws -> [SyncChange] { localChanges.filter { $0.changeSeq > c } }
     func applyChanges(_ changes: [SyncChange]) throws { appliedChanges.append(contentsOf: changes) }
     func saveLocalItem(_ item: StashItem) throws {}  // ponytail: SyncEngine never calls this
+    func bumpOrCreate(_ item: StashItem) throws {}   // ponytail: SyncEngine never calls this
     func getCursor() -> Int { cursor }
     func setCursor(_ c: Int) { cursor = c }
 }
@@ -297,6 +298,73 @@ final class GRDBLocalStoreTests: XCTestCase {
         let fetched = try db.dbWriter.read { try StashItem.fetchOne($0, key: "ghost") }
         XCTAssertNotNil(fetched)
         XCTAssertNotNil(fetched?.deletedAt) // tombstone created even for unknown item
+    }
+
+    func testBumpOrCreateDedupsByUrl() throws {
+        let (store, db) = makeStore()
+        let url = "https://dedup.example.com/article"
+        let now = Date()
+
+        // First call creates the item
+        let first = StashItem(id: "id-original", userId: "u", url: url, title: "Original",
+                              description: "kept", thumbnailUrl: "thumb", faviconUrl: nil,
+                              domain: "dedup.example.com", type: .article, status: .unread,
+                              priority: .medium, createdAt: now, updatedAt: now,
+                              deletedAt: nil, changeSeq: 0)
+        try store.bumpOrCreate(first)
+
+        // Second call with same URL but different id - must NOT insert a new row
+        let second = StashItem(id: "id-new", userId: "u", url: url, title: "Duplicate",
+                               description: nil, thumbnailUrl: nil, faviconUrl: nil,
+                               domain: "dedup.example.com", type: .article, status: .unread,
+                               priority: .medium, createdAt: now, updatedAt: now.addingTimeInterval(1),
+                               deletedAt: nil, changeSeq: 0)
+        try store.bumpOrCreate(second)
+
+        let count = try db.dbWriter.read { try StashItem.fetchCount($0) }
+        XCTAssertEqual(count, 1)  // still one row
+
+        let fetched = try db.dbWriter.read {
+            try StashItem.filter(Column("url") == url).fetchOne($0)!
+        }
+        XCTAssertEqual(fetched.id, "id-original")   // original id preserved
+        XCTAssertEqual(fetched.title, "Original")   // original title/description kept
+        XCTAssertGreaterThan(fetched.changeSeq, 1)  // seq bumped on second call
+        XCTAssertNil(fetched.deletedAt)
+        XCTAssertEqual(fetched.status, .unread)
+    }
+
+    func testBumpOrCreateRestoresDeletedItem() throws {
+        let (store, db) = makeStore()
+        let url = "https://restore.example.com/article"
+        let now = Date()
+
+        // Insert a tombstoned item directly
+        let deleted = StashItem(id: "id-del", userId: "u", url: url, title: "Deleted",
+                                description: nil, thumbnailUrl: nil, faviconUrl: nil,
+                                domain: "restore.example.com", type: .article, status: .archived,
+                                priority: .medium, createdAt: now, updatedAt: now,
+                                deletedAt: now, changeSeq: 1)
+        try db.dbWriter.write { try deleted.insert($0) }
+
+        // bumpOrCreate should re-activate it
+        let bump = StashItem(id: "id-new", userId: "u", url: url, title: "New",
+                             description: nil, thumbnailUrl: nil, faviconUrl: nil,
+                             domain: "restore.example.com", type: .article, status: .unread,
+                             priority: .medium, createdAt: now, updatedAt: now.addingTimeInterval(1),
+                             deletedAt: nil, changeSeq: 0)
+        try store.bumpOrCreate(bump)
+
+        let count = try db.dbWriter.read { try StashItem.fetchCount($0) }
+        XCTAssertEqual(count, 1)
+
+        let fetched = try db.dbWriter.read {
+            try StashItem.filter(Column("url") == url).fetchOne($0)!
+        }
+        XCTAssertEqual(fetched.id, "id-del")   // original id kept
+        XCTAssertNil(fetched.deletedAt)         // tombstone cleared
+        XCTAssertEqual(fetched.status, .unread)
+        XCTAssertGreaterThan(fetched.changeSeq, 1)
     }
 
     @MainActor

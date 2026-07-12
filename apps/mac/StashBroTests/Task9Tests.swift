@@ -9,6 +9,7 @@ private final class FailingStore: LocalStoreProtocol {
     func getChangesSince(_ cursor: Int) throws -> [SyncChange] { [] }
     func applyChanges(_ changes: [SyncChange]) throws {}
     func saveLocalItem(_ item: StashItem) throws { throw CocoaError(.fileWriteUnknown) }
+    func bumpOrCreate(_ item: StashItem) throws { throw CocoaError(.fileWriteUnknown) }
     func getCursor() -> Int { 0 }
     func setCursor(_ cursor: Int) {}
 }
@@ -143,8 +144,8 @@ final class ShareExtensionInboxTests: XCTestCase {
         let inbox = try makeInbox()
         let id1 = UUID().uuidString
         let id2 = UUID().uuidString
-        _ = try writeInboxJSON(to: inbox, id: id1)
-        _ = try writeInboxJSON(to: inbox, id: id2)
+        _ = try writeInboxJSON(to: inbox, id: id1, url: "https://example.com/article-1")
+        _ = try writeInboxJSON(to: inbox, id: id2, url: "https://example.com/article-2")
 
         let db = AppDatabase.makeInMemory()
         let defaults = UserDefaults(suiteName: "test.\(UUID().uuidString)")!

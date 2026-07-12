@@ -57,13 +57,23 @@ export async function ingestShareExtensionInbox(
     }
 
     try {
-      store.saveLocalItem({
-        id: payload.id, url: payload.url, title: payload.title || payload.url,
-        description: null, thumbnail_url: null, favicon_url: null,
-        domain: payload.domain, type: payload.type, status: 'unread',
-        priority: payload.priority, updated_at: payload.createdAt,
-        deleted_at: null, tag_names: [],
-      })
+      const existing = store.findByUrl(payload.url)
+      store.saveLocalItem(existing
+        ? {
+            id: existing.id, url: payload.url, title: existing.title,
+            description: existing.description, thumbnail_url: existing.thumbnail_url,
+            favicon_url: existing.favicon_url, domain: existing.domain,
+            type: existing.type, status: 'unread', priority: payload.priority,
+            updated_at: payload.createdAt, deleted_at: null, tag_names: existing.tag_names,
+          }
+        : {
+            id: payload.id, url: payload.url, title: payload.title || payload.url,
+            description: null, thumbnail_url: null, favicon_url: null,
+            domain: payload.domain, type: payload.type, status: 'unread',
+            priority: payload.priority, updated_at: payload.createdAt,
+            deleted_at: null, tag_names: [],
+          }
+      )
       // ponytail: if deleteFile fails the item re-ingests next foreground (saveLocalItem is idempotent via UPDATE, bumps seq harmlessly)
       await fs.deleteFile(filePath)
       count++

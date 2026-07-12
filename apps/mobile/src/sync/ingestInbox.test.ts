@@ -176,6 +176,28 @@ describe('ingestShareExtensionInbox', () => {
     expect(files).toHaveLength(1)  // .txt file untouched
   })
 
+  it('dedup: same URL twice → 1 row, seq bumped', async () => {
+    const db = freshDb()
+    const store = makeStore(db)
+    const url = 'https://example.com/dedup'
+
+    // First ingest
+    const p1 = validPayload({ url, title: 'First' })
+    await nodefs.writeFile(path.join(tmpDir, `${p1['id']}.json`), JSON.stringify(p1))
+    await ingestShareExtensionInbox(store, tmpDir, makeNodeInboxFS())
+
+    // Second ingest with same URL, different id (new share)
+    const p2 = validPayload({ url, title: 'Second' })
+    await nodefs.writeFile(path.join(tmpDir, `${p2['id']}.json`), JSON.stringify(p2))
+    await ingestShareExtensionInbox(store, tmpDir, makeNodeInboxFS())
+
+    const rows = db.prepare('SELECT * FROM items WHERE url = ?').all(url) as any[]
+    expect(rows).toHaveLength(1)        // no duplicate row
+    expect(rows[0].change_seq).toBe(2)  // seq bumped: 1 → 2
+    expect(rows[0].status).toBe('unread')
+    expect(rows[0].id).toBe(p1['id'])   // original id preserved
+  })
+
   it('uses userId from store (carry-forward: no hardcoded "default")', async () => {
     const db = freshDb()
     const userId = 'real-user-abc'

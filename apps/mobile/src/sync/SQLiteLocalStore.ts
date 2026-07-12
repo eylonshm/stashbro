@@ -99,6 +99,20 @@ export class SQLiteLocalStore implements LocalStore {
     })
   }
 
+  // Returns the first item matching url for this user (any status, including soft-deleted).
+  // Used by ingestShareExtensionInbox for URL dedup.
+  findByUrl(url: string): { id: string; title: string; description: string | null; thumbnail_url: string | null; favicon_url: string | null; domain: string; type: string; priority: string; tag_names: string[] } | undefined {
+    const row = this.db.queryOne<{ id: string; title: string; description: string | null; thumbnail_url: string | null; favicon_url: string | null; domain: string; type: string; priority: string }>(
+      'SELECT id,title,description,thumbnail_url,favicon_url,domain,type,priority FROM items WHERE user_id = ? AND url = ? LIMIT 1',
+      [this.userId, url]
+    )
+    if (!row) return undefined
+    const tagRows = this.db.queryAll<{ name: string }>(
+      'SELECT t.name FROM tags t JOIN item_tags it ON it.tag_id = t.id WHERE it.item_id = ?', [row.id]
+    )
+    return { ...row, tag_names: tagRows.map(t => t.name) }
+  }
+
   // Local-origin write: allocates MAX(change_seq)+1 so item appears in next getChangesSince
   // Not on LocalStore interface - used by mobile UI layer for user-created items
   saveLocalItem(item: {

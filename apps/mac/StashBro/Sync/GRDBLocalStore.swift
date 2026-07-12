@@ -8,6 +8,8 @@ protocol LocalStoreProtocol {
     func getChangesSince(_ cursor: Int) throws -> [SyncChange]
     func applyChanges(_ changes: [SyncChange]) throws
     func saveLocalItem(_ item: StashItem) throws
+    /// Like saveLocalItem but deduplicates by URL: re-activates an existing item if one exists.
+    func bumpOrCreate(_ item: StashItem) throws
     func getCursor() -> Int
     func setCursor(_ cursor: Int)
 }
@@ -98,6 +100,27 @@ final class GRDBLocalStore: LocalStoreProtocol {
         try db.dbWriter.write { dbConn in
             let maxSeq = try Int.fetchOne(dbConn, sql: "SELECT MAX(change_seq) FROM stash_items") ?? 0
             var i = item
+            i.changeSeq = maxSeq + 1
+            try i.save(dbConn)
+        }
+    }
+
+    /// Dedup by URL: if an item with the same URL already exists (any status), re-activates it
+    /// (status=.unread, deletedAt=nil, updatedAt bumped) with a fresh change_seq instead of
+    /// creating a duplicate. Falls through to a normal create when no match is found.
+    func bumpOrCreate(_ item: StashItem) throws {
+        try db.dbWriter.write { dbConn in
+            let maxSeq = try Int.fetchOne(dbConn, sql: "SELECT MAX(change_seq) FROM stash_items") ?? 0
+            var i: StashItem
+            if let existing = try StashItem.filter(Column("url") == item.url).fetchOne(dbConn) {
+                // ponytail: keep id/title/description/thumbnail from existing; only reset lifecycle fields
+                i = existing
+                i.status = .unread
+                i.deletedAt = nil
+                i.updatedAt = item.updatedAt
+            } else {
+                i = item
+            }
             i.changeSeq = maxSeq + 1
             try i.save(dbConn)
         }

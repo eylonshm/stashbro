@@ -35,7 +35,7 @@ func processShareInbox(at inbox: URL, into store: LocalStoreProtocol) -> Int {
             changeSeq: 0  // ponytail: saveLocalItem overwrites with MAX(change_seq)+1
         )
         do {
-            try store.saveLocalItem(stashItem)
+            try store.bumpOrCreate(stashItem)
             try? FileManager.default.removeItem(at: file)  // only delete on success
             count += 1
         } catch {
@@ -148,7 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             priority: .medium, createdAt: now, updatedAt: now, deletedAt: nil,
             changeSeq: 0  // ponytail: saveLocalItem overwrites with MAX(change_seq)+1
         )
-        try? store.saveLocalItem(item)
+        try? store.bumpOrCreate(item)
         Task { @MainActor in await syncEngine?.sync() }
     }
 }

@@ -22,7 +22,6 @@ final class NotchWindowController {
     private var panel: NSPanel?
     private let db: AppDatabase
     private let syncEngine: () -> SyncEngine?  // ponytail: closure for live engine after reconnect
-    private var outsideClickMonitor: Any?
 
     // Static geometry - pure math, headless testable.
     // nonisolated: no actor state accessed; pure CGRect arithmetic.
@@ -77,16 +76,6 @@ final class NotchWindowController {
         guard let panel, let screen = NSScreen.main else { return }
         let frame = Self.panelFrame(for: screen.frame)
 
-        // Collapse on click outside the panel; guard against double-expand leaking a monitor
-        if let old = outsideClickMonitor { NSEvent.removeMonitor(old) }
-        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            guard let self else { return }
-            let mouseLoc = NSEvent.mouseLocation
-            if !(self.panel?.frame.contains(mouseLoc) ?? false) {
-                Task { @MainActor in self.collapsePanel() }
-            }
-        }
-
         // Swap content only after animation completes to avoid clipped layout during resize
         let expandedView = NotchPanelView(
             db: db, syncEngine: syncEngine,
@@ -104,11 +93,6 @@ final class NotchWindowController {
     }
 
     func collapsePanel() {
-        if let monitor = outsideClickMonitor {
-            NSEvent.removeMonitor(monitor)
-            outsideClickMonitor = nil
-        }
-
         guard let panel, let screen = NSScreen.main else { return }
         let frame = Self.pillFrame(for: screen.frame)
 
@@ -129,9 +113,5 @@ final class NotchWindowController {
         })
     }
 
-    deinit {
-        if let monitor = outsideClickMonitor {
-            NSEvent.removeMonitor(monitor)
-        }
-    }
+    deinit {}
 }

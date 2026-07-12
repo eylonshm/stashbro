@@ -6,6 +6,8 @@ struct NotchPanelView: View {
     let syncEngine: () -> SyncEngine?  // ponytail: closure for live engine after reconnect
     let onCollapse: () -> Void
 
+    @State private var dismissTask: DispatchWorkItem?
+
     var body: some View {
         VStack(spacing: 0) {
             // Notch cutout area - sits above the physical notch
@@ -55,7 +57,15 @@ struct NotchPanelView: View {
         .frame(width: 360)
         .background(Color(red: 0.055, green: 0.055, blue: 0.071).opacity(0.97))
         .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18))
-        // Collapse when clicking outside is handled by AppKit event monitor in NotchWindowController
-        .onTapGesture { } // absorb taps inside panel so they don't trigger outside-click dismiss
+        .onTapGesture { }
+        .onHover { hovering in
+            dismissTask?.cancel()
+            if !hovering {
+                let task = DispatchWorkItem { [onCollapse] in onCollapse() }
+                dismissTask = task
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: task)
+            }
+        }
+        .onDisappear { dismissTask?.cancel() }
     }
 }

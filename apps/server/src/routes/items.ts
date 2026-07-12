@@ -88,6 +88,23 @@ export function itemsRouter() {
     const body = c.req.valid('json')
     const db = getDb()
     const now = new Date().toISOString()
+
+    // Dedup: look up existing item by (user_id, url), including deleted/archived
+    const existing = db.select().from(items)
+      .where(and(eq(items.user_id, userId), eq(items.url, body.url)))
+      .all()[0]
+
+    if (existing) {
+      const seq = nextSeq(db, userId)
+      db.update(items).set({
+        change_seq: seq, updated_at: now, status: 'unread', deleted_at: null,
+      }).where(eq(items.id, existing.id)).run()
+      if (body.tag_names?.length) upsertTags(db, userId, body.tag_names, existing.id)
+      // Re-enrich if title was never set (still equals url)
+      if (existing.title === existing.url) enrichMetadataAsync(db, existing.id, existing.url).catch(() => {})
+      return c.json(itemWithTags(db, existing.id, userId)!, 201)
+    }
+
     const id = uuidv7()
     const domain = extractDomain(body.url)
     const type = body.type ?? detectType(body.url)

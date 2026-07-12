@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createApp } from '../app.js'
 import { getDb, clearDbCache } from '../db/index.js'
 import { items, tags } from '../db/schema.js'
+
+vi.mock('../services/metadata.js', () => ({
+  enrichMetadataAsync: vi.fn().mockResolvedValue(undefined),
+}))
 
 process.env['AUTH_TOKEN'] = 'test'
 process.env['AUTH_MODE'] = 'token'
@@ -62,6 +66,78 @@ describe('POST /items', () => {
     const db = getDb()
     const tagRows = db.select().from(tags).all()
     expect(tagRows.map(t => t.name).sort()).toEqual(['AI', 'Tech'])
+  })
+
+  it('dedup: POST same url twice returns same id, count stays 1, change_seq increases', async () => {
+    const a = app()
+    const res1 = await a.request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://dedup.example.com' }),
+    })
+    const item1 = await res1.json()
+    const res2 = await a.request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://dedup.example.com' }),
+    })
+    expect(res2.status).toBe(201)
+    const item2 = await res2.json()
+    expect(item2.id).toBe(item1.id)
+    expect(item2.change_seq).toBeGreaterThan(item1.change_seq)
+    const db = getDb()
+    const all = db.select().from(items).all()
+    expect(all.length).toBe(1)
+  })
+
+  it('dedup: POST url of archived item returns it to unread with new change_seq', async () => {
+    const a = app()
+    const res1 = await a.request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://archived.example.com' }),
+    })
+    const { id } = await res1.json()
+    await a.request(`/items/${id}`, {
+      method: 'PATCH',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'archived' }),
+    })
+    const res2 = await a.request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://archived.example.com' }),
+    })
+    expect(res2.status).toBe(201)
+    const item2 = await res2.json()
+    expect(item2.id).toBe(id)
+    expect(item2.status).toBe('unread')
+    expect(item2.change_seq).toBeGreaterThan(1)
+  })
+
+  it('dedup: POST url of soft-deleted item resurrects it (deleted_at null, unread)', async () => {
+    const a = app()
+    const res1 = await a.request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://deleted.example.com' }),
+    })
+    const { id } = await res1.json()
+    await a.request(`/items/${id}`, {
+      method: 'PATCH',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deleted_at: new Date().toISOString() }),
+    })
+    const res2 = await a.request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://deleted.example.com' }),
+    })
+    expect(res2.status).toBe(201)
+    const item2 = await res2.json()
+    expect(item2.id).toBe(id)
+    expect(item2.deleted_at).toBeNull()
+    expect(item2.status).toBe('unread')
   })
 })
 
