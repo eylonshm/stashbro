@@ -85,6 +85,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.openQuickSave(url: tab.url, tabTitle: tab.title)
         }
 
+        // ponytail: debug-only; forces notch panel (bypasses safeAreaInsets + showInNotch pref), auto-triggers expand sequence
+        if ProcessInfo.processInfo.arguments.contains("--debug-notch") {
+            notchController = NotchWindowController(db: db, syncEngine: { [weak self] in self?.syncEngine }, debugMode: true)
+        }
+
         // ponytail: debug-only; gated behind launch arg so it never appears in normal runs
         if ProcessInfo.processInfo.arguments.contains("--debug-window") {
             let w = NSWindow(  // stored in debugWindow below to prevent dealloc

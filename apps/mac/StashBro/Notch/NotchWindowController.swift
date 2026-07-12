@@ -35,14 +35,23 @@ final class NotchWindowController {
         return CGRect(x: screenFrame.midX - w / 2, y: screenFrame.maxY - h, width: w, height: h)
     }
 
-    init(db: AppDatabase, syncEngine: @escaping () -> SyncEngine?) {
+    init(db: AppDatabase, syncEngine: @escaping () -> SyncEngine?, debugMode: Bool = false) {
         self.db = db
         self.syncEngine = syncEngine
 
-        guard let screen = NSScreen.main, screen.safeAreaInsets.top > 0 else {
+        guard let screen = NSScreen.main, debugMode || screen.safeAreaInsets.top > 0 else {
             return // Non-notch Mac: notch surface disabled
         }
         setupPanel(screen: screen)
+
+        if debugMode { scheduleDebugSequence() }
+    }
+
+    // ponytail: auto-triggers expand→collapse→expand for recording open animation; debug-notch only
+    private func scheduleDebugSequence() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.expandPanel() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in self?.collapsePanel() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak self] in self?.expandPanel() }
     }
 
     private func setupPanel(screen: NSScreen) {
@@ -76,19 +85,29 @@ final class NotchWindowController {
         guard let panel, let screen = NSScreen.main else { return }
         let frame = Self.panelFrame(for: screen.frame)
 
-        // Swap content only after animation completes to avoid clipped layout during resize
+        // Hide pill before frame grows - prevents pill floating/stretching in the expanding window
+        panel.contentView?.alphaValue = 0
+
         let expandedView = NotchPanelView(
             db: db, syncEngine: syncEngine,
             onCollapse: { [weak self] in self?.collapsePanel() }
         )
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.2
+            ctx.duration = 0.28
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().setFrame(
                 NSRect(x: frame.origin.x, y: frame.origin.y, width: frame.width, height: frame.height),
                 display: true
             )
         }, completionHandler: {
-            panel.contentView = NSHostingView(rootView: expandedView)
+            // Swap then fade in - no pop
+            let hosting = NSHostingView(rootView: expandedView)
+            panel.contentView = hosting
+            hosting.alphaValue = 0
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.15
+                hosting.animator().alphaValue = 1
+            }
         })
     }
 
