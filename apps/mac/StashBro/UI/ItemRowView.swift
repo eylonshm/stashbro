@@ -31,9 +31,22 @@ struct ItemRowView: View {
                 Color.clear.frame(width: 3)
             }
             // Thumbnail
-            RoundedRectangle(cornerRadius: 7)
-                .fill(thumbnailGradient)
+            if let urlStr = item.thumbnailUrl, let url = URL(string: urlStr) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    default:
+                        RoundedRectangle(cornerRadius: 7).fill(thumbnailGradient)
+                    }
+                }
                 .frame(width: 34, height: 34)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+            } else {
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(thumbnailGradient)
+                    .frame(width: 34, height: 34)
+            }
             // Info
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.title)

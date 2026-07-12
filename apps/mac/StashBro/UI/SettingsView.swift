@@ -22,6 +22,7 @@ struct SettingsView: View {
     @State private var magicCode = ""
     @State private var codeStep = false
     @State private var loginStatus = ""
+    @State private var connectionStatus = ""
 
     // ponytail: computed at render time; static per session but correct
     private var hasNotch: Bool { (NSScreen.main?.safeAreaInsets.top ?? 0) > 0 }
@@ -33,6 +34,11 @@ struct SettingsView: View {
                     .textContentType(.URL)
                 SecureField("Bearer Token", text: $serverToken)
                 Button("Save & Reconnect") { reconnect() }
+                if !connectionStatus.isEmpty {
+                    Text(connectionStatus)
+                        .font(.caption)
+                        .foregroundStyle(connectionStatus.contains("Connected") ? .green : .red)
+                }
             }
 
             Section("Sign In (Hosted Mode)") {
@@ -134,14 +140,28 @@ struct SettingsView: View {
     }
 
     private func reconnect() {
-        guard let config = validatedConfig(urlString: serverURL, token: serverToken) else { return }
-        config.save()
-        if let delegate = NSApp.delegate as? AppDelegate {
-            let store = GRDBLocalStore(db: delegate.db)
-            let client = StashBroAPIClient(config: config)
-            let engine = SyncEngine(store: store, client: client)
-            delegate.syncEngine = engine
-            Task { await engine.sync() }
+        guard let config = validatedConfig(urlString: serverURL, token: serverToken) else {
+            connectionStatus = "Invalid URL or empty token"
+            return
         }
+        connectionStatus = "Connecting..."
+        config.save()
+        let healthURL = config.baseURL.appendingPathComponent("health")
+        URLSession.shared.dataTask(with: healthURL) { data, res, err in
+            DispatchQueue.main.async {
+                guard err == nil, (res as? HTTPURLResponse)?.statusCode == 200 else {
+                    connectionStatus = "Failed: \(err?.localizedDescription ?? "server unreachable")"
+                    return
+                }
+                if let delegate = NSApp.delegate as? AppDelegate {
+                    let store = GRDBLocalStore(db: delegate.db)
+                    let client = StashBroAPIClient(config: config)
+                    let engine = SyncEngine(store: store, client: client)
+                    delegate.syncEngine = engine
+                    Task { await engine.sync() }
+                }
+                connectionStatus = "Connected!"
+            }
+        }.resume()
     }
 }
