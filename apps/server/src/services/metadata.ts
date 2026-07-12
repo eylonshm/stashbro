@@ -87,8 +87,9 @@ export async function fetchOgMeta(url: string): Promise<{
       try { favicon = new URL(favicon, url).href } catch { favicon = undefined }
     }
     const result: { title?: string; description?: string; image?: string; favicon?: string } = {}
-    const title = get('og:title') ?? get('twitter:title')
-    const description = get('og:description') ?? get('twitter:description')
+    const htmlTitle = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim()
+    const title = get('og:title') ?? get('twitter:title') ?? htmlTitle
+    const description = get('og:description') ?? get('twitter:description') ?? get('description')
     const image = get('og:image') ?? get('twitter:image')
     if (title) result.title = title
     if (description) result.description = description

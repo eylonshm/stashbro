@@ -53,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var syncTimer: Timer?
     let db = AppDatabase.makeShared()
     private var store: GRDBLocalStore?   // reused in saveURL and ingestShareExtensionInbox
+    private var debugWindow: NSWindow?   // ponytail: strong ref keeps --debug-window alive past launch
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let s = GRDBLocalStore(db: db)
@@ -76,6 +77,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         HotkeyManager.register { [weak self] url in
             self?.saveURL(url)
+        }
+
+        // ponytail: debug-only; gated behind launch arg so it never appears in normal runs
+        if ProcessInfo.processInfo.arguments.contains("--debug-window") {
+            let w = NSWindow(  // stored in debugWindow below to prevent dealloc
+                contentRect: NSRect(x: 0, y: 0, width: 360, height: 600),
+                styleMask: [.titled, .closable], backing: .buffered, defer: false
+            )
+            w.title = "StashBro Debug"
+            w.contentView = NSHostingView(rootView: StashListView(
+                db: db,
+                syncEngine: { [weak self] in self?.syncEngine },
+                style: .popover
+            ))
+            w.center()
+            NSApp.activate(ignoringOtherApps: true)
+            w.makeKeyAndOrderFront(nil)
+            debugWindow = w
         }
     }
 
