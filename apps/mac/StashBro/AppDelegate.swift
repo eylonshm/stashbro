@@ -2,6 +2,11 @@
 import AppKit
 import SwiftUI
 
+// ponytail: borderless panel needs canBecomeKey override for text field focus
+private final class QuickSavePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 // ponytail: top-level so tests can call directly without instantiating AppDelegate
 @discardableResult
 func processShareInbox(at inbox: URL, into store: LocalStoreProtocol) -> Int {
@@ -54,6 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let db = AppDatabase.makeShared()
     private var store: GRDBLocalStore?   // reused in saveURL and ingestShareExtensionInbox
     private var debugWindow: NSWindow?   // ponytail: strong ref keeps --debug-window alive past launch
+    private var quickSavePanel: QuickSavePanel?  // ponytail: strong ref - borderless panels dealloc without it
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let s = GRDBLocalStore(db: db)
@@ -75,8 +81,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: UserDefaults.didChangeNotification, object: nil
         )
 
-        HotkeyManager.register { [weak self] url in
-            self?.saveURL(url)
+        HotkeyManager.register { [weak self] tab in
+            self?.openQuickSave(url: tab.url, tabTitle: tab.title)
         }
 
         // ponytail: debug-only; gated behind launch arg so it never appears in normal runs
@@ -95,6 +101,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.activate(ignoringOtherApps: true)
             w.makeKeyAndOrderFront(nil)
             debugWindow = w
+        }
+
+        // ponytail: debug-only; gated behind launch arg so it never appears in normal runs
+        let args = ProcessInfo.processInfo.arguments
+        if let idx = args.firstIndex(of: "--debug-quicksave"), idx + 1 < args.count,
+           let url = URL(string: args[idx + 1]) {
+            openQuickSave(url: url, tabTitle: nil)
         }
     }
 
@@ -136,6 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // saveURL: used by NotchDropDelegate drag path (unchanged)
     func saveURL(_ url: URL) {
         guard let store else { return }
         let now = Date()
@@ -150,5 +164,71 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         try? store.bumpOrCreate(item)
         Task { @MainActor in await syncEngine?.sync() }
+    }
+
+    func openQuickSave(url: URL, tabTitle: String?) {
+        guard let store else { return }
+
+        // Close any existing panel first
+        quickSavePanel?.orderOut(nil)
+
+        let panel = QuickSavePanel(
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 10),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        panel.level = .floating
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.isMovableByWindowBackground = true
+
+        let dismiss = { [weak self, weak panel] in
+            panel?.orderOut(nil)
+            self?.quickSavePanel = nil
+        }
+
+        let onSave: (String, ItemPriority, [String], String?, String?) -> Void = { [weak self] title, priority, tags, desc, thumb in
+            guard let self else { return }
+            let now = Date()
+            let item = StashItem(
+                id: UUID().uuidString, userId: "default",
+                url: url.absoluteString,
+                title: title.isEmpty ? url.absoluteString : title,
+                description: desc,
+                thumbnailUrl: thumb, faviconUrl: nil,
+                domain: url.host ?? url.absoluteString,
+                type: detectItemType(url: url.absoluteString),
+                status: .unread, priority: priority,
+                createdAt: now, updatedAt: now, deletedAt: nil,
+                changeSeq: 0  // ponytail: bumpOrCreateWithTags overwrites with MAX(change_seq)+1
+            )
+            try? store.bumpOrCreateWithTags(item, tagNames: tags)
+            Task { @MainActor in await self.syncEngine?.sync() }
+            dismiss()
+        }
+
+        let view = QuickSaveView(url: url, tabTitle: tabTitle, onSave: onSave, onCancel: dismiss)
+        let hosting = NSHostingView(rootView: view.background(.regularMaterial).cornerRadius(14))
+        hosting.translatesAutoresizingMaskIntoConstraints = false
+        // Let the hosting view size itself to the SwiftUI content
+        let hostWrap = NSView()
+        hostWrap.addSubview(hosting)
+        NSLayoutConstraint.activate([
+            hosting.topAnchor.constraint(equalTo: hostWrap.topAnchor),
+            hosting.bottomAnchor.constraint(equalTo: hostWrap.bottomAnchor),
+            hosting.leadingAnchor.constraint(equalTo: hostWrap.leadingAnchor),
+            hosting.trailingAnchor.constraint(equalTo: hostWrap.trailingAnchor),
+        ])
+        panel.contentView = hostWrap
+
+        // Size the panel to the ideal SwiftUI content size
+        let idealSize = hosting.fittingSize
+        panel.setContentSize(idealSize)
+        panel.center()
+
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+        quickSavePanel = panel
     }
 }

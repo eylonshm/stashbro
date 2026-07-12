@@ -7,11 +7,11 @@ extension KeyboardShortcuts.Name {
 }
 
 enum HotkeyManager {
-    static func register(handler: @escaping (URL) -> Void) {
+    static func register(handler: @escaping (BrowserTab) -> Void) {
         KeyboardShortcuts.onKeyDown(for: .saveCurrentTab) {
             Task { @MainActor in
-                guard let url = await BrowserTabGrabber.grab() else { return }
-                handler(url)
+                guard let tab = await BrowserTabGrabber.grab() else { return }
+                handler(tab)
             }
         }
     }

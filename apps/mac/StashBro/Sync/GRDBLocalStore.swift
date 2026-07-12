@@ -126,6 +126,44 @@ final class GRDBLocalStore: LocalStoreProtocol {
         }
     }
 
+    /// Like bumpOrCreate but also writes tag records + links atomically, and applies the
+    /// provided title/description/thumbnail/priority (quick-save always has fresh metadata).
+    func bumpOrCreateWithTags(_ item: StashItem, tagNames: [String]) throws {
+        try db.dbWriter.write { dbConn in
+            let maxSeq = try Int.fetchOne(dbConn, sql: "SELECT MAX(change_seq) FROM stash_items") ?? 0
+            var i: StashItem
+            if let existing = try StashItem.filter(Column("url") == item.url).fetchOne(dbConn) {
+                i = existing
+                i.status = .unread
+                i.title = item.title
+                i.description = item.description
+                i.thumbnailUrl = item.thumbnailUrl
+                i.priority = item.priority
+                i.deletedAt = nil
+                i.updatedAt = item.updatedAt
+            } else {
+                i = item
+            }
+            i.changeSeq = maxSeq + 1
+            try i.save(dbConn)
+
+            guard !tagNames.isEmpty else { return }
+            try ItemTag.filter(Column("item_id") == i.id).deleteAll(dbConn)
+            for name in tagNames {
+                let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { continue }
+                var tag = try Tag
+                    .filter(Column("user_id") == i.userId && Column("name") == trimmed)
+                    .fetchOne(dbConn)
+                if tag == nil {
+                    tag = Tag(id: UUID().uuidString, userId: i.userId, name: trimmed)
+                    try tag!.insert(dbConn)
+                }
+                try ItemTag(itemId: i.id, tagId: tag!.id).insert(dbConn)
+            }
+        }
+    }
+
     func getCursor() -> Int { defaults.integer(forKey: cursorKey) }
     func setCursor(_ cursor: Int) { defaults.set(cursor, forKey: cursorKey) }
 }
