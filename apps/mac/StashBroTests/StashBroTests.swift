@@ -8,6 +8,24 @@ final class StashBroTests: XCTestCase {
     }
 }
 
+// MARK: - BrowserTabGrabber bundle-ID routing
+
+final class BrowserTabGrabberScriptTests: XCTestCase {
+    func testSafariMapped()        { XCTAssertNotNil(BrowserTabGrabber.script(for: "com.apple.Safari")) }
+    func testChromeMapped()        { XCTAssertNotNil(BrowserTabGrabber.script(for: "com.google.Chrome")) }
+    func testChromeCanaryMapped()  { XCTAssertNotNil(BrowserTabGrabber.script(for: "com.google.Chrome.canary")) }
+    func testArcMapped()           { XCTAssertNotNil(BrowserTabGrabber.script(for: "company.thebrowser.Browser")) }
+    func testBraveMapped()         { XCTAssertNotNil(BrowserTabGrabber.script(for: "com.brave.Browser")) }
+    func testEdgeMapped()          { XCTAssertNotNil(BrowserTabGrabber.script(for: "com.microsoft.edgemac")) }
+    func testUnknownNil()          { XCTAssertNil(BrowserTabGrabber.script(for: "com.example.NotABrowser")) }
+    func testSafariAndChromeAreDifferentScripts() {
+        XCTAssertNotEqual(
+            BrowserTabGrabber.script(for: "com.apple.Safari"),
+            BrowserTabGrabber.script(for: "com.google.Chrome")
+        )
+    }
+}
+
 // MARK: - detectItemType tests
 
 final class DetectTypeTests: XCTestCase {

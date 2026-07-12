@@ -9,14 +9,35 @@ struct BrowserTab {
 enum BrowserTabGrabber {
     @MainActor
     static func grab() async -> BrowserTab? {
-        for script in [safariScript, chromeScript, arcScript] {
-            if let tab = await runScript(script) { return tab }
+        // Try the frontmost app first so hotkey always queries the active browser
+        let frontBundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        if let bid = frontBundleID, let s = script(for: bid), let tab = await runScript(s) {
+            return tab
+        }
+        // Fallback: try all known browsers in order (covers non-browser frontmost app)
+        for s in [safariScript, chromeScript, arcScript] {
+            if let tab = await runScript(s) { return tab }
         }
         // Clipboard fallback - NSPasteboard.general read here (MainActor)
         if let url = clipboardURL(from: NSPasteboard.general.string(forType: .string)) {
             return BrowserTab(url: url, title: nil)
         }
         return nil
+    }
+
+    // ponytail: pure mapping - lets tests verify bundle-ID routing without launching osascript
+    static func script(for bundleID: String) -> String? {
+        switch bundleID {
+        case "com.apple.Safari":
+            return safariScript
+        case "com.google.Chrome", "com.google.Chrome.canary",
+             "com.brave.Browser", "com.microsoft.edgemac":
+            return chromeScript
+        case "company.thebrowser.Browser":
+            return arcScript
+        default:
+            return nil
+        }
     }
 
     // ponytail: nonisolated pure parse - MainActor read happens in grab(), tests pass explicit strings
