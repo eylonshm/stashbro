@@ -67,7 +67,7 @@ struct NotchHoverLogic {
 
 // NSPanel: minimal - constrainFrameRect for absolute-top positioning.
 // No sendEvent override, no hitTest tricks. Window sizing IS the click-through mechanism.
-private final class NotchPanel: NSPanel {
+final class NotchPanel: NSPanel {  // internal for tests (panel lifecycle assertions)
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
@@ -114,6 +114,7 @@ final class NotchWindowController {
     private let notchState = NotchState()
     private var hoverLogic = NotchHoverLogic()
     private var hoverTimer: Timer?
+    private var openAppObserver: NSObjectProtocol?
     private var shrinkGeneration = 0
     private let db: AppDatabase
     private let syncEngine: () -> SyncEngine?
@@ -187,7 +188,7 @@ final class NotchWindowController {
         startHoverTimer(pillW: pillW, screenRect: screenRect)
 
         // Auto-close when "Open App" is clicked - main window takes over
-        NotificationCenter.default.addObserver(
+        openAppObserver = NotificationCenter.default.addObserver(
             forName: MainWindowController.openMainWindow, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -256,5 +257,9 @@ final class NotchWindowController {
 
     deinit {
         hoverTimer?.invalidate()
+        if let openAppObserver { NotificationCenter.default.removeObserver(openAppObserver) }
+        // Ordered-front windows stay in NSApp.windows past dealloc - without close()
+        // a replaced/disabled controller leaves a zombie pill onscreen forever
+        panel?.close()
     }
 }

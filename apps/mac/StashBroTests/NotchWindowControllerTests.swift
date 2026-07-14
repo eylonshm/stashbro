@@ -50,6 +50,30 @@ final class NotchGeometryTests: XCTestCase {
     }
 }
 
+// MARK: - Panel lifecycle (needs a screen; runs on dev machine / CI with display)
+
+@MainActor
+final class NotchPanelLifecycleTests: XCTestCase {
+    // Visible panels only - closed windows can linger in NSApp.windows until ARC frees them
+    private func notchPanelCount() -> Int {
+        NSApp.windows.filter { $0 is NotchPanel && $0.isVisible }.count
+    }
+
+    // Replacing/disabling the controller must close its window - an ordered-front
+    // NSWindow outlives its controller in NSApp.windows, leaving a zombie pill
+    func testDeallocClosesPanel() {
+        let before = notchPanelCount()
+        var controller: NotchWindowController? =
+            NotchWindowController(db: AppDatabase.makeInMemory(), syncEngine: { nil }, debugMode: true)
+        weak var weakController = controller
+        XCTAssertEqual(notchPanelCount(), before + 1, "controller should put one panel onscreen")
+        controller = nil
+        _ = controller
+        XCTAssertNil(weakController, "controller must deallocate when released - something retains it")
+        XCTAssertEqual(notchPanelCount(), before, "dealloc must close the panel, not leave a zombie")
+    }
+}
+
 // MARK: - NotchHoverLogic tests (pure struct, no AppKit)
 
 final class NotchHoverLogicTests: XCTestCase {
