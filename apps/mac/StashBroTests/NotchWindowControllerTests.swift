@@ -23,7 +23,7 @@ final class NotchGeometryTests: XCTestCase {
 
     func testExpandedFrameSize() {
         let frame = NotchWindowController.expandedFrame(screen: screen)
-        XCTAssertEqual(frame.width, 360)
+        XCTAssertEqual(frame.width, 400)
         XCTAssertEqual(frame.height, 420)
     }
 

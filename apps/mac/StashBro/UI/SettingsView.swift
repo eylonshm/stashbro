@@ -15,7 +15,7 @@ func validatedConfig(urlString: String, token: String) -> ServerConfig? {
 struct SettingsView: View {
     @AppStorage("serverURL") private var serverURL = ""
     @AppStorage("serverToken") private var serverToken = ""
-    @AppStorage("showInNotch") private var showInNotch = false
+    @AppStorage("showInNotch") private var showInNotch = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var launchAtLoginError: String? = nil
     @State private var hostedEmail = ""

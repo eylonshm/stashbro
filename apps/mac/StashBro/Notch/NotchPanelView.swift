@@ -22,10 +22,13 @@ struct NotchPanelView: View {
                         .foregroundStyle(.white.opacity(0.9))
                 }
                 Spacer()
-                Button("Open App") { NSApp.activate() } // macOS 14+ API; deployment target is 14
+                Button("Open App") {
+                    NotificationCenter.default.post(name: MainWindowController.openMainWindow, object: nil)
+                } // AppDelegate observes and calls mainWindowController.show()
                     .buttonStyle(.plain)
                     .font(.system(size: 11))
                     .foregroundStyle(Color(red: 0.784, green: 0.478, blue: 0.220))
+                    .help("Open StashBro main window")
             }
             .padding(.horizontal, 16).padding(.vertical, 10)
 
@@ -51,7 +54,7 @@ struct NotchPanelView: View {
             }
             .padding(.vertical, 8)
         }
-        .frame(width: 360)
+        .frame(width: 400)
         .background(Color(red: 0.055, green: 0.055, blue: 0.071).opacity(0.97))
         .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18))
         .onTapGesture { }

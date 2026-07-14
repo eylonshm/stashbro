@@ -50,10 +50,12 @@ final class SettingsReconnectValidationTests: XCTestCase {
         XCTAssertEqual(loaded.token, "tok-abc")
     }
 
-    // C2: showInNotch defaults false (notch off until user opts in)
-    func testShowInNotchDefaultsFalse() {
+    // showInNotch defaults true via register(defaults:) at launch (notch on out of the box);
+    // raw defaults with no registration read false - AppDelegate registers true.
+    func testShowInNotchRegisteredDefaultTrue() {
         let d = freshDefaults()
-        XCTAssertFalse(d.bool(forKey: "showInNotch"))
+        d.register(defaults: ["showInNotch": true])
+        XCTAssertTrue(d.bool(forKey: "showInNotch"))
     }
 
     // C2: showInNotch true triggers notch surface

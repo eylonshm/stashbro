@@ -35,7 +35,7 @@ struct NotchHoverLogic {
         self.debounce = debounce
     }
 
-    // cursorInside: is cursor within current panel.frame (pill when collapsed, 360x420 when expanded)
+    // cursorInside: is cursor within current panel.frame (pill when collapsed, 400x420 when expanded)
     mutating func update(now: Date, cursorInside: Bool) -> Action {
         switch state {
         case .collapsed:
@@ -97,7 +97,7 @@ struct NotchRootView: View {
                 .allowsHitTesting(!state.isExpanded)
         }
         .background(Color(red: 0.039, green: 0.039, blue: 0.047))
-        .frame(width: state.isExpanded ? 360 : pillWidth, height: state.isExpanded ? 420 : 30)
+        .frame(width: state.isExpanded ? 400 : pillWidth, height: state.isExpanded ? 420 : 30)
         .clipShape(UnevenRoundedRectangle(
             bottomLeadingRadius: state.isExpanded ? 18 : 16,
             bottomTrailingRadius: state.isExpanded ? 18 : 16
@@ -139,9 +139,9 @@ final class NotchWindowController {
 
     static nonisolated func expandedFrame(screen: CGRect) -> CGRect {
         CGRect(
-            x: screen.midX - 180,
+            x: screen.midX - 200,
             y: screen.maxY - 420,
-            width: 360,
+            width: 400,
             height: 420
         )
     }
@@ -185,6 +185,17 @@ final class NotchWindowController {
         self.panel = panel
 
         startHoverTimer(pillW: pillW, screenRect: screenRect)
+
+        // Auto-close when "Open App" is clicked - main window takes over
+        NotificationCenter.default.addObserver(
+            forName: MainWindowController.openMainWindow, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.notchState.isExpanded else { return }
+                self.hoverLogic = NotchHoverLogic()  // ponytail: fresh instance starts collapsed
+                self.collapseAfterAnimation(pillW: pillW, screenRect: screenRect)
+            }
+        }
     }
 
     private func startHoverTimer(pillW: CGFloat, screenRect: CGRect) {
@@ -199,10 +210,15 @@ final class NotchWindowController {
     }
 
     private func pollHover(pillW: CGFloat, screenRect: CGRect) {
-        guard let panel else { return }
+        guard panel != nil else { return }
         // NSEvent.mouseLocation: global screen coords, bottom-left origin (same as NSWindow.frame)
+        // Hit-test the LOGIC state's rect, not panel.frame - after a forced collapse the window
+        // stays expanded-sized for 0.45s and a cursor inside it would immediately re-expand.
         let cursor = NSEvent.mouseLocation
-        let cursorInside = panel.frame.insetBy(dx: -2, dy: -2).contains(cursor)
+        let rect = hoverLogic.state == .expanded
+            ? Self.expandedFrame(screen: screenRect)
+            : Self.pillFrame(pillWidth: pillW, screen: screenRect)
+        let cursorInside = rect.insetBy(dx: -2, dy: -2).contains(cursor)
         switch hoverLogic.update(now: Date(), cursorInside: cursorInside) {
         case .expand:   expand(pillW: pillW, screenRect: screenRect)
         case .collapse: collapseAfterAnimation(pillW: pillW, screenRect: screenRect)
