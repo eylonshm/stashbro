@@ -16,7 +16,7 @@ enum ItemType: String, Codable, DatabaseValueConvertible {
     case video, post, article, other
 }
 enum ItemStatus: String, Codable, DatabaseValueConvertible {
-    case unread, archived
+    case unread, read, archived
 }
 enum ItemPriority: String, Codable, DatabaseValueConvertible {
     case low, medium, high

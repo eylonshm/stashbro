@@ -1,9 +1,12 @@
 // packages/extension/entrypoints/popup/PopupApp.tsx
-import React, { useState, useEffect } from 'react'
-import { detectType, extractDomain } from '@stashbro/shared'
+import React, { useState, useEffect, useCallback } from 'react'
+import { detectType, extractDomain, StashBroClient } from '@stashbro/shared'
+import type { Item, Status } from '@stashbro/shared'
 import { saveWithRetry } from '../background.js'
 
 type Priority = 'low' | 'medium' | 'high'
+type View = 'save' | 'list'
+type ListFilter = 'unread' | 'read' | 'archived'
 
 // ponytail: one-time read at module load; popup is a fresh page each open, no listener needed
 const DARK = window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -34,6 +37,17 @@ const TYPE_COLORS: Record<string, { bg: string; fg: string }> = DARK ? {
   other:   { bg: '#F2EDF8', fg: '#6441A0' },
 }
 
+function relTime(iso: string): string {
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+  if (m < 1) return 'now'
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h`
+  const d = Math.floor(h / 24)
+  if (d < 7) return `${d}d`
+  return `${Math.floor(d / 7)}w`
+}
+
 export default function PopupApp() {
   const [url, setUrl] = useState('')
   const [title, setTitle] = useState('')
@@ -45,6 +59,12 @@ export default function PopupApp() {
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   // null = loading (prevents configured/unconfigured flash on open)
   const [configured, setConfigured] = useState<boolean | null>(null)
+
+  const [view, setView] = useState<View>('save')
+  const [listFilter, setListFilter] = useState<ListFilter>('unread')
+  const [listItems, setListItems] = useState<Item[]>([])
+  const [listLoading, setListLoading] = useState(false)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   useEffect(() => {
     browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
@@ -66,6 +86,35 @@ export default function PopupApp() {
     })
   }, [])
 
+  const fetchItems = useCallback(async (filter: ListFilter) => {
+    setListLoading(true)
+    try {
+      const s = await browser.storage.local.get(['serverURL', 'serverToken']) as { serverURL?: string; serverToken?: string }
+      if (!s.serverURL || !s.serverToken) return
+      const res = await fetch(`${s.serverURL}/items?status=${filter}&limit=50`, {
+        headers: { Authorization: `Bearer ${s.serverToken}` },
+      })
+      if (res.ok) setListItems(((await res.json()) as { items: Item[] }).items)
+    } catch { /* offline */ } finally {
+      setListLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (view === 'list' && configured) fetchItems(listFilter)
+  }, [view, listFilter, configured, fetchItems])
+
+  const updateStatus = async (id: string, status: Status) => {
+    const s = await browser.storage.local.get(['serverURL', 'serverToken']) as { serverURL?: string; serverToken?: string }
+    if (!s.serverURL || !s.serverToken) return
+    const client = new StashBroClient({ baseUrl: s.serverURL, token: s.serverToken })
+    try {
+      await client.updateItem(id, { status })
+      // remove from current filter - it no longer belongs in this tab
+      setListItems(prev => prev.filter(it => it.id !== id))
+    } catch { /* offline - no retry here, user can refresh */ }
+  }
+
   const save = async () => {
     setState('saving')
     const ok = await saveWithRetry({ url, title, tag_names: tags, priority })
@@ -84,7 +133,7 @@ export default function PopupApp() {
   const suggestions = tagInput ? allTags.filter(t => t.includes(tagInput) && !tags.includes(t)) : []
 
   const wrap = (children: React.ReactNode) => (
-    <div style={{ padding: 16, width: 280, fontFamily: 'system-ui', background: TH.bg, boxSizing: 'border-box' }}>
+    <div style={{ padding: 16, width: 320, fontFamily: 'system-ui', background: TH.bg, boxSizing: 'border-box' }}>
       {children}
     </div>
   )
@@ -118,65 +167,131 @@ export default function PopupApp() {
   </>)
 
   return (
-    <div style={{ padding: 16, width: 280, fontFamily: 'system-ui', background: TH.bg, display: 'flex', flexDirection: 'column', gap: 12, boxSizing: 'border-box' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${TH.border}`, paddingBottom: 10 }}>
+    <div style={{ width: 320, fontFamily: 'system-ui', background: TH.bg, boxSizing: 'border-box' }}>
+      {/* Top nav */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${TH.border}` }}>
         <div style={{ width: 28, height: 28, borderRadius: 7, background: TH.copper, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13 }}>S</div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: TH.text }}>StashBro</div>
-          <div style={{ fontSize: 11, color: TH.secondary }}>Save current page</div>
-        </div>
-        <div style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: tc.bg, color: tc.fg }}>{detectedType.toUpperCase()}</div>
-      </div>
-
-      {/* Title */}
-      <div>
-        <label style={{ fontSize: 11, fontWeight: 600, color: TH.secondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Title</label>
-        <input value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', marginTop: 4, padding: '6px 8px', borderRadius: 6, border: `1px solid ${TH.border}`, fontSize: 13, boxSizing: 'border-box', outline: 'none', color: TH.text, background: TH.surface }} />
-      </div>
-
-      {/* Tags */}
-      <div>
-        <label style={{ fontSize: 11, fontWeight: 600, color: TH.secondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tags</label>
-        <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', padding: '4px 8px', borderRadius: 6, border: `1px solid ${TH.border}`, minHeight: 32, background: TH.surface }}>
-          {tags.map(t => (
-            <span key={t} style={{ fontSize: 11, padding: '1px 6px', borderRadius: 99, background: TH.tagBg, color: TH.tagFg, display: 'flex', alignItems: 'center', gap: 3 }}>
-              #{t} <span style={{ cursor: 'pointer', opacity: 0.5 }} onClick={() => setTags(prev => prev.filter(x => x !== t))}>&#215;</span>
-            </span>
-          ))}
-          <input
-            value={tagInput}
-            onChange={e => setTagInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagInput) } }}
-            placeholder={tags.length === 0 ? 'Add tags...' : ''}
-            style={{ border: 'none', outline: 'none', fontSize: 12, flex: 1, minWidth: 60, color: TH.text, background: 'transparent' }}
-          />
-        </div>
-        {suggestions.length > 0 && (
-          <div style={{ border: `1px solid ${TH.border}`, borderRadius: 6, marginTop: 2, background: TH.dropdownBg }}>
-            {suggestions.slice(0, 5).map(t => (
-              <div key={t} style={{ padding: '6px 8px', fontSize: 12, cursor: 'pointer', color: TH.text }} onClick={() => addTag(t)}>#{t}</div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Priority */}
-      <div>
-        <label style={{ fontSize: 11, fontWeight: 600, color: TH.secondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Priority</label>
-        <div style={{ marginTop: 4, display: 'flex', background: TH.segBg, borderRadius: 8, padding: 2, gap: 1 }}>
-          {(['low', 'medium', 'high'] as Priority[]).map(p => (
-            <button key={p} onClick={() => setPriority(p)} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', background: priority === p ? TH.segActive : 'transparent', color: priority === p ? TH.text : TH.secondary, boxShadow: priority === p ? '0 1px 3px rgba(0,0,0,.12)' : 'none' }}>
-              {p === 'medium' ? 'Med' : p.charAt(0).toUpperCase() + p.slice(1)}
+        <div style={{ fontSize: 13, fontWeight: 700, color: TH.text }}>StashBro</div>
+        <div style={{ marginLeft: 'auto', display: 'flex', background: TH.segBg, borderRadius: 8, padding: 2, gap: 1 }}>
+          {(['save', 'list'] as View[]).map(v => (
+            <button key={v} onClick={() => setView(v)} style={{ padding: '3px 10px', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', background: view === v ? TH.segActive : 'transparent', color: view === v ? TH.text : TH.secondary, boxShadow: view === v ? '0 1px 3px rgba(0,0,0,.12)' : 'none' }}>
+              {v === 'save' ? 'Save' : 'List'}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Save button */}
-      <button onClick={save} disabled={state === 'saving'} style={{ padding: '10px 0', borderRadius: 10, border: 'none', background: TH.copper, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: state === 'saving' ? 0.7 : 1 }}>
-        {state === 'saving' ? 'Saving...' : state === 'error' ? 'Saved offline - will retry' : 'Save'}
-      </button>
+      {view === 'save' ? (
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Type badge */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: tc.bg, color: tc.fg }}>{detectedType.toUpperCase()}</div>
+          </div>
+
+          {/* Title */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: TH.secondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Title</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', marginTop: 4, padding: '6px 8px', borderRadius: 6, border: `1px solid ${TH.border}`, fontSize: 13, boxSizing: 'border-box', outline: 'none', color: TH.text, background: TH.surface }} />
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: TH.secondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tags</label>
+            <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', padding: '4px 8px', borderRadius: 6, border: `1px solid ${TH.border}`, minHeight: 32, background: TH.surface }}>
+              {tags.map(t => (
+                <span key={t} style={{ fontSize: 11, padding: '1px 6px', borderRadius: 99, background: TH.tagBg, color: TH.tagFg, display: 'flex', alignItems: 'center', gap: 3 }}>
+                  #{t} <span style={{ cursor: 'pointer', opacity: 0.5 }} onClick={() => setTags(prev => prev.filter(x => x !== t))}>&#215;</span>
+                </span>
+              ))}
+              <input
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagInput) } }}
+                placeholder={tags.length === 0 ? 'Add tags...' : ''}
+                style={{ border: 'none', outline: 'none', fontSize: 12, flex: 1, minWidth: 60, color: TH.text, background: 'transparent' }}
+              />
+            </div>
+            {suggestions.length > 0 && (
+              <div style={{ border: `1px solid ${TH.border}`, borderRadius: 6, marginTop: 2, background: TH.dropdownBg }}>
+                {suggestions.slice(0, 5).map(t => (
+                  <div key={t} style={{ padding: '6px 8px', fontSize: 12, cursor: 'pointer', color: TH.text }} onClick={() => addTag(t)}>#{t}</div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: TH.secondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Priority</label>
+            <div style={{ marginTop: 4, display: 'flex', background: TH.segBg, borderRadius: 8, padding: 2, gap: 1 }}>
+              {(['low', 'medium', 'high'] as Priority[]).map(p => (
+                <button key={p} onClick={() => setPriority(p)} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', background: priority === p ? TH.segActive : 'transparent', color: priority === p ? TH.text : TH.secondary, boxShadow: priority === p ? '0 1px 3px rgba(0,0,0,.12)' : 'none' }}>
+                  {p === 'medium' ? 'Med' : p.charAt(0).toUpperCase() + p.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Save button */}
+          <button onClick={save} disabled={state === 'saving'} style={{ padding: '10px 0', borderRadius: 10, border: 'none', background: TH.copper, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: state === 'saving' ? 0.7 : 1 }}>
+            {state === 'saving' ? 'Saving...' : state === 'error' ? 'Saved offline - will retry' : 'Save'}
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Status filter tabs */}
+          <div style={{ display: 'flex', borderBottom: `1px solid ${TH.border}` }}>
+            {(['unread', 'read', 'archived'] as ListFilter[]).map(f => (
+              <button key={f} onClick={() => setListFilter(f)} style={{ flex: 1, padding: '8px 0', border: 'none', background: 'transparent', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: listFilter === f ? TH.copper : TH.secondary, borderBottom: listFilter === f ? `2px solid ${TH.copper}` : '2px solid transparent', marginBottom: -1 }}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Items list */}
+          <div style={{ maxHeight: 340, overflowY: 'auto' }}>
+            {listLoading ? (
+              <div style={{ padding: 16, fontSize: 12, color: TH.secondary, textAlign: 'center' }}>Loading...</div>
+            ) : listItems.length === 0 ? (
+              <div style={{ padding: 16, fontSize: 12, color: TH.secondary, textAlign: 'center' }}>No {listFilter} items</div>
+            ) : listItems.map(item => (
+              <div
+                key={item.id}
+                onMouseEnter={() => setHoveredId(item.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderBottom: `1px solid ${TH.border}`, position: 'relative' }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: TH.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 2, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: TH.secondary }}>{item.domain}</span>
+                    <span style={{ fontSize: 11, color: TH.secondary }}>{relTime(item.created_at)}</span>
+                  </div>
+                </div>
+                {/* hover actions - revealed on row hover only */}
+                {hoveredId === item.id && (
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    {listFilter !== 'read' && (
+                      <button
+                        title="Mark as read"
+                        onClick={() => updateStatus(item.id, 'read')}
+                        style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${TH.border}`, background: TH.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: TH.text }}
+                      >&#10003;</button>
+                    )}
+                    {listFilter !== 'archived' && (
+                      <button
+                        title="Archive"
+                        onClick={() => updateStatus(item.id, 'archived')}
+                        style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${TH.border}`, background: TH.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: TH.text }}
+                      >&#9744;</button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

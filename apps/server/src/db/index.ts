@@ -37,7 +37,7 @@ export function getDb(path = process.env['DB_PATH'] ?? '/data/stashbro.db') {
       favicon_url TEXT,
       domain TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'article' CHECK(type IN ('video','post','article','other')),
-      status TEXT NOT NULL DEFAULT 'unread' CHECK(status IN ('unread','archived')),
+      status TEXT NOT NULL DEFAULT 'unread' CHECK(status IN ('unread','read','archived')),
       priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high')),
       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
@@ -46,6 +46,36 @@ export function getDb(path = process.env['DB_PATH'] ?? '/data/stashbro.db') {
     )
   `)
   db.run(sql`CREATE INDEX IF NOT EXISTS items_user_seq ON items(user_id, change_seq)`)
+
+  // Migration: widen status CHECK to include 'read' for existing DBs
+  // SQLite can't ALTER TABLE to modify a CHECK constraint - rebuild the table
+  const existingSchema = db.get(sql`SELECT sql FROM sqlite_master WHERE type='table' AND name='items'`) as { sql: string } | undefined
+  if (existingSchema?.sql && !existingSchema.sql.includes("'read'")) {
+    db.run(sql`ALTER TABLE items RENAME TO _items_old`)
+    db.run(sql`
+      CREATE TABLE items (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        url TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        thumbnail_url TEXT,
+        favicon_url TEXT,
+        domain TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'article' CHECK(type IN ('video','post','article','other')),
+        status TEXT NOT NULL DEFAULT 'unread' CHECK(status IN ('unread','read','archived')),
+        priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high')),
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        deleted_at TEXT,
+        change_seq INTEGER NOT NULL DEFAULT 0
+      )
+    `)
+    db.run(sql`INSERT INTO items SELECT * FROM _items_old`)
+    db.run(sql`DROP TABLE _items_old`)
+    db.run(sql`CREATE INDEX IF NOT EXISTS items_user_seq ON items(user_id, change_seq)`)
+  }
+
   db.run(sql`
     CREATE TABLE IF NOT EXISTS tags (
       id TEXT PRIMARY KEY,

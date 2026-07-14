@@ -19,7 +19,7 @@ const ItemSchema = z.object({
   favicon_url: z.string().nullable(),
   domain: z.string(),
   type: z.enum(['video', 'post', 'article', 'other']),
-  status: z.enum(['unread', 'archived']),
+  status: z.enum(['unread', 'read', 'archived']),
   priority: z.enum(['low', 'medium', 'high']),
   created_at: z.string(),
   updated_at: z.string(),
@@ -133,7 +133,7 @@ export function itemsRouter() {
   const listRoute = createRoute({
     method: 'get', path: '/',
     request: { query: z.object({
-      status: z.enum(['unread', 'archived']).optional(),
+      status: z.enum(['unread', 'read', 'archived']).optional(),
       type: z.enum(['video', 'post', 'article', 'other']).optional(),
       tag: z.string().optional(),
       since: z.string().optional(),
@@ -196,7 +196,7 @@ export function itemsRouter() {
       body: { content: { 'application/json': { schema: z.object({
         title: z.string().optional(),
         type: z.enum(['video', 'post', 'article', 'other']).optional(),
-        status: z.enum(['unread', 'archived']).optional(),
+        status: z.enum(['unread', 'read', 'archived']).optional(),
         priority: z.enum(['low', 'medium', 'high']).optional(),
         deleted_at: z.string().nullable().optional(),
         tag_names: z.array(z.string()).optional(),

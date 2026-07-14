@@ -21,7 +21,7 @@ const SyncChangeSchema = z.object({
   favicon_url: z.string().nullish(),
   domain: z.string(),
   type: z.enum(['video', 'post', 'article', 'other']),
-  status: z.enum(['unread', 'archived']),
+  status: z.enum(['unread', 'read', 'archived']),
   priority: z.enum(['low', 'medium', 'high']),
   tag_names: z.array(z.string()),
 })
@@ -38,7 +38,7 @@ function toSyncChange(db: ReturnType<typeof getDb>, item: typeof items.$inferSel
     description: item.description ?? null, thumbnail_url: item.thumbnail_url ?? null,
     favicon_url: item.favicon_url ?? null, domain: item.domain,
     type: item.type as 'video' | 'post' | 'article' | 'other',
-    status: item.status as 'unread' | 'archived',
+    status: item.status as 'unread' | 'read' | 'archived',
     priority: item.priority as 'low' | 'medium' | 'high',
     tag_names: tagRows.map(t => t.name),
   }

@@ -9,7 +9,7 @@ export const MIGRATIONS: string[] = [
     favicon_url TEXT,
     domain TEXT NOT NULL,
     type TEXT NOT NULL DEFAULT 'article' CHECK(type IN ('video','post','article','other')),
-    status TEXT NOT NULL DEFAULT 'unread' CHECK(status IN ('unread','archived')),
+    status TEXT NOT NULL DEFAULT 'unread' CHECK(status IN ('unread','read','archived')),
     priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high')),
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),

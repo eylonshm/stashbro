@@ -17,7 +17,7 @@ export const items = sqliteTable('items', {
   favicon_url: text('favicon_url'),
   domain: text('domain').notNull(),
   type: text('type', { enum: ['video', 'post', 'article', 'other'] }).notNull().default('article'),
-  status: text('status', { enum: ['unread', 'archived'] }).notNull().default('unread'),
+  status: text('status', { enum: ['unread', 'read', 'archived'] }).notNull().default('unread'),
   priority: text('priority', { enum: ['low', 'medium', 'high'] }).notNull().default('medium'),
   created_at: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updated_at: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),

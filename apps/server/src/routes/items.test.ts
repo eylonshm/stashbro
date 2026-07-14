@@ -142,6 +142,25 @@ describe('POST /items', () => {
 })
 
 describe('PATCH /items/:id', () => {
+  it('updates status to read', async () => {
+    const a = app()
+    const createRes = await a.request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://read-test.example.com' }),
+    })
+    const { id } = await createRes.json()
+
+    const patchRes = await a.request(`/items/${id}`, {
+      method: 'PATCH',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'read' }),
+    })
+    expect(patchRes.status).toBe(200)
+    const updated = await patchRes.json()
+    expect(updated.status).toBe('read')
+  })
+
   it('updates status to archived', async () => {
     const a = app()
     const createRes = await a.request('/items', {
@@ -215,6 +234,31 @@ describe('PATCH /items/:id', () => {
 })
 
 describe('GET /items', () => {
+  it('filters by status=read', async () => {
+    const a = app()
+    const res1 = await a.request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://read-filter.example.com' }),
+    })
+    const { id } = await res1.json()
+    await a.request(`/items/${id}`, {
+      method: 'PATCH',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'read' }),
+    })
+
+    const readRes = await a.request('/items?status=read', { headers: AUTH })
+    expect(readRes.status).toBe(200)
+    const body = await readRes.json()
+    expect(body.items.some((it: { id: string; status: string }) => it.id === id && it.status === 'read')).toBe(true)
+
+    // unread filter should not include the now-read item
+    const unreadRes = await a.request('/items?status=unread', { headers: AUTH })
+    const unreadBody = await unreadRes.json()
+    expect(unreadBody.items.every((it: { id: string }) => it.id !== id)).toBe(true)
+  })
+
   it('returns created items', async () => {
     const a = app()
     await a.request('/items', {

@@ -1,6 +1,6 @@
 export type ItemType = 'video' | 'post' | 'article' | 'other'
 export type Priority = 'low' | 'medium' | 'high'
-export type Status = 'unread' | 'archived'
+export type Status = 'unread' | 'read' | 'archived'
 
 export interface Tag {
   id: string

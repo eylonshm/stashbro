@@ -7,15 +7,18 @@ enum ListStyle { case popover, notch }
 // Internal for testability - extracted query/mutation logic from the view.
 // ponytail: module-level funcs so @testable import reaches them without exposing private view members.
 
-/// Fetches unread, non-deleted items matching the given filters with their tags.
+/// Fetches non-deleted items matching the given filters with their tags.
+/// status: nil = all non-deleted, .unread/.archived = filtered - defaults to .unread for existing callers.
 func stashListQuery(
     in dbConn: Database,
     type: ItemType?,
     priority: ItemPriority?,
     tag: String?,
-    search: String
+    search: String,
+    status: ItemStatus? = .unread
 ) throws -> [(StashItem, [Tag])] {
-    var query = StashItem.filter(Column("deleted_at") == nil && Column("status") == "unread")
+    var query = StashItem.filter(Column("deleted_at") == nil)
+    if let s = status { query = query.filter(Column("status") == s.rawValue) }
     if let t = type { query = query.filter(Column("type") == t.rawValue) }
     if let p = priority { query = query.filter(Column("priority") == p.rawValue) }
     if let tagName = tag {
@@ -56,6 +59,31 @@ func loadAvailableTags(in dbConn: Database) throws -> [Tag] {
 func archiveItem(_ item: StashItem, in db: AppDatabase) throws {
     var updated = item
     updated.status = .archived
+    updated.updatedAt = Date()
+    try GRDBLocalStore(db: db).saveLocalItem(updated)
+}
+
+/// Sets item status (e.g. unarchive: .unread) and bumps change_seq via saveLocalItem.
+func setItemStatus(_ item: StashItem, status: ItemStatus, in db: AppDatabase) throws {
+    var updated = item
+    updated.status = status
+    updated.updatedAt = Date()
+    try GRDBLocalStore(db: db).saveLocalItem(updated)
+}
+
+/// Sets item priority and bumps change_seq via saveLocalItem.
+func setItemPriority(_ item: StashItem, priority: ItemPriority, in db: AppDatabase) throws {
+    var updated = item
+    updated.priority = priority
+    updated.updatedAt = Date()
+    try GRDBLocalStore(db: db).saveLocalItem(updated)
+}
+
+/// Tombstones an item (sets deletedAt) and bumps change_seq via saveLocalItem.
+/// Tombstones sync to the server and are excluded from all future queries.
+func deleteItem(_ item: StashItem, in db: AppDatabase) throws {
+    var updated = item
+    updated.deletedAt = Date()
     updated.updatedAt = Date()
     try GRDBLocalStore(db: db).saveLocalItem(updated)
 }
@@ -127,15 +155,23 @@ struct StashListView: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(items, id: \.item.id) { row in
-                        ItemRowView(item: row.item, tags: row.tags)
-                            .padding(.horizontal, 12)
-                            .onTapGesture {
-                                if let url = URL(string: row.item.url) { NSWorkspace.shared.open(url) }
+                        ItemRowView(
+                            item: row.item, tags: row.tags,
+                            onMarkRead: { markRead(row.item) },
+                            onArchive: { archive(row.item) }
+                        )
+                        .padding(.horizontal, 12)
+                        .onTapGesture {
+                            if let url = URL(string: row.item.url) { NSWorkspace.shared.open(url) }
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button("Archive") { archive(row.item) }
+                                .tint(.orange)
+                            if row.item.status == .unread {
+                                Button("Read") { markRead(row.item) }
+                                    .tint(Color(NSColor.systemBlue))
                             }
-                            .swipeActions(edge: .trailing) {
-                                Button("Archive") { archive(row.item) }
-                                    .tint(.orange)
-                            }
+                        }
                     }
                 }
             }
@@ -176,6 +212,15 @@ struct StashListView: View {
             Task { await syncEngine()?.sync() }
         } catch {
             print("[StashBro] archive failed for \(item.id): \(error)")
+        }
+    }
+
+    private func markRead(_ item: StashItem) {
+        do {
+            try setItemStatus(item, status: .read, in: db)
+            Task { await syncEngine()?.sync() }
+        } catch {
+            print("[StashBro] mark-read failed for \(item.id): \(error)")
         }
     }
 

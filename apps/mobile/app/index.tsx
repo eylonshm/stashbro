@@ -10,15 +10,17 @@ import type { LocalItem } from '../src/hooks/useItems.js'
 
 type TypeFilter = 'all' | 'video' | 'post' | 'article' | 'other'
 type PriorityFilter = 'all' | 'high' | 'low'
+type StatusFilter = 'unread' | 'read' | 'archived'
 
 export default function HomeScreen() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
-  const [refreshing, setRefreshing] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('unread')
   const theme = useTheme()
 
   const { items, refresh } = useItems({
+    status: statusFilter,
     ...(typeFilter !== 'all' && { type: typeFilter }),
     ...(priorityFilter !== 'all' && { priority: priorityFilter }),
     ...(search && { search }),
@@ -35,11 +37,25 @@ export default function HomeScreen() {
     setRefreshing(false)
   }, [sync, refresh])
 
+  const [refreshing, setRefreshing] = useState(false)
+
   const archive = useCallback((item: LocalItem) => {
     saveLocalItem({
       id: item.id, url: item.url, title: item.title, description: item.description,
       thumbnail_url: item.thumbnail_url, favicon_url: item.favicon_url, domain: item.domain,
       type: item.type, status: 'archived', priority: item.priority,
+      updated_at: new Date().toISOString(), deleted_at: item.deleted_at,
+      tag_names: item.tag_names,
+    })
+    refresh()
+    void sync()
+  }, [saveLocalItem, sync, refresh])
+
+  const markRead = useCallback((item: LocalItem) => {
+    saveLocalItem({
+      id: item.id, url: item.url, title: item.title, description: item.description,
+      thumbnail_url: item.thumbnail_url, favicon_url: item.favicon_url, domain: item.domain,
+      type: item.type, status: 'read', priority: item.priority,
       updated_at: new Date().toISOString(), deleted_at: item.deleted_at,
       tag_names: item.tag_names,
     })
@@ -66,6 +82,12 @@ export default function HomeScreen() {
           clearButtonMode="while-editing"
         />
       </View>
+      {/* Status tabs - unread/read/archived */}
+      <FilterChips
+        options={[{label:'Unread',value:'unread'},{label:'Read',value:'read'},{label:'Archived',value:'archived'}]}
+        value={statusFilter}
+        onChange={setStatusFilter}
+      />
       <FilterChips
         options={[{label:'All',value:'all'},{label:'Video',value:'video'},{label:'Post',value:'post'},{label:'Article',value:'article'}]}
         value={typeFilter}
@@ -82,7 +104,7 @@ export default function HomeScreen() {
       <FlatList
         data={items}
         keyExtractor={i => i.id}
-        renderItem={({ item }) => <ItemRow item={item} onArchive={archive} />}
+        renderItem={({ item }) => <ItemRow item={item} onArchive={archive} onMarkRead={markRead} />}
         ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: theme.sep }]} />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={{ paddingBottom: 24 }}

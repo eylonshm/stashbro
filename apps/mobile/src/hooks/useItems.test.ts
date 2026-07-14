@@ -105,6 +105,14 @@ describe('buildItemsQuery', () => {
     expect(rows.map(r => r['id'])).toEqual(['i2', 'i3', 'i1'])
   })
 
+  it('filters by read status', () => {
+    const db = freshDb()
+    insertItem(db, { id: 'i1', status: 'unread' })
+    insertItem(db, { id: 'i2', status: 'read', change_seq: 2 })
+    const rows = runQuery(db, { status: 'read' })
+    expect(rows.map(r => r['id'])).toEqual(['i2'])
+  })
+
   it('tag_list is comma-joined tag names', () => {
     const db = freshDb()
     insertItem(db, { id: 'i1' })

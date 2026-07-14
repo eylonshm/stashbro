@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { detectType, extractDomain, DOMAIN_TYPE_MAP } from './types.js'
+import type { Status } from './types.js'
+
+describe('Status type', () => {
+  it('accepts all three valid statuses', () => {
+    const statuses: Status[] = ['unread', 'read', 'archived']
+    expect(statuses).toHaveLength(3)
+  })
+})
 
 describe('detectType', () => {
   it('detects youtube as video', () => {

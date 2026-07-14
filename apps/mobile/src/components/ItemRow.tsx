@@ -8,15 +8,41 @@ const THUMB_BG: Record<string, string> = {
   video: '#CC0000', post: '#1C1C1C', article: '#3A3A5C', other: '#5A2A8C',
 }
 
-export function ItemRow({ item, onArchive }: { item: LocalItem; onArchive: (item: LocalItem) => void }) {
+// ponytail: plain integer arithmetic, no locale/timezone traps
+function relativeAge(createdAt: string): string {
+  const secs = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)
+  if (secs < 60) return 'now'
+  if (secs < 3600) return `${Math.floor(secs / 60)}m`
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h`
+  const days = Math.floor(secs / 86400)
+  if (days < 14) return `${days}d`
+  return `${Math.floor(days / 7)}w`
+}
+
+export function ItemRow({
+  item,
+  onArchive,
+  onMarkRead,
+}: {
+  item: LocalItem
+  onArchive: (item: LocalItem) => void
+  onMarkRead: (item: LocalItem) => void
+}) {
   const theme = useTheme()
   const typeColor = theme.typeBadge[item.type as keyof typeof theme.typeBadge] ?? theme.typeBadge.article
-  const priorityBarColor = item.priority === 'high' ? '#D95A28' : item.priority === 'low' ? '#9EA1B4' : null
+  const priorityBarColor = item.priority === 'high' ? '#D95A28' : item.priority === 'low' ? '#9EA1B4' : '#D9922A'
 
   const renderRightActions = () => (
-    <Pressable style={styles.archiveAction} onPress={() => onArchive(item)}>
-      <Text style={styles.archiveText}>Archive</Text>
-    </Pressable>
+    <View style={styles.swipeActions}>
+      {item.status === 'unread' && (
+        <Pressable style={styles.readAction} onPress={() => onMarkRead(item)}>
+          <Text style={styles.actionText}>Read</Text>
+        </Pressable>
+      )}
+      <Pressable style={styles.archiveAction} onPress={() => onArchive(item)}>
+        <Text style={styles.actionText}>Archive</Text>
+      </Pressable>
+    </View>
   )
 
   return (
@@ -26,10 +52,16 @@ export function ItemRow({ item, onArchive }: { item: LocalItem; onArchive: (item
         onPress={() => Linking.openURL(item.url)}
         activeOpacity={0.7}
       >
-        {priorityBarColor && <View style={[styles.bar, { backgroundColor: priorityBarColor }]} />}
+        <View style={[styles.bar, { backgroundColor: priorityBarColor }]} />
         <View style={[styles.thumb, { backgroundColor: THUMB_BG[item.type] ?? '#888' }]} />
         <View style={styles.info}>
-          <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>{item.title}</Text>
+          {/* read items dimmed to signal consumed */}
+          <Text
+            style={[styles.title, { color: theme.text, opacity: item.status === 'read' ? 0.65 : 1 }]}
+            numberOfLines={2}
+          >
+            {item.title}
+          </Text>
           <View style={styles.meta}>
             <Text style={[styles.domain, { color: theme.meta }]}>{item.domain}</Text>
             <View style={[styles.badge, { backgroundColor: typeColor.bg }]}>
@@ -40,6 +72,7 @@ export function ItemRow({ item, onArchive }: { item: LocalItem; onArchive: (item
                 <Text style={[styles.tagText, { color: theme.tagText }]}>#{tag}</Text>
               </View>
             ))}
+            <Text style={[styles.age, { color: theme.meta }]}>· {relativeAge(item.created_at)}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -59,6 +92,9 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '600', letterSpacing: 0.4 },
   tag: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: 99 },
   tagText: { fontSize: 10, fontWeight: '500' },
+  age: { fontSize: 11 },
+  swipeActions: { flexDirection: 'row' },
+  readAction: { backgroundColor: '#3A7BD5', justifyContent: 'center', alignItems: 'center', width: 80 },
   archiveAction: { backgroundColor: '#C87A38', justifyContent: 'center', alignItems: 'center', width: 80 },
-  archiveText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  actionText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 })

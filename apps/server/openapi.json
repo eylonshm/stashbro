@@ -326,6 +326,7 @@
                       "type": "string",
                       "enum": [
                         "unread",
+                        "read",
                         "archived"
                       ]
                     },
@@ -404,6 +405,7 @@
               "type": "string",
               "enum": [
                 "unread",
+                "read",
                 "archived"
               ]
             },
@@ -503,6 +505,7 @@
                             "type": "string",
                             "enum": [
                               "unread",
+                              "read",
                               "archived"
                             ]
                           },
@@ -620,6 +623,7 @@
                     "type": "string",
                     "enum": [
                       "unread",
+                      "read",
                       "archived"
                     ]
                   },
@@ -694,6 +698,7 @@
                       "type": "string",
                       "enum": [
                         "unread",
+                        "read",
                         "archived"
                       ]
                     },
@@ -931,6 +936,7 @@
                           "type": "string",
                           "enum": [
                             "unread",
+                            "read",
                             "archived"
                           ]
                         },
@@ -1070,6 +1076,7 @@
                             "type": "string",
                             "enum": [
                               "unread",
+                              "read",
                               "archived"
                             ]
                           },

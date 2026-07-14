@@ -23,7 +23,7 @@ describe('MIGRATIONS (string assertions)', () => {
 
   it('items has CHECK enums for type/status/priority', () => {
     expect(sql).toContain("CHECK(type IN ('video','post','article','other'))")
-    expect(sql).toContain("CHECK(status IN ('unread','archived'))")
+    expect(sql).toContain("CHECK(status IN ('unread','read','archived'))")
     expect(sql).toContain("CHECK(priority IN ('low','medium','high'))")
   })
 
