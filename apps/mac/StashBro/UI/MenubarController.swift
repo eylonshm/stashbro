@@ -2,6 +2,26 @@
 import AppKit
 import SwiftUI
 
+// Wraps StashListView with an "Open App" footer matching the notch panel style
+private struct MenubarPopoverView: View {
+    let db: AppDatabase
+    let syncEngine: () -> SyncEngine?
+    var body: some View {
+        VStack(spacing: 0) {
+            StashListView(db: db, syncEngine: syncEngine, style: .popover)
+            Divider()
+            Button("Open App \u{2192}") {
+                NotificationCenter.default.post(name: MainWindowController.openMainWindow, object: nil)
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(Color(red: 0.784, green: 0.478, blue: 0.220))
+            .help("Open StashBro main window")
+            .padding(.vertical, 8)
+        }
+    }
+}
+
 @MainActor
 final class MenubarController {
     private var statusItem: NSStatusItem
@@ -15,10 +35,10 @@ final class MenubarController {
 
         // Initialize all stored properties before using self (Swift DI requirement)
         let p = NSPopover()
-        p.contentSize = NSSize(width: 288, height: 480)
+        p.contentSize = NSSize(width: 328, height: 510)  // +30pt for footer
         p.behavior = .transient
         p.contentViewController = NSHostingController(
-            rootView: StashListView(db: db, syncEngine: syncEngine, style: .popover)
+            rootView: MenubarPopoverView(db: db, syncEngine: syncEngine)
         )
         self.popover = p
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)

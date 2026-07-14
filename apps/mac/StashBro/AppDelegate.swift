@@ -54,6 +54,7 @@ func processShareInbox(at inbox: URL, into store: LocalStoreProtocol) -> Int {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var menubarController: MenubarController?
     var notchController: NotchWindowController?
+    var mainWindowController: MainWindowController?  // created lazily on first show
     var syncEngine: SyncEngine?
     var syncTimer: Timer?
     let db = AppDatabase.makeShared()
@@ -62,6 +63,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var quickSavePanel: QuickSavePanel?  // ponytail: strong ref - borderless panels dealloc without it
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Notch on by default for notch Macs; user can disable in Settings
+        UserDefaults.standard.register(defaults: ["showInNotch": true])
+
         let s = GRDBLocalStore(db: db)
         self.store = s
 
@@ -85,9 +89,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.openQuickSave(url: tab.url, tabTitle: tab.title)
         }
 
+        // Observe openMainWindow notification from notch "Open App" button and menubar footer
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleOpenMainWindow),
+            name: MainWindowController.openMainWindow, object: nil
+        )
+
         // ponytail: debug-only; forces notch panel (bypasses safeAreaInsets + showInNotch pref), auto-triggers expand sequence
         if ProcessInfo.processInfo.arguments.contains("--debug-notch") {
             notchController = NotchWindowController(db: db, syncEngine: { [weak self] in self?.syncEngine }, debugMode: true)
+        }
+
+        // ponytail: debug-only; opens main window at launch for rapid iteration without needing the notch/menubar
+        if ProcessInfo.processInfo.arguments.contains("--debug-mainwindow") {
+            showMainWindow()
+        }
+
+        // Normal launch (Finder/Spotlight, no debug args): show the main window so the
+        // LSUIElement app doesn't appear to launch into nothing. Login-item style silent
+        // launches can pass --background.
+        let allArgs = ProcessInfo.processInfo.arguments
+        let isDebugRun = allArgs.contains { $0.hasPrefix("--debug") }
+        if !isDebugRun && !allArgs.contains("--background") {
+            showMainWindow()
         }
 
         // ponytail: debug-only; gated behind launch arg so it never appears in normal runs
@@ -169,6 +193,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         try? store.bumpOrCreate(item)
         Task { @MainActor in await syncEngine?.sync() }
+    }
+
+    @objc private func handleOpenMainWindow() {
+        showMainWindow()
+    }
+
+    private func showMainWindow() {
+        if mainWindowController == nil {
+            mainWindowController = MainWindowController(db: db, syncEngine: { [weak self] in self?.syncEngine })
+        }
+        mainWindowController?.show()
+    }
+
+    // Dock icon click: show main window (standard Mac app behaviour for LSUIElement apps)
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        showMainWindow()
+        return true
     }
 
     func openQuickSave(url: URL, tabTitle: String?) {
