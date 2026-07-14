@@ -99,30 +99,33 @@ struct ItemRowView: View {
         .padding(.vertical, 5)
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
-        // ponytail: overlay keeps buttons OUT of HStack flow - text width (and row height) never changes on hover
+        // ponytail: overlay keeps buttons OUT of HStack flow - text width (and row height) never changes on hover.
+        // Always mounted, opacity-driven: `if isHovering` structural insert re-renders the body, which makes
+        // SwiftUI reinstall .onHover's NSTrackingArea and fire spurious mouseExited -> hover flicker loop.
         .overlay(alignment: .trailing) {
-            if isHovering {
-                HStack(spacing: 4) {
-                    if item.status == .unread, let onMarkRead = onMarkRead {
-                        Button(action: onMarkRead) {
-                            Image(systemName: "checkmark.circle")
-                        }
-                        .buttonStyle(.plain)
-                        .help("Mark as Read")
+            HStack(spacing: 4) {
+                if item.status == .unread, let onMarkRead = onMarkRead {
+                    Button(action: onMarkRead) {
+                        Image(systemName: "checkmark.circle")
                     }
-                    if let onArchive = onArchive {
-                        Button(action: onArchive) {
-                            Image(systemName: "archivebox")
-                        }
-                        .buttonStyle(.plain)
-                        .help("Archive")
-                    }
+                    .buttonStyle(.plain)
+                    .help("Mark as Read")
                 }
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(.regularMaterial, in: Capsule())
+                if let onArchive = onArchive {
+                    Button(action: onArchive) {
+                        Image(systemName: "archivebox")
+                    }
+                    .buttonStyle(.plain)
+                    .help("Archive")
+                }
             }
+            .font(.system(size: 14))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(.regularMaterial, in: Capsule())
+            .opacity(isHovering ? 1 : 0)
+            .allowsHitTesting(isHovering)
+            .animation(.easeOut(duration: 0.15), value: isHovering)
         }
     }
 
