@@ -1,5 +1,6 @@
 // apps/mac/StashBro/UI/ItemRowView.swift
 import SwiftUI
+import AppKit
 
 // ponytail: plain integer arithmetic - no Calendar/locale traps; exported for test
 func relativeAge(_ date: Date, now: Date = Date()) -> String {
@@ -12,10 +13,64 @@ func relativeAge(_ date: Date, now: Date = Date()) -> String {
     return "\(days / 7)w"
 }
 
+// Stable AppKit tracking view. The NSView instance persists across SwiftUI re-renders;
+// updateTrackingAreas() fires only on bounds changes, NOT on parent state updates.
+// This kills the .onHover flicker loop: SwiftUI .onHover reinstalls its NSTrackingArea
+// on every body re-evaluation → any state change → tracking area torn down → spurious
+// mouseExited → isHovering=false → re-render → mouseEntered → loop ad infinitum.
+// ponytail: one NSView per row; tracking area stable for row's lifetime in the list.
+private struct HoverTracker: NSViewRepresentable {
+    var onChange: (Bool) -> Void
+    func makeNSView(context: Context) -> TrackingView { TrackingView(onChange: onChange) }
+    func updateNSView(_ nsView: TrackingView, context: Context) { nsView.onChange = onChange }
+
+    final class TrackingView: NSView {
+        var onChange: (Bool) -> Void
+        init(onChange: @escaping (Bool) -> Void) { self.onChange = onChange; super.init(frame: .zero) }
+        required init?(coder: NSCoder) { fatalError() }
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            trackingAreas.forEach { removeTrackingArea($0) }
+            addTrackingArea(NSTrackingArea(rect: .zero,
+                                          options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                          owner: self, userInfo: nil))
+        }
+        override func mouseEntered(with event: NSEvent) { onChange(true) }
+        override func mouseExited(with event: NSEvent) { onChange(false) }
+    }
+}
+
+// Action button with its own stable hover tracker for per-button highlight.
+// Independent @State so button re-renders don't propagate to ItemRowView.
+private struct ActionButton: View {
+    let systemName: String
+    let help: String
+    let action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(.quaternary)
+                    .frame(width: 24, height: 24)
+                    .opacity(isHovering ? 1 : 0)
+                    .animation(.easeOut(duration: 0.1), value: isHovering)
+                Image(systemName: systemName)
+                    .foregroundStyle(isHovering ? Color.primary : Color.secondary)
+                    .animation(.easeOut(duration: 0.1), value: isHovering)
+            }
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .background(HoverTracker { isHovering = $0 })
+    }
+}
+
 struct ItemRowView: View {
     let item: StashItem
     let tags: [Tag]
-    // ponytail: optional closures - buttons only render when closure is non-nil AND hovering
+    // ponytail: optional closures - buttons only render when closure is non-nil
     var onMarkRead: (() -> Void)? = nil
     var onArchive: (() -> Void)? = nil
 
@@ -98,29 +153,21 @@ struct ItemRowView: View {
         }
         .padding(.vertical, 5)
         .contentShape(Rectangle())
-        .onHover { isHovering = $0 }
-        // ponytail: overlay keeps buttons OUT of HStack flow - text width (and row height) never changes on hover.
-        // Always mounted, opacity-driven: `if isHovering` structural insert re-renders the body, which makes
-        // SwiftUI reinstall .onHover's NSTrackingArea and fire spurious mouseExited -> hover flicker loop.
+        // ponytail: HoverTracker (NSViewRepresentable) replaces .onHover; stable NSView
+        // never tears down its tracking area on SwiftUI re-renders → zero flicker.
+        .background(HoverTracker { isHovering = $0 })
+        // ponytail: overlay keeps buttons OUT of HStack flow - text width and row height
+        // never change on hover. Always mounted, opacity-driven (structural insert flickers).
         .overlay(alignment: .trailing) {
             HStack(spacing: 4) {
                 if item.status == .unread, let onMarkRead = onMarkRead {
-                    Button(action: onMarkRead) {
-                        Image(systemName: "checkmark.circle")
-                    }
-                    .buttonStyle(.plain)
-                    .help("Mark as Read")
+                    ActionButton(systemName: "checkmark.circle", help: "Mark as Read", action: onMarkRead)
                 }
                 if let onArchive = onArchive {
-                    Button(action: onArchive) {
-                        Image(systemName: "archivebox")
-                    }
-                    .buttonStyle(.plain)
-                    .help("Archive")
+                    ActionButton(systemName: "archivebox", help: "Archive", action: onArchive)
                 }
             }
             .font(.system(size: 14))
-            .foregroundStyle(.secondary)
             .padding(.horizontal, 8).padding(.vertical, 4)
             .background(.regularMaterial, in: Capsule())
             .opacity(isHovering ? 1 : 0)
