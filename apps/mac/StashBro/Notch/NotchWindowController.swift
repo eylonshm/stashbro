@@ -3,7 +3,6 @@ import AppKit
 import SwiftUI
 
 // Module-level for testability - same pattern as StashListView helpers.
-// Task 8 wires this into the drop target; testable now against a synthetic pasteboard.
 func extractDroppedURL(from pasteboard: NSPasteboard) -> URL? {
     if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
        let first = urls.first {
@@ -17,139 +16,229 @@ func extractDroppedURL(from pasteboard: NSPasteboard) -> URL? {
     return nil
 }
 
-// Shared state: toggling isExpanded drives the SwiftUI spring — no NSAnimationContext needed.
-// ponytail: ObservableObject bridges the SwiftUI world to the @MainActor controller.
-@MainActor
+// Observable state: controller sets isExpanded, SwiftUI spring-animates on change.
 final class NotchState: ObservableObject {
     @Published var isExpanded = false
 }
 
-// Unified root view: frame and clip shape animate with a SwiftUI spring when isExpanded flips.
-// Spring is CADisplayLink-backed — every display refresh produces an intermediate frame.
-// Non-opaque NSPanel transparent regions pass mouse events through (isOpaque=false behavior),
-// so the full-size window never swallows clicks outside the visible clip.
-struct NotchRootView: View {
-    @ObservedObject var state: NotchState
-    let db: AppDatabase
-    let syncEngine: () -> SyncEngine?
-    let onExpand: () -> Void
-    let onCollapse: () -> Void
+// Pure hover state machine - no AppKit, unit-testable.
+// ponytail: 10Hz mouse poll - NSTrackingArea flapped on SwiftUI re-render; upgrade path: global mouseMoved monitor
+struct NotchHoverLogic {
+    enum State: Equatable { case collapsed, expanded }
+    enum Action: Equatable { case none, expand, collapse }
 
-    // response/dampingFraction match BoringNotch for a notch-appropriate feel.
-    private static let spring = Animation.spring(response: 0.42, dampingFraction: 0.8, blendDuration: 0)
+    private(set) var state: State = .collapsed
+    private var debounceSince: Date? = nil
+    let debounce: TimeInterval
+
+    init(debounce: TimeInterval = 0.3) {
+        self.debounce = debounce
+    }
+
+    // cursorInside: is cursor within current panel.frame (pill when collapsed, 360x420 when expanded)
+    mutating func update(now: Date, cursorInside: Bool) -> Action {
+        switch state {
+        case .collapsed:
+            if cursorInside {
+                if debounceSince == nil { debounceSince = now }
+                if now.timeIntervalSince(debounceSince!) >= debounce {
+                    state = .expanded
+                    debounceSince = nil
+                    return .expand
+                }
+            } else {
+                debounceSince = nil
+            }
+        case .expanded:
+            if !cursorInside {
+                if debounceSince == nil { debounceSince = now }
+                if now.timeIntervalSince(debounceSince!) >= debounce {
+                    state = .collapsed
+                    debounceSince = nil
+                    return .collapse
+                }
+            } else {
+                debounceSince = nil
+            }
+        }
+        return .none
+    }
+}
+
+// NSPanel: minimal - constrainFrameRect for absolute-top positioning.
+// No sendEvent override, no hitTest tricks. Window sizing IS the click-through mechanism.
+private final class NotchPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+
+    // Lets panel sit at absolute top (y=0, notch strip) without AppKit clamping.
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
+        return frameRect
+    }
+}
+
+// NotchRootView: driven by NotchState ObservableObject, spring-animates on isExpanded.
+// Both subviews always mounted; opacity cross-fade. Controller resizes window; view fills it.
+struct NotchRootView: View {
+    let db: AppDatabase
+    let syncEngine: () -> SyncEngine?  // ponytail: closure for live engine after reconnect
+    let pillWidth: CGFloat
+    @ObservedObject var state: NotchState
+
+    private static let spring = Animation.interactiveSpring(response: 0.38, dampingFraction: 0.8, blendDuration: 0)
 
     var body: some View {
         ZStack(alignment: .top) {
-            if state.isExpanded {
-                NotchPanelView(db: db, syncEngine: syncEngine, onCollapse: onCollapse)
-                    // Fade in after the frame has mostly grown (0.28s into the 0.42s spring)
-                    .transition(.opacity.animation(.easeIn(duration: 0.15).delay(0.28)))
-            } else {
-                NotchPillView(db: db, onExpand: onExpand, onCollapse: onCollapse)
-                    // Fade in after the frame has mostly shrunk
-                    .transition(.opacity.animation(.easeIn(duration: 0.1).delay(0.25)))
-            }
+            NotchPanelView(db: db, syncEngine: syncEngine)
+                .opacity(state.isExpanded ? 1 : 0)
+                .allowsHitTesting(state.isExpanded)
+            NotchPillView(db: db, width: pillWidth)
+                .opacity(state.isExpanded ? 0 : 1)
+                .allowsHitTesting(!state.isExpanded)
         }
-        .frame(width: state.isExpanded ? 360 : 192, height: state.isExpanded ? 420 : 30)
+        .background(Color(red: 0.039, green: 0.039, blue: 0.047))
+        .frame(width: state.isExpanded ? 360 : pillWidth, height: state.isExpanded ? 420 : 30)
         .clipShape(UnevenRoundedRectangle(
             bottomLeadingRadius: state.isExpanded ? 18 : 16,
             bottomTrailingRadius: state.isExpanded ? 18 : 16
         ))
-        // Anchor animated clip to the top of the full-size NSHostingView (window frame never changes)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(Self.spring, value: state.isExpanded)
+        // Top-align in window; during collapse the window is still expanded size while content springs down
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
 @MainActor
 final class NotchWindowController {
     private var panel: NSPanel?
-    private let db: AppDatabase
-    private let syncEngine: () -> SyncEngine?  // ponytail: closure for live engine after reconnect
     private let notchState = NotchState()
+    private var hoverLogic = NotchHoverLogic()
+    private var hoverTimer: Timer?
+    private var shrinkGeneration = 0
+    private let db: AppDatabase
+    private let syncEngine: () -> SyncEngine?
 
-    // Static geometry - pure math, headless testable.
-    // nonisolated: no actor state accessed; pure CGRect arithmetic.
-    nonisolated static func pillFrame(for screenFrame: CGRect) -> CGRect {
-        let w: CGFloat = 192, h: CGFloat = 30
-        return CGRect(x: screenFrame.midX - w / 2, y: screenFrame.maxY - h, width: w, height: h)
+    // NSScreen-dependent; not testable headless - callers use the CGRect overloads below.
+    static nonisolated func pillWidth(for screen: NSScreen) -> CGFloat {
+        if let leftW = screen.auxiliaryTopLeftArea?.width,
+           let rightW = screen.auxiliaryTopRightArea?.width {
+            return screen.frame.width - leftW - rightW + 4
+        }
+        return 160
     }
 
-    nonisolated static func panelFrame(for screenFrame: CGRect) -> CGRect {
-        let w: CGFloat = 360, h: CGFloat = 420
-        return CGRect(x: screenFrame.midX - w / 2, y: screenFrame.maxY - h, width: w, height: h)
+    // screen: NSScreen.frame (bottom-left origin, same as NSWindow.frame coords).
+    static nonisolated func pillFrame(pillWidth: CGFloat, screen: CGRect) -> CGRect {
+        CGRect(
+            x: screen.midX - pillWidth / 2,
+            y: screen.maxY - 30,
+            width: pillWidth,
+            height: 30
+        )
+    }
+
+    static nonisolated func expandedFrame(screen: CGRect) -> CGRect {
+        CGRect(
+            x: screen.midX - 180,
+            y: screen.maxY - 420,
+            width: 360,
+            height: 420
+        )
     }
 
     init(db: AppDatabase, syncEngine: @escaping () -> SyncEngine?, debugMode: Bool = false) {
         self.db = db
         self.syncEngine = syncEngine
-
-        guard let screen = NSScreen.main, debugMode || screen.safeAreaInsets.top > 0 else {
-            return // Non-notch Mac: notch surface disabled
-        }
+        guard let screen = NSScreen.main, debugMode || screen.safeAreaInsets.top > 0 else { return }
         setupPanel(screen: screen)
-
-        if debugMode { scheduleDebugSequence() }
-    }
-
-    // ponytail: auto-triggers expand→collapse→expand for recording open animation; debug-notch only.
-    // 12-14s rapid cycle stresses the hover race (0.5s gaps inside spring settle time).
-    private func scheduleDebugSequence() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3)    { [weak self] in self?.expandPanel() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6)    { [weak self] in self?.collapsePanel() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 9)    { [weak self] in self?.expandPanel() }
-        // Rapid open-close-open cycle: reproduces hover in/out race
-        DispatchQueue.main.asyncAfter(deadline: .now() + 12.0) { [weak self] in self?.collapsePanel() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 12.5) { [weak self] in self?.expandPanel() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 13.0) { [weak self] in self?.collapsePanel() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 13.5) { [weak self] in self?.expandPanel() }
     }
 
     private func setupPanel(screen: NSScreen) {
-        // Window always at panel frame — SwiftUI clip shape produces the pill appearance.
-        // This matches BoringNotch: no window resize, pure SwiftUI spring animation.
-        // isOpaque=false: transparent regions pass mouse events to windows below (AppKit default).
-        let frame = Self.panelFrame(for: screen.frame)
+        let pillW = Self.pillWidth(for: screen)
+        let screenRect = screen.frame
+        let pf = Self.pillFrame(pillWidth: pillW, screen: screenRect)
 
-        let panel = NSPanel(
-            contentRect: NSRect(x: frame.origin.x, y: frame.origin.y, width: frame.width, height: frame.height),
-            styleMask: [.borderless, .nonactivatingPanel],
+        let panel = NotchPanel(
+            contentRect: NSRect(x: pf.minX, y: pf.minY, width: pf.width, height: pf.height),
+            styleMask: [.borderless, .nonactivatingPanel, .utilityWindow, .hudWindow],
             backing: .buffered,
             defer: false
         )
-        // CGWindowLevelForKey(.maximumWindow) is Int32 ~2147483630; +1 fits in Int, no overflow
-        panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)) + 1)
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        panel.level = .mainMenu + 3
+        panel.collectionBehavior = [.fullScreenAuxiliary, .stationary, .canJoinAllSpaces, .ignoresCycle]
+        panel.isFloatingPanel = true
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        panel.isMovable = false
+        panel.isReleasedWhenClosed = false
+        panel.hasShadow = false
         panel.ignoresMouseEvents = false
 
-        let rootView = NotchRootView(
-            state: notchState,
-            db: db, syncEngine: syncEngine,
-            onExpand: { [weak self] in self?.expandPanel() },
-            onCollapse: { [weak self] in self?.collapsePanel() }
-        )
+        let rootView = NotchRootView(db: db, syncEngine: syncEngine, pillWidth: pillW, state: notchState)
         let hosting = NSHostingView(rootView: rootView)
-        // NSHostingView's layer can default to a system dark background; clear it so that
-        // pixels outside the SwiftUI clipShape are truly transparent and pass mouse events through.
+        hosting.sizingOptions = []
         hosting.wantsLayer = true
         hosting.layer?.backgroundColor = .clear
         panel.contentView = hosting
+
         panel.orderFrontRegardless()
         self.panel = panel
+
+        startHoverTimer(pillW: pillW, screenRect: screenRect)
     }
 
-    func expandPanel() {
-        guard !notchState.isExpanded else { return }
-        notchState.isExpanded = true
+    private func startHoverTimer(pillW: CGFloat, screenRect: CGRect) {
+        // ponytail: 10Hz mouse poll - NSTrackingArea flapped on SwiftUI re-render; upgrade path: global mouseMoved monitor
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { [weak self] in
+                self?.pollHover(pillW: pillW, screenRect: screenRect)
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        hoverTimer = timer
     }
 
-    func collapsePanel() {
-        guard notchState.isExpanded else { return }
+    private func pollHover(pillW: CGFloat, screenRect: CGRect) {
+        guard let panel else { return }
+        // NSEvent.mouseLocation: global screen coords, bottom-left origin (same as NSWindow.frame)
+        let cursor = NSEvent.mouseLocation
+        let cursorInside = panel.frame.insetBy(dx: -2, dy: -2).contains(cursor)
+        switch hoverLogic.update(now: Date(), cursorInside: cursorInside) {
+        case .expand:   expand(pillW: pillW, screenRect: screenRect)
+        case .collapse: collapseAfterAnimation(pillW: pillW, screenRect: screenRect)
+        case .none:     break
+        }
+    }
+
+    private func expand(pillW: CGFloat, screenRect: CGRect) {
+        guard let panel else { return }
+        shrinkGeneration += 1  // cancel any pending deferred shrink
+        let ef = Self.expandedFrame(screen: screenRect)
+        // Instantly resize to expanded frame first (transparent - invisible), then spring content
+        panel.setFrame(NSRect(x: ef.minX, y: ef.minY, width: ef.width, height: ef.height),
+                       display: true, animate: false)
+        panel.contentView?.layoutSubtreeIfNeeded()
+        // One-tick hop: let the widened window commit with the pill re-centered before the
+        // spring starts - starting both in one transaction anchored the growth to the left edge
+        DispatchQueue.main.async { [weak self] in
+            self?.notchState.isExpanded = true
+        }
+    }
+
+    private func collapseAfterAnimation(pillW: CGFloat, screenRect: CGRect) {
         notchState.isExpanded = false
+        shrinkGeneration += 1
+        let gen = shrinkGeneration
+        // Wait for spring to settle (~0.45s), then shrink window back to pill
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
+            guard let self, self.shrinkGeneration == gen else { return }
+            let pf = Self.pillFrame(pillWidth: pillW, screen: screenRect)
+            self.panel?.setFrame(NSRect(x: pf.minX, y: pf.minY, width: pf.width, height: pf.height),
+                                 display: true, animate: false)
+        }
     }
 
-    deinit {}
+    deinit {
+        hoverTimer?.invalidate()
+    }
 }

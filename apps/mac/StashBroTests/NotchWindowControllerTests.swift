@@ -7,66 +7,112 @@ import AppKit
 
 final class NotchGeometryTests: XCTestCase {
     let screen = CGRect(x: 0, y: 0, width: 2560, height: 1600)
+    let pillW: CGFloat = 189  // typical MacBook notch width
 
     func testPillFrameSize() {
-        let frame = NotchWindowController.pillFrame(for: screen)
-        XCTAssertEqual(frame.width, 192)
+        let frame = NotchWindowController.pillFrame(pillWidth: pillW, screen: screen)
+        XCTAssertEqual(frame.width, pillW)
         XCTAssertEqual(frame.height, 30)
     }
 
-    func testPillFrameCenteredAndAtTop() {
-        let frame = NotchWindowController.pillFrame(for: screen)
+    func testPillFrameTopCenter() {
+        let frame = NotchWindowController.pillFrame(pillWidth: pillW, screen: screen)
         XCTAssertEqual(frame.midX, screen.midX, accuracy: 0.5)
         XCTAssertEqual(frame.maxY, screen.maxY, accuracy: 0.5)
     }
 
-    func testPanelFrameSize() {
-        let frame = NotchWindowController.panelFrame(for: screen)
+    func testExpandedFrameSize() {
+        let frame = NotchWindowController.expandedFrame(screen: screen)
         XCTAssertEqual(frame.width, 360)
         XCTAssertEqual(frame.height, 420)
     }
 
-    func testPanelFrameCenteredAndAtTop() {
-        let frame = NotchWindowController.panelFrame(for: screen)
+    func testExpandedFrameTopCenter() {
+        let frame = NotchWindowController.expandedFrame(screen: screen)
         XCTAssertEqual(frame.midX, screen.midX, accuracy: 0.5)
         XCTAssertEqual(frame.maxY, screen.maxY, accuracy: 0.5)
     }
 
-    func testPillAndPanelShareMidX() {
-        let pill = NotchWindowController.pillFrame(for: screen)
-        let panel = NotchWindowController.panelFrame(for: screen)
-        XCTAssertEqual(pill.midX, panel.midX, accuracy: 0.5)
-    }
-
-    func testPanelLargerThanPill() {
-        let pill = NotchWindowController.pillFrame(for: screen)
-        let panel = NotchWindowController.panelFrame(for: screen)
-        XCTAssertGreaterThan(panel.width, pill.width)
-        XCTAssertGreaterThan(panel.height, pill.height)
-    }
-
-    // State machine: collapse -> expand -> collapse produces consistent geometry
-    func testExpandCollapseCycleGeometry() {
-        let collapsed = NotchWindowController.pillFrame(for: screen)
-        let expanded = NotchWindowController.panelFrame(for: screen)
-        let collapsedAgain = NotchWindowController.pillFrame(for: screen)
-
-        // Expanded is bigger
-        XCTAssertGreaterThan(expanded.width, collapsed.width)
-        XCTAssertGreaterThan(expanded.height, collapsed.height)
-        // Collapsing again returns to the same frame - deterministic
-        XCTAssertEqual(collapsedAgain, collapsed)
-    }
-
-    func testGeometryOnSmallScreen() {
-        // 13" MacBook Air retina logical resolution
+    func testFramesOnSmallScreen() {
         let small = CGRect(x: 0, y: 0, width: 1280, height: 800)
-        let pill = NotchWindowController.pillFrame(for: small)
-        let panel = NotchWindowController.panelFrame(for: small)
-        XCTAssertEqual(pill.midX, 640, accuracy: 0.5)
-        XCTAssertEqual(panel.midX, 640, accuracy: 0.5)
-        XCTAssertEqual(pill.maxY, 800, accuracy: 0.5)
-        XCTAssertEqual(panel.maxY, 800, accuracy: 0.5)
+        let pf = NotchWindowController.pillFrame(pillWidth: 160, screen: small)
+        let ef = NotchWindowController.expandedFrame(screen: small)
+        XCTAssertEqual(pf.midX, 640, accuracy: 0.5)
+        XCTAssertEqual(pf.maxY, 800, accuracy: 0.5)
+        XCTAssertEqual(ef.midX, 640, accuracy: 0.5)
+        XCTAssertEqual(ef.maxY, 800, accuracy: 0.5)
+    }
+
+    func testFramesAreDeterministic() {
+        let a = NotchWindowController.pillFrame(pillWidth: pillW, screen: screen)
+        let b = NotchWindowController.pillFrame(pillWidth: pillW, screen: screen)
+        XCTAssertEqual(a, b)
+    }
+}
+
+// MARK: - NotchHoverLogic tests (pure struct, no AppKit)
+
+final class NotchHoverLogicTests: XCTestCase {
+    var logic = NotchHoverLogic(debounce: 0.3)
+    let t0 = Date(timeIntervalSince1970: 1000)
+
+    override func setUp() {
+        super.setUp()
+        logic = NotchHoverLogic(debounce: 0.3)
+    }
+
+    func testNoActionWhenCursorJustEnters() {
+        let action = logic.update(now: t0, cursorInside: true)
+        XCTAssertEqual(action, .none)
+        XCTAssertEqual(logic.state, .collapsed)
+    }
+
+    func testExpandAfterDebounce() {
+        _ = logic.update(now: t0, cursorInside: true)
+        let action = logic.update(now: t0.addingTimeInterval(0.31), cursorInside: true)
+        XCTAssertEqual(action, .expand)
+        XCTAssertEqual(logic.state, .expanded)
+    }
+
+    func testNoExpandIfCursorLeavesBeforeDebounce() {
+        _ = logic.update(now: t0, cursorInside: true)
+        _ = logic.update(now: t0.addingTimeInterval(0.2), cursorInside: false)  // exit before 0.3s
+        let action = logic.update(now: t0.addingTimeInterval(0.4), cursorInside: true)  // re-enter
+        XCTAssertEqual(action, .none)  // debounce reset; only just entered again
+        XCTAssertEqual(logic.state, .collapsed)
+    }
+
+    func testCollapseAfterDebounce() {
+        // Expand first
+        _ = logic.update(now: t0, cursorInside: true)
+        _ = logic.update(now: t0.addingTimeInterval(0.31), cursorInside: true)
+        XCTAssertEqual(logic.state, .expanded)
+        // Exit and hold outside
+        _ = logic.update(now: t0.addingTimeInterval(0.32), cursorInside: false)
+        let action = logic.update(now: t0.addingTimeInterval(0.65), cursorInside: false)
+        XCTAssertEqual(action, .collapse)
+        XCTAssertEqual(logic.state, .collapsed)
+    }
+
+    func testNoCollapseIfCursorReentersBeforeDebounce() {
+        // Expand first
+        _ = logic.update(now: t0, cursorInside: true)
+        _ = logic.update(now: t0.addingTimeInterval(0.31), cursorInside: true)
+        // Exit, then re-enter before debounce
+        _ = logic.update(now: t0.addingTimeInterval(0.32), cursorInside: false)
+        _ = logic.update(now: t0.addingTimeInterval(0.50), cursorInside: true)   // re-enter at 0.18s outside
+        let action = logic.update(now: t0.addingTimeInterval(0.65), cursorInside: false)
+        XCTAssertEqual(action, .none)  // reset when re-entered; now only 0.15s outside
+        XCTAssertEqual(logic.state, .expanded)
+    }
+
+    func testExpandOnlyFiredOnce() {
+        // Multiple polls while inside - should fire expand exactly once
+        _ = logic.update(now: t0, cursorInside: true)
+        let a1 = logic.update(now: t0.addingTimeInterval(0.31), cursorInside: true)
+        let a2 = logic.update(now: t0.addingTimeInterval(0.5), cursorInside: true)
+        XCTAssertEqual(a1, .expand)
+        XCTAssertEqual(a2, .none)  // already expanded
     }
 }
 
@@ -99,7 +145,6 @@ final class NotchURLExtractionTests: XCTestCase {
     func testExtractURLFromSchemalessStringReturnsNil() {
         let pb = NSPasteboard.withUniqueName()
         defer { pb.releaseGlobally() }
-        // Valid URL structure but no scheme - should be rejected
         pb.setString("notaurl", forType: .string)
         XCTAssertNil(extractDroppedURL(from: pb))
     }

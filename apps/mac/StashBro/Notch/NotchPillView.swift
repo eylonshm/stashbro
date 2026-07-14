@@ -4,8 +4,7 @@ import GRDB
 
 struct NotchPillView: View {
     let db: AppDatabase
-    let onExpand: () -> Void
-    let onCollapse: () -> Void
+    var width: CGFloat = 160  // matched to physical notch width, passed from NotchRootView
 
     @State private var unreadCount = 0
     @State private var observationToken: AnyDatabaseCancellable?
@@ -30,12 +29,10 @@ struct NotchPillView: View {
                     .cornerRadius(99)
             }
         }
-        .frame(width: 192, height: 30)
+        .frame(width: width, height: 30)
         .background(Color(red: 0.039, green: 0.039, blue: 0.047))
         // ponytail: UnevenRoundedRectangle (macOS 14+) replaces custom NSBezierPath shape
         .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 16, bottomTrailingRadius: 16))
-        .onHover { hovering in if hovering { onExpand() } }
-        .onTapGesture { onExpand() }
         .onDrop(of: [.url], delegate: NotchDropDelegate())
         .onAppear {
             observationToken = ValueObservation
