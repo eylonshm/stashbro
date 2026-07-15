@@ -21,7 +21,7 @@ docker run -d \
   -e AUTH_MODE=token \
   -e AUTH_TOKEN=your-32-char-secret \
   -p 3000:3000 \
-  ghcr.io/stashbro/stashbro-server:latest
+  ghcr.io/eylonshm/stashbro-server:latest
 ```
 
 ## Fly.io deploy

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: stashbro
+    runtime: docker
+    dockerfilePath: apps/server/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: AUTH_MODE
+        value: token
+      - key: AUTH_TOKEN
+        generateValue: true
+      - key: DB_PATH
+        value: /data/stashbro.db
+    disk:
+      name: stashbro-data
+      mountPath: /data
+      sizeGB: 1

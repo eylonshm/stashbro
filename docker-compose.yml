@@ -1,0 +1,21 @@
+services:
+  stashbro:
+    image: ghcr.io/eylonshm/stashbro-server:latest
+    container_name: stashbro
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - stashbro_data:/data
+    environment:
+      - AUTH_MODE=${AUTH_MODE:-token}
+      - AUTH_TOKEN=${AUTH_TOKEN:?Set AUTH_TOKEN in .env}
+      - DB_PATH=/data/stashbro.db
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  stashbro_data:
