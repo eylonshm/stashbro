@@ -2,15 +2,23 @@
   "expo": {
     "name": "StashBro",
     "slug": "stashbro",
+    "owner": "eylonshm",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "scheme": "stashbro",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.stashbro.mobile",
       "deploymentTarget": "16.0",
+      "appleTeamId": "WUWZ36BFRZ",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
       "entitlements": {
-        "com.apple.security.application-groups": ["group.com.stashbro.mobile"]
+        "com.apple.security.application-groups": [
+          "group.com.stashbro.mobile"
+        ]
       }
     },
     "plugins": [
@@ -19,10 +27,18 @@
       [
         "expo-share-extension",
         {
-          "activationRules": {
-            "NSExtensionActivationSupportsWebURLWithMaxCount": 1
+          "activationRules": [
+            {
+              "type": "url",
+              "max": 1
+            }
+          ],
+          "backgroundColor": {
+            "red": 255,
+            "green": 255,
+            "blue": 255,
+            "alpha": 1
           },
-          "backgroundColor": { "red": 255, "green": 255, "blue": 255, "alpha": 1 },
           "height": 420,
           "rootComponent": "./share-extension/index"
         }
@@ -33,8 +49,42 @@
           "root": ".",
           "match": "ios-widgets"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
-    "experiments": { "typedRoutes": true }
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "StashBroShareExtension",
+                  "bundleIdentifier": "com.stashbro.mobile.ShareExtension",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.stashbro.mobile"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.stashbro.mobile.widget",
+                  "targetName": "StashBroWidget"
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "b9e02ef5-f549-4727-9fde-ee25d7a56480"
+      },
+      "appleApplicationGroup": "group.com.stashbro.mobile"
+    }
   }
 }
