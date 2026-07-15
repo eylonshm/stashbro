@@ -13,12 +13,15 @@ func relativeAge(_ date: Date, now: Date = Date()) -> String {
     return "\(days / 7)w"
 }
 
-// Stable AppKit tracking view. The NSView instance persists across SwiftUI re-renders;
-// updateTrackingAreas() fires only on bounds changes, NOT on parent state updates.
-// This kills the .onHover flicker loop: SwiftUI .onHover reinstalls its NSTrackingArea
-// on every body re-evaluation → any state change → tracking area torn down → spurious
-// mouseExited → isHovering=false → re-render → mouseEntered → loop ad infinitum.
-// ponytail: one NSView per row; tracking area stable for row's lifetime in the list.
+// Stable AppKit hover view that POLLS the cursor position (8Hz) instead of relying on
+// NSTrackingArea enter/exit events. Two reasons:
+//  1. Tracking-area events are unreliable in the notch's nonactivating SkyLight-space panel
+//     (buttons flapped when moving onto them; lower rows never triggered) - same reason the
+//     notch open/close uses polling.
+//  2. Polling avoids the .onHover flicker loop entirely (no tracking area to tear down on
+//     re-render) and reads the true cursor position in the view's own coordinates, so it's
+//     correct regardless of scrolling/clipping/layout shifts.
+// ponytail: one lightweight timer per visible row; a bounds.contains check is trivial.
 private struct HoverTracker: NSViewRepresentable {
     var onChange: (Bool) -> Void
     func makeNSView(context: Context) -> TrackingView { TrackingView(onChange: onChange) }
@@ -26,17 +29,30 @@ private struct HoverTracker: NSViewRepresentable {
 
     final class TrackingView: NSView {
         var onChange: (Bool) -> Void
+        private var timer: Timer?
+        private var inside = false
         init(onChange: @escaping (Bool) -> Void) { self.onChange = onChange; super.init(frame: .zero) }
         required init?(coder: NSCoder) { fatalError() }
-        override func updateTrackingAreas() {
-            super.updateTrackingAreas()
-            trackingAreas.forEach { removeTrackingArea($0) }
-            addTrackingArea(NSTrackingArea(rect: .zero,
-                                          options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
-                                          owner: self, userInfo: nil))
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            timer?.invalidate(); timer = nil
+            inside = false
+            guard window != nil else { return }  // stop polling when detached (row recycled)
+            let t = Timer(timeInterval: 0.08, repeats: true) { [weak self] _ in self?.poll() }
+            RunLoop.main.add(t, forMode: .common)
+            timer = t
         }
-        override func mouseEntered(with event: NSEvent) { onChange(true) }
-        override func mouseExited(with event: NSEvent) { onChange(false) }
+
+        private func poll() {
+            guard let window else { return }
+            // mouseLocationOutsideOfEventStream: cursor in window base coords, no events needed.
+            let p = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+            let now = bounds.contains(p)
+            if now != inside { inside = now; onChange(now) }
+        }
+
+        deinit { timer?.invalidate() }
     }
 }
 

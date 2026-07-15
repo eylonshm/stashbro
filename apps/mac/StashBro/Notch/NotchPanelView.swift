@@ -40,6 +40,9 @@ struct NotchPanelView: View {
                         .foregroundStyle(Color(red: 0.784, green: 0.478, blue: 0.220))
                         .help("Open StashBro main window")
                 }
+                // +12 matches the search bar's own horizontal inset below, so the logo/title and
+                // Open App line up with the search box edges.
+                .padding(.horizontal, 12)
                 .padding(.vertical, 10)
 
                 Divider().opacity(0.1)
