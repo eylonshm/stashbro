@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateServerUrl } from './config.js'
+import { validateServerUrl } from './config'
 
 describe('validateServerUrl', () => {
   it('accepts http://', () => expect(validateServerUrl('http://localhost:3000')).toBe(true))

@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite'
-import { MIGRATIONS } from './schema.js'
+import { MIGRATIONS } from './schema'
 
 let _db: SQLite.SQLiteDatabase | null = null
 

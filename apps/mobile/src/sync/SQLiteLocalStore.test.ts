@@ -1,9 +1,9 @@
 import Database from 'better-sqlite3'
 import { describe, it, expect } from 'vitest'
 import type { SyncChange } from '@stashbro/shared'
-import { shouldApplyChange, cursorFromChanges, SQLiteLocalStore } from './SQLiteLocalStore.js'
-import type { SyncDb, CursorStorage } from './SQLiteLocalStore.js'
-import { MIGRATIONS } from '../db/schema.js'
+import { shouldApplyChange, cursorFromChanges, SQLiteLocalStore } from './SQLiteLocalStore'
+import type { SyncDb, CursorStorage } from './SQLiteLocalStore'
+import { MIGRATIONS } from '../db/schema'
 
 // --- helpers ---
 

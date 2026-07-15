@@ -1,23 +1,32 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity, RefreshControl, SafeAreaView } from 'react-native'
+import { View, Text, TextInput, FlatList, StyleSheet, Pressable, RefreshControl } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { router } from 'expo-router'
 import { useSyncEngine } from '../src/hooks/useSyncEngine'
 import { useItems } from '../src/hooks/useItems'
-import { useTheme } from '../src/hooks/useTheme'
+import { useTheme, SPACING } from '../src/hooks/useTheme'
 import { ItemRow } from '../src/components/ItemRow'
 import { FilterChips } from '../src/components/FilterChips'
+import { EmptyState } from '../src/components/EmptyState'
 import type { LocalItem } from '../src/hooks/useItems'
 
 type TypeFilter = 'all' | 'video' | 'post' | 'article' | 'other'
 type PriorityFilter = 'all' | 'high' | 'low'
-type StatusFilter = 'unread' | 'read' | 'archived'
+
+const STATUS_VALUES = ['unread', 'read', 'archived'] as const
+const STATUS_LABELS = ['Unread', 'Read', 'Archived']
 
 export default function HomeScreen() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('unread')
+  const [statusIndex, setStatusIndex] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
   const theme = useTheme()
+  const insets = useSafeAreaInsets()
+
+  const statusFilter = STATUS_VALUES[statusIndex]
 
   const { items, refresh } = useItems({
     status: statusFilter,
@@ -29,15 +38,12 @@ export default function HomeScreen() {
   // ponytail: onSyncComplete wires foreground sync → list refresh without extra state
   const { sync, saveLocalItem } = useSyncEngine(refresh)
 
-  // sync() is a stable ref-backed fn - safe before init (no-op) and fixes pull-to-refresh null issue
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     await sync()
     refresh()
     setRefreshing(false)
   }, [sync, refresh])
-
-  const [refreshing, setRefreshing] = useState(false)
 
   const archive = useCallback((item: LocalItem) => {
     saveLocalItem({
@@ -64,63 +70,116 @@ export default function HomeScreen() {
   }, [saveLocalItem, sync, refresh])
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.surface }]}>
+    <View style={[styles.container, { backgroundColor: theme.surface, paddingTop: insets.top }]}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.wordmark, { color: theme.text }]}>Stash<Text style={{ color: theme.accent }}>Bro</Text></Text>
-        <TouchableOpacity onPress={() => router.push('/settings')}>
-          <Text style={[styles.gear, { color: theme.meta }]}>⚙</Text>
-        </TouchableOpacity>
+        <Text style={[styles.wordmark, { color: theme.text }]}>
+          Stash<Text style={{ color: theme.accent }}>Bro</Text>
+        </Text>
+        <View style={styles.headerActions}>
+          <Pressable onPress={() => router.push('/tags')} hitSlop={8}>
+            <Text style={[styles.headerIcon, { color: theme.meta }]}>#</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
+            <Text style={[styles.headerIcon, { color: theme.meta }]}>⚙</Text>
+          </Pressable>
+        </View>
       </View>
-      <View style={[styles.searchBar, { backgroundColor: theme.bg, borderColor: theme.border }]}>
-        <Text>🔍</Text>
+
+      {/* Search */}
+      <View style={[styles.searchBar, { backgroundColor: theme.searchBg }]}>
+        <Text style={{ color: theme.meta }}>🔍</Text>
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
-          placeholder="Search your stash…"
+          placeholder="Search your stash..."
           placeholderTextColor={theme.meta}
           value={search}
           onChangeText={setSearch}
           clearButtonMode="while-editing"
+          returnKeyType="search"
         />
       </View>
-      {/* Status tabs - unread/read/archived */}
-      <FilterChips
-        options={[{label:'Unread',value:'unread'},{label:'Read',value:'read'},{label:'Archived',value:'archived'}]}
-        value={statusFilter}
-        onChange={setStatusFilter}
-      />
-      <FilterChips
-        options={[{label:'All',value:'all'},{label:'Video',value:'video'},{label:'Post',value:'post'},{label:'Article',value:'article'}]}
-        value={typeFilter}
-        onChange={setTypeFilter}
-      />
-      <View style={styles.priorityRow}>
-        <Text style={[styles.priorityLabel, { color: theme.meta }]}>Priority:</Text>
+
+      {/* Status tabs - native segmented control */}
+      <View style={styles.segmentWrap}>
+        <SegmentedControl
+          values={STATUS_LABELS}
+          selectedIndex={statusIndex}
+          onChange={e => setStatusIndex(e.nativeEvent.selectedSegmentIndex)}
+          appearance={theme.isDark ? 'dark' : 'light'}
+        />
+      </View>
+
+      {/* Type + Priority filters */}
+      <View style={styles.filterRow}>
         <FilterChips
-          options={[{label:'All',value:'all'},{label:'High',value:'high'},{label:'Low',value:'low'}]}
+          options={[
+            { label: 'All', value: 'all' },
+            { label: 'Video', value: 'video' },
+            { label: 'Post', value: 'post' },
+            { label: 'Article', value: 'article' },
+          ]}
+          value={typeFilter}
+          onChange={setTypeFilter}
+        />
+        <FilterChips
+          options={[
+            { label: 'All', value: 'all' },
+            { label: 'High', value: 'high' },
+            { label: 'Low', value: 'low' },
+          ]}
           value={priorityFilter}
           onChange={setPriorityFilter}
         />
       </View>
+
+      {/* Item list */}
       <FlatList
         data={items}
         keyExtractor={i => i.id}
-        renderItem={({ item }) => <ItemRow item={item} onArchive={archive} onMarkRead={markRead} />}
-        ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: theme.sep }]} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        renderItem={({ item }) => (
+          <ItemRow item={item} onArchive={archive} onMarkRead={markRead} />
+        )}
+        ItemSeparatorComponent={() => (
+          <View style={[styles.sep, { backgroundColor: theme.sep }]} />
+        )}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
+        }
+        contentContainerStyle={[
+          styles.listContent,
+          items.length === 0 && styles.listEmpty,
+        ]}
+        ListEmptyComponent={
+          <EmptyState
+            title={search ? 'No results' : 'Nothing here yet'}
+            subtitle={search ? 'Try a different search term' : 'Save a link from Safari or any app using the share sheet'}
+          />
+        }
       />
-    </SafeAreaView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 8 },
-  wordmark: { fontSize: 24, fontWeight: '700', letterSpacing: -0.5 },
-  gear: { fontSize: 22 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', margin: 12, marginTop: 0, padding: 10, borderRadius: 12, borderWidth: 1, gap: 8 },
-  searchInput: { flex: 1, fontSize: 14 },
-  priorityRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
-  priorityLabel: { fontSize: 12, fontWeight: '500', marginRight: 4 },
-  sep: { height: 1, marginHorizontal: 16 },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, paddingBottom: SPACING.sm,
+  },
+  wordmark: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+  headerActions: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  headerIcon: { fontSize: 20, fontWeight: '500' },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: SPACING.lg, marginBottom: SPACING.sm,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 10,
+  },
+  searchInput: { flex: 1, fontSize: 15 },
+  segmentWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
+  filterRow: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: SPACING.xs },
+  sep: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
+  listContent: { paddingBottom: 24 },
+  listEmpty: { flexGrow: 1 },
 })

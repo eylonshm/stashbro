@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { openDatabase } from '../db/database.js'
-import { buildItemsQuery } from './buildItemsQuery.js'
+import { openDatabase } from '../db/database'
+import { buildItemsQuery } from './buildItemsQuery'
 
-export type { Filters } from './buildItemsQuery.js'
-export { buildItemsQuery } from './buildItemsQuery.js'
+export type { Filters } from './buildItemsQuery'
+export { buildItemsQuery } from './buildItemsQuery'
 
 export interface LocalItem {
   id: string; url: string; title: string; description: string | null

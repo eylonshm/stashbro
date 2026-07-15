@@ -14,4 +14,17 @@ config.resolver.nodeModulesPaths = [
 // ponytail: pnpm strict symlinks need this; drop if switching to npm/yarn
 config.resolver.disableHierarchicalLookup = true
 
+config.resolver.unstable_enablePackageExports = false
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName.endsWith('.js')) {
+    const base = moduleName.slice(0, -3)
+    for (const ext of ['.ts', '.tsx', '']) {
+      try {
+        return context.resolveRequest(context, base + ext, platform)
+      } catch {}
+    }
+  }
+  return context.resolveRequest(context, moduleName, platform)
+}
+
 module.exports = config

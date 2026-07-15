@@ -1,5 +1,5 @@
-import type { SyncDb } from '../sync/SQLiteLocalStore.js'
-import { SQLiteLocalStore } from '../sync/SQLiteLocalStore.js'
+import type { SyncDb } from '../sync/SQLiteLocalStore'
+import { SQLiteLocalStore } from '../sync/SQLiteLocalStore'
 
 type ItemFields = {
   id: string; url: string; title: string; description: string | null

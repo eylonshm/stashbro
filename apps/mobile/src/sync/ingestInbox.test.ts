@@ -3,9 +3,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { promises as nodefs } from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
-import { MIGRATIONS } from '../db/schema.js'
-import { SQLiteLocalStore, type SyncDb, type CursorStorage } from './SQLiteLocalStore.js'
-import { ingestShareExtensionInbox, type InboxFS } from './ingestInbox.js'
+import { MIGRATIONS } from '../db/schema'
+import { SQLiteLocalStore, type SyncDb, type CursorStorage } from './SQLiteLocalStore'
+import { ingestShareExtensionInbox, type InboxFS } from './ingestInbox'
 
 // --- test infrastructure ---
 

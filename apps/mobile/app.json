@@ -50,7 +50,8 @@
           "match": "ios-widgets"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,

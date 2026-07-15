@@ -1,4 +1,4 @@
-import { SQLiteLocalStore } from './SQLiteLocalStore.js'
+import { SQLiteLocalStore } from './SQLiteLocalStore'
 
 // ponytail: InboxFS injectable so tests use node:fs without pulling in RNFS
 export interface InboxFS {

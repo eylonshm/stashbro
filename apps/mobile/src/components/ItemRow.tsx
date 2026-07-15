@@ -1,100 +1,118 @@
 import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Linking, Pressable } from 'react-native'
-import Swipeable from 'react-native-gesture-handler/Swipeable'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { Image } from 'expo-image'
+import { Swipeable } from 'react-native-gesture-handler'
+import * as Linking from 'expo-linking'
+import { useTheme, SPACING } from '../hooks/useTheme'
 import type { LocalItem } from '../hooks/useItems'
-import { useTheme } from '../hooks/useTheme'
 
-const THUMB_BG: Record<string, string> = {
-  video: '#CC0000', post: '#1C1C1C', article: '#3A3A5C', other: '#5A2A8C',
-}
-
-// ponytail: plain integer arithmetic, no locale/timezone traps
-function relativeAge(createdAt: string): string {
-  const secs = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)
-  if (secs < 60) return 'now'
-  if (secs < 3600) return `${Math.floor(secs / 60)}m`
-  if (secs < 86400) return `${Math.floor(secs / 3600)}h`
-  const days = Math.floor(secs / 86400)
-  if (days < 14) return `${days}d`
-  return `${Math.floor(days / 7)}w`
-}
-
-export function ItemRow({
-  item,
-  onArchive,
-  onMarkRead,
-}: {
+interface ItemRowProps {
   item: LocalItem
   onArchive: (item: LocalItem) => void
   onMarkRead: (item: LocalItem) => void
-}) {
+}
+
+function SwipeAction({ label, color, onPress }: { label: string; color: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.swipeAction, { backgroundColor: color }]}>
+      <Text style={styles.swipeLabel}>{label}</Text>
+    </Pressable>
+  )
+}
+
+export function ItemRow({ item, onArchive, onMarkRead }: ItemRowProps) {
   const theme = useTheme()
-  const typeColor = theme.typeBadge[item.type as keyof typeof theme.typeBadge] ?? theme.typeBadge.article
-  const priorityBarColor = item.priority === 'high' ? '#D95A28' : item.priority === 'low' ? '#9EA1B4' : '#D9922A'
+  const typeBadge = theme.typeBadge[item.type as keyof typeof theme.typeBadge] ?? theme.typeBadge.other
+  // tag_names is string[] from useItems
+  const tags = item.tag_names.slice(0, 2)
 
   const renderRightActions = () => (
-    <View style={styles.swipeActions}>
-      {item.status === 'unread' && (
-        <Pressable style={styles.readAction} onPress={() => onMarkRead(item)}>
-          <Text style={styles.actionText}>Read</Text>
-        </Pressable>
-      )}
-      <Pressable style={[styles.archiveAction, { backgroundColor: theme.accent }]} onPress={() => onArchive(item)}>
-        <Text style={styles.actionText}>Archive</Text>
-      </Pressable>
+    <View style={styles.swipeRow}>
+      <SwipeAction label="Read" color="#3A7BD5" onPress={() => onMarkRead(item)} />
+      <SwipeAction label="Archive" color={theme.accent} onPress={() => onArchive(item)} />
     </View>
   )
 
   return (
-    <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
-      <TouchableOpacity
-        style={[styles.row, { backgroundColor: theme.bg }]}
+    <Swipeable renderRightActions={renderRightActions} overshootFriction={8}>
+      <Pressable
         onPress={() => Linking.openURL(item.url)}
-        activeOpacity={0.7}
+        style={[styles.row, { backgroundColor: theme.bg }]}
       >
-        <View style={[styles.bar, { backgroundColor: priorityBarColor }]} />
-        <View style={[styles.thumb, { backgroundColor: THUMB_BG[item.type] ?? '#888' }]} />
-        <View style={styles.info}>
-          {/* read items dimmed to signal consumed */}
-          <Text
-            style={[styles.title, { color: theme.text, opacity: item.status === 'read' ? 0.65 : 1 }]}
-            numberOfLines={2}
-          >
-            {item.title}
-          </Text>
-          <View style={styles.meta}>
-            <Text style={[styles.domain, { color: theme.meta }]}>{item.domain}</Text>
-            <View style={[styles.badge, { backgroundColor: typeColor.bg }]}>
-              <Text style={[styles.badgeText, { color: typeColor.fg }]}>{item.type.toUpperCase()}</Text>
-            </View>
-            {item.tag_names.slice(0, 2).map(tag => (
-              <View key={tag} style={[styles.tag, { backgroundColor: theme.tagBg }]}>
-                <Text style={[styles.tagText, { color: theme.tagText }]}>#{tag}</Text>
-              </View>
-            ))}
-            <Text style={[styles.age, { color: theme.meta }]}>· {relativeAge(item.created_at)}</Text>
-          </View>
+        {/* Favicon */}
+        <View style={[styles.faviconWrap, { backgroundColor: theme.searchBg }]}>
+          {item.favicon_url ? (
+            <Image source={{ uri: item.favicon_url }} style={styles.favicon} contentFit="contain" />
+          ) : (
+            <Text style={[styles.faviconFallback, { color: theme.meta }]}>
+              {(item.domain || item.title || '?')[0].toUpperCase()}
+            </Text>
+          )}
         </View>
-      </TouchableOpacity>
+
+        {/* Content */}
+        <View style={styles.content}>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
+              {item.title || item.url}
+            </Text>
+            {item.priority === 'high' && <View style={styles.highDot} />}
+          </View>
+
+          <View style={styles.metaRow}>
+            {item.domain ? (
+              <Text style={[styles.domain, { color: theme.meta }]} numberOfLines={1}>
+                {item.domain}
+              </Text>
+            ) : null}
+            <View style={[styles.typePill, { backgroundColor: typeBadge.bg }]}>
+              <Text style={[styles.typeText, { color: typeBadge.fg }]}>{item.type}</Text>
+            </View>
+          </View>
+
+          {tags.length > 0 && (
+            <View style={styles.tagRow}>
+              {tags.map(t => (
+                <View key={t} style={[styles.tag, { backgroundColor: theme.tagBg }]}>
+                  <Text style={[styles.tagText, { color: theme.tagText }]}>{t.trim()}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Thumbnail */}
+        {item.thumbnail_url ? (
+          <Image
+            source={{ uri: item.thumbnail_url }}
+            style={styles.thumbnail}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : null}
+      </Pressable>
     </Swipeable>
   )
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 16, gap: 10 },
-  bar: { width: 3, borderRadius: 2, alignSelf: 'stretch', marginVertical: 4 },
-  thumb: { width: 40, height: 40, borderRadius: 8 },
-  info: { flex: 1 },
-  title: { fontSize: 14, fontWeight: '500', lineHeight: 18 },
-  meta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 4 },
-  domain: { fontSize: 11 },
-  badge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
-  badgeText: { fontSize: 10, fontWeight: '600', letterSpacing: 0.4 },
-  tag: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: 99 },
-  tagText: { fontSize: 10, fontWeight: '500' },
-  age: { fontSize: 11 },
-  swipeActions: { flexDirection: 'row' },
-  readAction: { backgroundColor: '#3A7BD5', justifyContent: 'center', alignItems: 'center', width: 80 },
-  archiveAction: { justifyContent: 'center', alignItems: 'center', width: 80 },
-  actionText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: SPACING.lg, gap: 12 },
+  faviconWrap: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  favicon: { width: 20, height: 20 },
+  faviconFallback: { fontSize: 16, fontWeight: '600' },
+  content: { flex: 1, gap: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  title: { flex: 1, fontSize: 15, fontWeight: '600', lineHeight: 20 },
+  highDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E85D3A', marginTop: 7 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  domain: { fontSize: 12 },
+  typePill: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
+  typeText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase' },
+  tagRow: { flexDirection: 'row', gap: 4, marginTop: 2 },
+  tag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  tagText: { fontSize: 11 },
+  thumbnail: { width: 56, height: 56, borderRadius: 8 },
+  swipeRow: { flexDirection: 'row' },
+  swipeAction: { justifyContent: 'center', alignItems: 'center', width: 72 },
+  swipeLabel: { color: '#FFF', fontSize: 12, fontWeight: '600' },
 })

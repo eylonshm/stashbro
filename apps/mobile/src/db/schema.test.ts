@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
 import { describe, it, expect } from 'vitest'
-import { MIGRATIONS } from './schema.js'
+import { MIGRATIONS } from './schema'
 
 describe('MIGRATIONS (string assertions)', () => {
   const sql = MIGRATIONS.join('\n')

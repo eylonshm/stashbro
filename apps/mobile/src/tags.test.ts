@@ -1,9 +1,9 @@
 import Database from 'better-sqlite3'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { MIGRATIONS } from './db/schema.js'
-import { SQLiteLocalStore } from './sync/SQLiteLocalStore.js'
-import type { SyncDb, CursorStorage } from './sync/SQLiteLocalStore.js'
-import { deleteTagLocal } from './lib/tags.js'
+import { MIGRATIONS } from './db/schema'
+import { SQLiteLocalStore } from './sync/SQLiteLocalStore'
+import type { SyncDb, CursorStorage } from './sync/SQLiteLocalStore'
+import { deleteTagLocal } from './lib/tags'
 
 // --- helpers (mirror SQLiteLocalStore.test.ts pattern) ---
 

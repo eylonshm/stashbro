@@ -3,9 +3,9 @@ import { AppState } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import RNFS from 'react-native-fs'
 import { SyncEngine, StashBroClient } from '@stashbro/shared'
-import { openDatabase } from '../db/database.js'
-import { SQLiteLocalStore, makeExpoSyncDb } from '../sync/SQLiteLocalStore.js'
-import { ingestShareExtensionInbox, type InboxFS } from '../sync/ingestInbox.js'
+import { openDatabase } from '../db/database'
+import { SQLiteLocalStore, makeExpoSyncDb } from '../sync/SQLiteLocalStore'
+import { ingestShareExtensionInbox, type InboxFS } from '../sync/ingestInbox'
 
 const APP_GROUP = 'group.com.stashbro.mobile'
 

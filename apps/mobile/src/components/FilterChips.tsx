@@ -1,35 +1,45 @@
 import React from 'react'
-import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native'
-import { useTheme } from '../hooks/useTheme'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { useTheme, SPACING } from '../hooks/useTheme'
 
-interface Props<T extends string> {
-  options: { label: string; value: T }[]
+type Option<T extends string> = { label: string; value: T }
+
+interface FilterChipsProps<T extends string> {
+  options: Option<T>[]
   value: T
   onChange: (v: T) => void
 }
 
-export function FilterChips<T extends string>({ options, value, onChange }: Props<T>) {
+export function FilterChips<T extends string>({ options, value, onChange }: FilterChipsProps<T>) {
   const theme = useTheme()
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-      {options.map(opt => {
-        const active = value === opt.value
+    <View style={styles.row}>
+      {options.map(o => {
+        const active = o.value === value
         return (
-          <TouchableOpacity
-            key={opt.value}
-            style={[styles.chip, { backgroundColor: active ? theme.accent : theme.bg, borderColor: active ? theme.accent : theme.border }]}
-            onPress={() => onChange(opt.value)}
+          <Pressable
+            key={o.value}
+            onPress={() => onChange(o.value)}
+            style={[
+              styles.chip,
+              {
+                backgroundColor: active ? theme.accent : theme.bg,
+                borderColor: active ? theme.accent : theme.border,
+              },
+            ]}
           >
-            <Text style={[styles.text, { color: active ? theme.accentText : theme.secondary }]}>{opt.label}</Text>
-          </TouchableOpacity>
+            <Text style={[styles.chipText, { color: active ? theme.accentText : theme.secondary }]}>
+              {o.label}
+            </Text>
+          </Pressable>
         )
       })}
-    </ScrollView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  row: { paddingHorizontal: 16, gap: 6, paddingVertical: 4 },
-  chip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, borderWidth: 1 },
-  text: { fontSize: 12, fontWeight: '500' },
+  row: { flexDirection: 'row', gap: 6, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.xs },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
+  chipText: { fontSize: 13, fontWeight: '500' },
 })
