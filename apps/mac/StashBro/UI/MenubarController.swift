@@ -35,7 +35,7 @@ final class MenubarController {
 
         // Initialize all stored properties before using self (Swift DI requirement)
         let p = NSPopover()
-        p.contentSize = NSSize(width: 328, height: 510)  // +30pt for footer
+        p.contentSize = NSSize(width: 360, height: 510)
         p.behavior = .transient
         p.contentViewController = NSHostingController(
             rootView: MenubarPopoverView(db: db, syncEngine: syncEngine)
@@ -44,7 +44,11 @@ final class MenubarController {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "books.vertical.fill", accessibilityDescription: "StashBro")
+            let icon = NSImage(named: "MenubarIcon")
+                ?? NSImage(systemSymbolName: "books.vertical.fill", accessibilityDescription: "StashBro")
+            icon?.isTemplate = true  // auto-adapts to light/dark menu bar
+            icon?.size = NSSize(width: 19, height: 19)  // menu bar usable height ~22pt
+            button.image = icon
             button.action = #selector(togglePopover)
             button.target = self
         }

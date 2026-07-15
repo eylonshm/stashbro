@@ -86,6 +86,17 @@ struct MainWindowView: View {
 
     private var sidebarView: some View {
         List(selection: $selection) {
+            HStack(spacing: 8) {
+                Image("BrandLogo")
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 24, height: 24)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                Text("StashBro")
+                    .font(.system(size: 15, weight: .bold))
+            }
+            .padding(.vertical, 4)
+            .selectionDisabled()
             Section("Library") {
                 sidebarRow(.all,      label: "All",      icon: "tray.full",      badge: sidebarData.allCount)
                 sidebarRow(.unread,   label: "Unread",   icon: "circle.fill",    badge: sidebarData.unreadCount)
@@ -130,14 +141,12 @@ struct MainWindowView: View {
     private var contentView: some View {
         Group {
             if items.isEmpty {
-                VStack {
-                    Spacer()
-                    Text("Nothing here yet - hit \u{2318}\u{21E7}S to save your first link")
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding()
-                    Spacer()
-                }
+                EmptyStateView(
+                    title: searchText.isEmpty ? "Nothing here yet" : "No matches",
+                    subtitle: searchText.isEmpty
+                        ? "Press \u{2318}\u{21E7}S to save your first link"
+                        : "Try a different search"
+                )
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {

@@ -10,21 +10,21 @@ final class NotchGeometryTests: XCTestCase {
     let pillW: CGFloat = 189  // typical MacBook notch width
 
     func testPillFrameSize() {
-        let frame = NotchWindowController.pillFrame(pillWidth: pillW, screen: screen)
+        let frame = NotchWindowController.pillFrame(pillWidth: pillW, height: 32, screen: screen)
         XCTAssertEqual(frame.width, pillW)
-        XCTAssertEqual(frame.height, 30)
+        XCTAssertEqual(frame.height, 32, "pill height must match the physical notch height passed in")
     }
 
     func testPillFrameTopCenter() {
-        let frame = NotchWindowController.pillFrame(pillWidth: pillW, screen: screen)
+        let frame = NotchWindowController.pillFrame(pillWidth: pillW, height: 32, screen: screen)
         XCTAssertEqual(frame.midX, screen.midX, accuracy: 0.5)
         XCTAssertEqual(frame.maxY, screen.maxY, accuracy: 0.5)
     }
 
     func testExpandedFrameSize() {
         let frame = NotchWindowController.expandedFrame(screen: screen)
-        XCTAssertEqual(frame.width, 400)
-        XCTAssertEqual(frame.height, 420)
+        XCTAssertEqual(frame.width, NotchWindowController.openWidth)
+        XCTAssertEqual(frame.height, NotchWindowController.openHeight)
     }
 
     func testExpandedFrameTopCenter() {
@@ -35,7 +35,7 @@ final class NotchGeometryTests: XCTestCase {
 
     func testFramesOnSmallScreen() {
         let small = CGRect(x: 0, y: 0, width: 1280, height: 800)
-        let pf = NotchWindowController.pillFrame(pillWidth: 160, screen: small)
+        let pf = NotchWindowController.pillFrame(pillWidth: 160, height: 32, screen: small)
         let ef = NotchWindowController.expandedFrame(screen: small)
         XCTAssertEqual(pf.midX, 640, accuracy: 0.5)
         XCTAssertEqual(pf.maxY, 800, accuracy: 0.5)
@@ -44,8 +44,8 @@ final class NotchGeometryTests: XCTestCase {
     }
 
     func testFramesAreDeterministic() {
-        let a = NotchWindowController.pillFrame(pillWidth: pillW, screen: screen)
-        let b = NotchWindowController.pillFrame(pillWidth: pillW, screen: screen)
+        let a = NotchWindowController.pillFrame(pillWidth: pillW, height: 32, screen: screen)
+        let b = NotchWindowController.pillFrame(pillWidth: pillW, height: 32, screen: screen)
         XCTAssertEqual(a, b)
     }
 }
@@ -71,6 +71,28 @@ final class NotchPanelLifecycleTests: XCTestCase {
         _ = controller
         XCTAssertNil(weakController, "controller must deallocate when released - something retains it")
         XCTAssertEqual(notchPanelCount(), before, "dealloc must close the panel, not leave a zombie")
+    }
+
+    // Regression: a display-config change must reposition the panel via a single teardown+rebuild,
+    // never drop it (the original disappearing-notch bug) nor leave a zombie duplicate. The screen
+    // layout is unchanged during the test, but the notification still drives reconfigure through
+    // its signature guard - the panel count must stay at exactly one.
+    func testScreenParametersChangeKeepsExactlyOnePanel() {
+        let before = notchPanelCount()
+        let controller =
+            NotchWindowController(db: AppDatabase.makeInMemory(), syncEngine: { nil }, debugMode: true)
+        XCTAssertEqual(notchPanelCount(), before + 1, "controller should put one panel onscreen")
+
+        NotificationCenter.default.post(
+            name: NSApplication.didChangeScreenParametersNotification, object: nil
+        )
+        NotificationCenter.default.post(
+            name: NSApplication.didChangeScreenParametersNotification, object: nil
+        )
+
+        XCTAssertEqual(notchPanelCount(), before + 1,
+                       "screen-change must not drop the panel or leave a zombie duplicate")
+        withExtendedLifetime(controller) {}
     }
 }
 

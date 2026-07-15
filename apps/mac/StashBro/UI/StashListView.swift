@@ -104,6 +104,14 @@ struct StashListView: View {
 
     @State private var settingsWindow: NSWindow?
 
+    private var isFiltering: Bool {
+        !searchText.isEmpty || selectedType != nil || selectedPriority != nil || selectedTag != nil
+    }
+    private var emptyTitle: String { isFiltering ? "No matches" : "Nothing stashed yet" }
+    private var emptySubtitle: String {
+        isFiltering ? "Try clearing search or filters" : "Saved links show up here"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Search + settings
@@ -152,24 +160,28 @@ struct StashListView: View {
             Divider()
 
             // Item list
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(items, id: \.item.id) { row in
-                        ItemRowView(
-                            item: row.item, tags: row.tags,
-                            onMarkRead: { markRead(row.item) },
-                            onArchive: { archive(row.item) }
-                        )
-                        .padding(.horizontal, 12)
-                        .onTapGesture {
-                            if let url = URL(string: row.item.url) { NSWorkspace.shared.open(url) }
-                        }
-                        .swipeActions(edge: .trailing) {
-                            Button("Archive") { archive(row.item) }
-                                .tint(.orange)
-                            if row.item.status == .unread {
-                                Button("Read") { markRead(row.item) }
-                                    .tint(Color(NSColor.systemBlue))
+            if items.isEmpty {
+                EmptyStateView(title: emptyTitle, subtitle: emptySubtitle, compact: true)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(items, id: \.item.id) { row in
+                            ItemRowView(
+                                item: row.item, tags: row.tags,
+                                onMarkRead: { markRead(row.item) },
+                                onArchive: { archive(row.item) }
+                            )
+                            .padding(.horizontal, 12)
+                            .onTapGesture {
+                                if let url = URL(string: row.item.url) { NSWorkspace.shared.open(url) }
+                            }
+                            .swipeActions(edge: .trailing) {
+                                Button("Archive") { archive(row.item) }
+                                    .tint(.orange)
+                                if row.item.status == .unread {
+                                    Button("Read") { markRead(row.item) }
+                                        .tint(Color(NSColor.systemBlue))
+                                }
                             }
                         }
                     }
