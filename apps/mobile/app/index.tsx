@@ -1,12 +1,12 @@
 import React, { useState, useCallback } from 'react'
 import { View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity, RefreshControl, SafeAreaView } from 'react-native'
 import { router } from 'expo-router'
-import { useSyncEngine } from '../src/hooks/useSyncEngine.js'
-import { useItems } from '../src/hooks/useItems.js'
-import { useTheme } from '../src/hooks/useTheme.js'
-import { ItemRow } from '../src/components/ItemRow.js'
-import { FilterChips } from '../src/components/FilterChips.js'
-import type { LocalItem } from '../src/hooks/useItems.js'
+import { useSyncEngine } from '../src/hooks/useSyncEngine'
+import { useItems } from '../src/hooks/useItems'
+import { useTheme } from '../src/hooks/useTheme'
+import { ItemRow } from '../src/components/ItemRow'
+import { FilterChips } from '../src/components/FilterChips'
+import type { LocalItem } from '../src/hooks/useItems'
 
 type TypeFilter = 'all' | 'video' | 'post' | 'article' | 'other'
 type PriorityFilter = 'all' | 'high' | 'low'
@@ -66,7 +66,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.surface }]}>
       <View style={styles.header}>
-        <Text style={[styles.wordmark, { color: theme.text }]}>Stash<Text style={styles.accent}>Bro</Text></Text>
+        <Text style={[styles.wordmark, { color: theme.text }]}>Stash<Text style={{ color: theme.accent }}>Bro</Text></Text>
         <TouchableOpacity onPress={() => router.push('/settings')}>
           <Text style={[styles.gear, { color: theme.meta }]}>⚙</Text>
         </TouchableOpacity>
@@ -117,7 +117,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 8 },
   wordmark: { fontSize: 24, fontWeight: '700', letterSpacing: -0.5 },
-  accent: { color: '#C87A38' },
   gear: { fontSize: 22 },
   searchBar: { flexDirection: 'row', alignItems: 'center', margin: 12, marginTop: 0, padding: 10, borderRadius: 12, borderWidth: 1, gap: 8 },
   searchInput: { flex: 1, fontSize: 14 },

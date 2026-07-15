@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
-import { useTheme } from '../src/hooks/useTheme.js'
-import { validateServerUrl } from '../src/lib/config.js'
-import { reinitializeSyncEngine } from '../src/hooks/useSyncEngine.js'
+import { useTheme } from '../src/hooks/useTheme'
+import { validateServerUrl } from '../src/lib/config'
+import { reinitializeSyncEngine } from '../src/hooks/useSyncEngine'
 
 export default function SettingsScreen() {
   const [url, setUrl] = useState('')
@@ -97,7 +97,7 @@ export default function SettingsScreen() {
       contentContainerStyle={{ padding: 20 }}
     >
       <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 16 }}>
-        <Text style={{ color: '#C87A38', fontSize: 16 }}>Back</Text>
+        <Text style={{ color: theme.accent, fontSize: 16 }}>Back</Text>
       </TouchableOpacity>
       <Text style={[styles.heading, { color: theme.text }]}>Settings</Text>
       <Text style={[styles.label, { color: theme.meta }]}>Server URL</Text>
@@ -126,7 +126,7 @@ export default function SettingsScreen() {
           />
         </>
       )}
-      <TouchableOpacity style={styles.btn} onPress={save}>
+      <TouchableOpacity style={[styles.btn, { backgroundColor: theme.accent }]} onPress={save}>
         <Text style={styles.btnText}>{saved ? 'Saved!' : 'Save & Sync'}</Text>
       </TouchableOpacity>
 
@@ -145,7 +145,7 @@ export default function SettingsScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <TouchableOpacity style={styles.btn} onPress={sendCode}>
+              <TouchableOpacity style={[styles.btn, { backgroundColor: theme.accent }]} onPress={sendCode}>
                 <Text style={styles.btnText}>Send Code</Text>
               </TouchableOpacity>
             </>
@@ -161,7 +161,7 @@ export default function SettingsScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <TouchableOpacity style={styles.btn} onPress={verifyCode}>
+              <TouchableOpacity style={[styles.btn, { backgroundColor: theme.accent }]} onPress={verifyCode}>
                 <Text style={styles.btnText}>Verify</Text>
               </TouchableOpacity>
             </>
@@ -170,7 +170,7 @@ export default function SettingsScreen() {
         </>
       )}
       <TouchableOpacity style={{ marginTop: 24, alignItems: 'center' }} onPress={() => router.push('/tags')}>
-        <Text style={{ color: '#C87A38', fontSize: 15 }}>Manage Tags →</Text>
+        <Text style={{ color: theme.accent, fontSize: 15 }}>Manage Tags →</Text>
       </TouchableOpacity>
     </ScrollView>
   )
@@ -180,6 +180,6 @@ const styles = StyleSheet.create({
   heading: { fontSize: 24, fontWeight: '700', marginBottom: 24 },
   label: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 8 },
   input: { padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 4, fontSize: 14 },
-  btn: { backgroundColor: '#C87A38', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 12 },
+  btn: { padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 12 },
   btnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
 })

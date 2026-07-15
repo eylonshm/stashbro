@@ -1,6 +1,6 @@
 import React from 'react'
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native'
-import { useTheme } from '../hooks/useTheme.js'
+import { useTheme } from '../hooks/useTheme'
 
 interface Props<T extends string> {
   options: { label: string; value: T }[]
@@ -17,10 +17,10 @@ export function FilterChips<T extends string>({ options, value, onChange }: Prop
         return (
           <TouchableOpacity
             key={opt.value}
-            style={[styles.chip, { backgroundColor: active ? '#C87A38' : theme.bg, borderColor: active ? '#C87A38' : theme.border }]}
+            style={[styles.chip, { backgroundColor: active ? theme.accent : theme.bg, borderColor: active ? theme.accent : theme.border }]}
             onPress={() => onChange(opt.value)}
           >
-            <Text style={[styles.text, { color: active ? '#fff' : theme.secondary }]}>{opt.label}</Text>
+            <Text style={[styles.text, { color: active ? theme.accentText : theme.secondary }]}>{opt.label}</Text>
           </TouchableOpacity>
         )
       })}

@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 
 import { close, type InitialProps } from 'expo-share-extension'
 import RNFS from 'react-native-fs'
 import { detectType, extractDomain } from '@stashbro/shared'
+import { ACCENT } from '../src/hooks/useTheme'
 
 type Priority = 'low' | 'medium' | 'high'
 
@@ -103,7 +104,7 @@ export default function ShareExtension({ url: sharedUrl = '', text }: InitialPro
 const styles = StyleSheet.create({
   container:     { padding: 20, gap: 8 },
   header:        { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  icon:          { width: 40, height: 40, borderRadius: 10, backgroundColor: '#C87A38', justifyContent: 'center', alignItems: 'center' },
+  icon:          { width: 40, height: 40, borderRadius: 10, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center' },
   iconText:      { fontSize: 20, fontWeight: '800', color: '#fff' },
   appName:       { fontSize: 15, fontWeight: '600', color: '#12131C' },
   sub:           { fontSize: 12, color: '#9EA1B4' },
@@ -116,5 +117,5 @@ const styles = StyleSheet.create({
   segBtnActive:  { backgroundColor: '#fff' },
   segText:       { fontSize: 12, fontWeight: '600', color: '#9EA1B4' },
   segTextActive: { color: '#12131C' },
-  saveBtn:       { backgroundColor: '#C87A38', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 16 },
+  saveBtn:       { backgroundColor: ACCENT, padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 16 },
 })

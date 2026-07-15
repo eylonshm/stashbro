@@ -1,8 +1,8 @@
 import React from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Pressable } from 'react-native'
 import Swipeable from 'react-native-gesture-handler/Swipeable'
-import type { LocalItem } from '../hooks/useItems.js'
-import { useTheme } from '../hooks/useTheme.js'
+import type { LocalItem } from '../hooks/useItems'
+import { useTheme } from '../hooks/useTheme'
 
 const THUMB_BG: Record<string, string> = {
   video: '#CC0000', post: '#1C1C1C', article: '#3A3A5C', other: '#5A2A8C',
@@ -39,7 +39,7 @@ export function ItemRow({
           <Text style={styles.actionText}>Read</Text>
         </Pressable>
       )}
-      <Pressable style={styles.archiveAction} onPress={() => onArchive(item)}>
+      <Pressable style={[styles.archiveAction, { backgroundColor: theme.accent }]} onPress={() => onArchive(item)}>
         <Text style={styles.actionText}>Archive</Text>
       </Pressable>
     </View>
@@ -95,6 +95,6 @@ const styles = StyleSheet.create({
   age: { fontSize: 11 },
   swipeActions: { flexDirection: 'row' },
   readAction: { backgroundColor: '#3A7BD5', justifyContent: 'center', alignItems: 'center', width: 80 },
-  archiveAction: { backgroundColor: '#C87A38', justifyContent: 'center', alignItems: 'center', width: 80 },
+  archiveAction: { justifyContent: 'center', alignItems: 'center', width: 80 },
   actionText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 })

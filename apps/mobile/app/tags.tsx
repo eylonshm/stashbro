@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { openDatabase } from '../src/db/database.js'
-import { SQLiteLocalStore, makeExpoSyncDb } from '../src/sync/SQLiteLocalStore.js'
-import { deleteTagLocal } from '../src/lib/tags.js'
-import { triggerSync } from '../src/hooks/useSyncEngine.js'
+import { openDatabase } from '../src/db/database'
+import { SQLiteLocalStore, makeExpoSyncDb } from '../src/sync/SQLiteLocalStore'
+import { deleteTagLocal } from '../src/lib/tags'
+import { triggerSync } from '../src/hooks/useSyncEngine'
 import { router } from 'expo-router'
-import { useTheme } from '../src/hooks/useTheme.js'
+import { useTheme } from '../src/hooks/useTheme'
 
 interface Tag { id: string; name: string; count: number }
 
@@ -45,7 +45,7 @@ export default function TagsScreen() {
     <View style={{ flex: 1, backgroundColor: theme.surface }}>
       <View style={{ padding: 20, paddingTop: 60, gap: 8 }}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={{ color: '#C87A38', fontSize: 16 }}>Back</Text>
+          <Text style={{ color: theme.accent, fontSize: 16 }}>Back</Text>
         </TouchableOpacity>
         <Text style={{ fontSize: 24, fontWeight: '700', color: theme.text }}>Tags</Text>
       </View>

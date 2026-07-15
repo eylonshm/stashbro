@@ -1,11 +1,15 @@
 import { useColorScheme } from 'react-native'
 
 // ponytail: single-source theme; shared across ItemRow/FilterChips/index via import
+export const ACCENT = '#C87A38'
+
 const LIGHT = {
   bg: '#FFFFFF', surface: '#ECEDF2',
   text: '#12131C', secondary: '#5E6175', meta: '#9EA1B4',
   border: 'rgba(18,19,28,.09)', sep: 'rgba(18,19,28,.06)',
   tagBg: '#ECEDF4', tagText: '#4A4D62',
+  accent: ACCENT, accentText: '#FFFFFF',
+  searchBg: '#F5F5F7',
   typeBadge: {
     video:   { bg: '#FCEAEA', fg: '#B53030' },
     post:    { bg: '#EAF0FD', fg: '#2A56A8' },
@@ -18,6 +22,8 @@ const DARK = {
   text: '#F0F0F5', secondary: '#A0A3B4', meta: '#6B6E82',
   border: 'rgba(255,255,255,.10)', sep: 'rgba(255,255,255,.06)',
   tagBg: '#2C2C35', tagText: '#A0A3B4',
+  accent: ACCENT, accentText: '#FFFFFF',
+  searchBg: '#2C2C2E',
   typeBadge: {
     video:   { bg: '#3A1212', fg: '#E87070' },
     post:    { bg: '#0D1F3A', fg: '#6B8FD4' },
@@ -25,6 +31,8 @@ const DARK = {
     other:   { bg: '#1E0D33', fg: '#9B6DCC' },
   },
 }
+
+export const SPACING = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const
 
 export type Theme = typeof LIGHT
 
