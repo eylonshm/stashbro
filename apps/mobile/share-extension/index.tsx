@@ -5,6 +5,18 @@ import RNFS from 'react-native-fs'
 import { detectType, extractDomain } from '@stashbro/shared'
 import { ACCENT } from '../src/hooks/useTheme'
 
+// ponytail: share extension runs in a separate iOS process (no React context/hooks)
+// align with LIGHT theme values from useTheme.ts
+const COLORS = {
+  bg: '#FFFFFF',
+  surface: '#ECEDF2',
+  text: '#12131C',
+  meta: '#9EA1B4',
+  border: 'rgba(18,19,28,.09)',
+  accent: ACCENT,
+  accentText: '#FFFFFF',
+}
+
 type Priority = 'low' | 'medium' | 'high'
 
 const APP_GROUP = 'group.com.stashbro.mobile'
@@ -74,7 +86,7 @@ export default function ShareExtension({ url: sharedUrl = '', text }: InitialPro
         <View style={[styles.badge, { backgroundColor: tc.bg }]}>
           <Text style={[styles.badgeText, { color: tc.fg }]}>{detectedType.toUpperCase()}</Text>
         </View>
-        <Text style={{ fontSize: 12, color: '#9EA1B4' }}>{domain}</Text>
+        <Text style={{ fontSize: 12, color: COLORS.meta }}>{domain}</Text>
       </View>
 
       <Text style={styles.label}>Priority</Text>
@@ -93,7 +105,7 @@ export default function ShareExtension({ url: sharedUrl = '', text }: InitialPro
         onPress={save}
         disabled={saved}
       >
-        <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
+        <Text style={{ color: COLORS.accentText, fontWeight: '600', fontSize: 16 }}>
           {saved ? 'Saved!' : 'Save to StashBro'}
         </Text>
       </TouchableOpacity>
@@ -104,18 +116,18 @@ export default function ShareExtension({ url: sharedUrl = '', text }: InitialPro
 const styles = StyleSheet.create({
   container:     { padding: 20, gap: 8 },
   header:        { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  icon:          { width: 40, height: 40, borderRadius: 10, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center' },
-  iconText:      { fontSize: 20, fontWeight: '800', color: '#fff' },
-  appName:       { fontSize: 15, fontWeight: '600', color: '#12131C' },
-  sub:           { fontSize: 12, color: '#9EA1B4' },
-  label:         { fontSize: 11, fontWeight: '600', color: '#9EA1B4', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 8 },
-  titleInput:    { backgroundColor: '#fff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(18,19,28,.09)', fontSize: 14, minHeight: 44 },
+  icon:          { width: 40, height: 40, borderRadius: 10, backgroundColor: COLORS.accent, justifyContent: 'center', alignItems: 'center' },
+  iconText:      { fontSize: 20, fontWeight: '800', color: COLORS.accentText },
+  appName:       { fontSize: 15, fontWeight: '600', color: COLORS.text },
+  sub:           { fontSize: 12, color: COLORS.meta },
+  label:         { fontSize: 11, fontWeight: '600', color: COLORS.meta, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 8 },
+  titleInput:    { backgroundColor: COLORS.bg, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border, fontSize: 14, minHeight: 44 },
   badge:         { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 },
   badgeText:     { fontSize: 10, fontWeight: '700' },
-  seg:           { flexDirection: 'row', backgroundColor: '#ECEDF2', borderRadius: 8, padding: 2, gap: 1, marginTop: 4 },
+  seg:           { flexDirection: 'row', backgroundColor: COLORS.surface, borderRadius: 8, padding: 2, gap: 1, marginTop: 4 },
   segBtn:        { flex: 1, paddingVertical: 6, borderRadius: 6, alignItems: 'center' },
-  segBtnActive:  { backgroundColor: '#fff' },
-  segText:       { fontSize: 12, fontWeight: '600', color: '#9EA1B4' },
-  segTextActive: { color: '#12131C' },
-  saveBtn:       { backgroundColor: ACCENT, padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 16 },
+  segBtnActive:  { backgroundColor: COLORS.bg },
+  segText:       { fontSize: 12, fontWeight: '600', color: COLORS.meta },
+  segTextActive: { color: COLORS.text },
+  saveBtn:       { backgroundColor: COLORS.accent, padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 16 },
 })
