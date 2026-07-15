@@ -1,21 +1,27 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native'
+import {
+  View, Text, TextInput, Pressable, ScrollView,
+  StyleSheet, Alert, ActivityIndicator,
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
-import { useTheme } from '../src/hooks/useTheme'
+import { useTheme, SPACING } from '../src/hooks/useTheme'
 import { validateServerUrl } from '../src/lib/config'
 import { reinitializeSyncEngine } from '../src/hooks/useSyncEngine'
 
 export default function SettingsScreen() {
+  const theme = useTheme()
+  const insets = useSafeAreaInsets()
   const [url, setUrl] = useState('')
   const [token, setToken] = useState('')
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [serverMode, setServerMode] = useState<'token' | 'magic-link' | 'unknown'>('unknown')
   const [email, setEmail] = useState('')
   const [codeStep, setCodeStep] = useState(false)
   const [code, setCode] = useState('')
   const [loginStatus, setLoginStatus] = useState('')
-  const theme = useTheme()
 
   useEffect(() => {
     Promise.all([
@@ -38,21 +44,25 @@ export default function SettingsScreen() {
 
   const save = async () => {
     if (!validateServerUrl(url)) { Alert.alert('Invalid URL', 'Must start with http(s)://'); return }
-    const mode = await detectMode(url)
-    setServerMode(mode)
-    if (mode === 'magic-link') {
-      // In magic-link mode, just save the URL and show email flow
-      await AsyncStorage.setItem('stashbro:serverURL', url)
-      return
+    setSaving(true)
+    try {
+      const mode = await detectMode(url)
+      setServerMode(mode)
+      if (mode === 'magic-link') {
+        await AsyncStorage.setItem('stashbro:serverURL', url)
+        return
+      }
+      if (!token.trim()) { Alert.alert('Missing Token', 'Bearer token cannot be empty'); return }
+      await Promise.all([
+        AsyncStorage.setItem('stashbro:serverURL', url),
+        AsyncStorage.setItem('stashbro:serverToken', token),
+      ])
+      await reinitializeSyncEngine()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } finally {
+      setSaving(false)
     }
-    if (!token.trim()) { Alert.alert('Missing Token', 'Bearer token cannot be empty'); return }
-    await Promise.all([
-      AsyncStorage.setItem('stashbro:serverURL', url),
-      AsyncStorage.setItem('stashbro:serverToken', token),
-    ])
-    await reinitializeSyncEngine()
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
   }
 
   const sendCode = async () => {
@@ -92,94 +102,166 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.surface }}
-      contentContainerStyle={{ padding: 20 }}
-    >
-      <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 16 }}>
-        <Text style={{ color: theme.accent, fontSize: 16 }}>Back</Text>
-      </TouchableOpacity>
-      <Text style={[styles.heading, { color: theme.text }]}>Settings</Text>
-      <Text style={[styles.label, { color: theme.meta }]}>Server URL</Text>
-      <TextInput
-        style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-        value={url}
-        onChangeText={setUrl}
-        placeholder="https://your-server.fly.dev"
-        placeholderTextColor={theme.meta}
-        keyboardType="url"
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-      {serverMode !== 'magic-link' && (
-        <>
-          <Text style={[styles.label, { color: theme.meta }]}>Bearer Token</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-            value={token}
-            onChangeText={setToken}
-            placeholder="your-secret-token"
-            placeholderTextColor={theme.meta}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </>
-      )}
-      <TouchableOpacity style={[styles.btn, { backgroundColor: theme.accent }]} onPress={save}>
-        <Text style={styles.btnText}>{saved ? 'Saved!' : 'Save & Sync'}</Text>
-      </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: theme.surface }]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + SPACING.sm }]}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Text style={[styles.backBtn, { color: theme.accent }]}>← Back</Text>
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
+        <View style={{ width: 60 }} />
+      </View>
 
-      {serverMode === 'magic-link' && (
-        <>
-          <Text style={[styles.label, { color: theme.meta, marginTop: 20 }]}>Sign In (Hosted Mode)</Text>
-          {!codeStep ? (
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        {/* Server section */}
+        <Text style={[styles.sectionHeader, { color: theme.meta }]}>SERVER</Text>
+        <View style={[styles.card, { backgroundColor: theme.bg }]}>
+          <View style={styles.field}>
+            <Text style={[styles.fieldLabel, { color: theme.secondary }]}>Server URL</Text>
+            <TextInput
+              style={[styles.input, { color: theme.text, borderColor: theme.border }]}
+              value={url}
+              onChangeText={setUrl}
+              placeholder="https://your-server.fly.dev"
+              placeholderTextColor={theme.meta}
+              keyboardType="url"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+        </View>
+
+        {/* Auth section */}
+        <Text style={[styles.sectionHeader, { color: theme.meta }]}>
+          {serverMode === 'magic-link' ? 'SIGN IN' : 'AUTHENTICATION'}
+        </Text>
+        <View style={[styles.card, { backgroundColor: theme.bg }]}>
+          {serverMode === 'magic-link' ? (
             <>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={theme.meta}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity style={[styles.btn, { backgroundColor: theme.accent }]} onPress={sendCode}>
-                <Text style={styles.btnText}>Send Code</Text>
-              </TouchableOpacity>
+              {!codeStep ? (
+                <View style={styles.field}>
+                  <Text style={[styles.fieldLabel, { color: theme.secondary }]}>Email</Text>
+                  <TextInput
+                    style={[styles.input, { color: theme.text, borderColor: theme.border }]}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
+                    placeholderTextColor={theme.meta}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <Pressable
+                    onPress={sendCode}
+                    style={[styles.primaryBtn, { backgroundColor: theme.accent }]}
+                  >
+                    <Text style={[styles.primaryBtnText, { color: theme.accentText }]}>Send Code</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.field}>
+                  <Text style={[styles.fieldLabel, { color: theme.secondary }]}>Verification Code</Text>
+                  <TextInput
+                    style={[styles.input, { color: theme.text, borderColor: theme.border }]}
+                    value={code}
+                    onChangeText={setCode}
+                    placeholder="6-digit code"
+                    placeholderTextColor={theme.meta}
+                    keyboardType="number-pad"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <Pressable
+                    onPress={verifyCode}
+                    style={[styles.primaryBtn, { backgroundColor: theme.accent }]}
+                  >
+                    <Text style={[styles.primaryBtnText, { color: theme.accentText }]}>Verify</Text>
+                  </Pressable>
+                </View>
+              )}
+              {loginStatus ? (
+                <Text style={[styles.statusText, { color: theme.accent }]}>{loginStatus}</Text>
+              ) : null}
             </>
           ) : (
-            <>
+            <View style={styles.field}>
+              <Text style={[styles.fieldLabel, { color: theme.secondary }]}>Bearer Token</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-                value={code}
-                onChangeText={setCode}
-                placeholder="6-digit code"
+                style={[styles.input, { color: theme.text, borderColor: theme.border }]}
+                value={token}
+                onChangeText={setToken}
+                placeholder="your-secret-token"
                 placeholderTextColor={theme.meta}
-                keyboardType="number-pad"
+                secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <TouchableOpacity style={[styles.btn, { backgroundColor: theme.accent }]} onPress={verifyCode}>
-                <Text style={styles.btnText}>Verify</Text>
-              </TouchableOpacity>
-            </>
+            </View>
           )}
-          {loginStatus ? <Text style={{ color: '#1F7A47', fontSize: 13, marginTop: 8 }}>{loginStatus}</Text> : null}
-        </>
-      )}
-      <TouchableOpacity style={{ marginTop: 24, alignItems: 'center' }} onPress={() => router.push('/tags')}>
-        <Text style={{ color: theme.accent, fontSize: 15 }}>Manage Tags →</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        </View>
+
+        {/* Save */}
+        <Pressable
+          onPress={save}
+          disabled={saving}
+          style={[styles.primaryBtn, styles.saveBtn, { backgroundColor: theme.accent }]}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color={theme.accentText} />
+          ) : (
+            <Text style={[styles.primaryBtnText, { color: theme.accentText }]}>
+              {saved ? 'Saved!' : 'Save & Sync'}
+            </Text>
+          )}
+        </Pressable>
+
+        {/* Navigation */}
+        <Text style={[styles.sectionHeader, { color: theme.meta }]}>MORE</Text>
+        <View style={[styles.card, { backgroundColor: theme.bg }]}>
+          <Pressable onPress={() => router.push('/tags')} style={styles.navRow}>
+            <Text style={[styles.navLabel, { color: theme.text }]}>Manage Tags</Text>
+            <Text style={[styles.navChevron, { color: theme.meta }]}>→</Text>
+          </Pressable>
+        </View>
+
+        <View style={{ height: insets.bottom + SPACING.xl }} />
+      </ScrollView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  heading: { fontSize: 24, fontWeight: '700', marginBottom: 24 },
-  label: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 8 },
-  input: { padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 4, fontSize: 14 },
-  btn: { padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 12 },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm,
+  },
+  backBtn: { fontSize: 16, fontWeight: '500', width: 60 },
+  headerTitle: { fontSize: 17, fontWeight: '600' },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm },
+  sectionHeader: {
+    fontSize: 12, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase',
+    marginTop: SPACING.xl, marginBottom: SPACING.sm, marginLeft: SPACING.xs,
+  },
+  card: { borderRadius: 12, padding: SPACING.lg, gap: SPACING.md },
+  field: { gap: SPACING.xs },
+  fieldLabel: { fontSize: 13, fontWeight: '500' },
+  input: {
+    fontSize: 15, borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 10,
+  },
+  primaryBtn: {
+    borderRadius: 10, paddingVertical: 13,
+    alignItems: 'center', marginTop: SPACING.xs,
+  },
+  primaryBtnText: { fontSize: 15, fontWeight: '600' },
+  saveBtn: { marginTop: SPACING.xl },
+  statusText: { fontSize: 13, marginTop: SPACING.xs },
+  navRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: SPACING.xs,
+  },
+  navLabel: { fontSize: 15 },
+  navChevron: { fontSize: 16 },
 })
