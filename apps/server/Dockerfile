@@ -3,6 +3,9 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 RUN npm install -g pnpm@9.15.0
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+# patchedDependencies in root package.json references patches/ - pnpm hashes these
+# files during install, so they must exist in the build context or the install fails.
+COPY patches ./patches/
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/server/package.json ./apps/server/
 RUN pnpm install --frozen-lockfile
@@ -17,6 +20,9 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 RUN npm install -g pnpm@9.15.0
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+# patchedDependencies in root package.json references patches/ - pnpm hashes these
+# files during install, so they must exist in the build context or the install fails.
+COPY patches ./patches/
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/server/package.json ./apps/server/
 RUN pnpm install --frozen-lockfile --prod
