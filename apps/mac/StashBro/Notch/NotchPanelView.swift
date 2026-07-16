@@ -1,6 +1,10 @@
 // apps/mac/StashBro/Notch/NotchPanelView.swift
 import SwiftUI
 
+extension Notification.Name {
+    static let openManualAddURL = Notification.Name("openManualAddURL")
+}
+
 struct NotchPanelView: View {
     let db: AppDatabase
     let syncEngine: () -> SyncEngine?  // ponytail: closure for live engine after reconnect
@@ -52,8 +56,24 @@ struct NotchPanelView: View {
 
                 Divider().opacity(0.1)
 
-                // Footer save hint
+                // Footer: add button + save hint
                 HStack(spacing: 5) {
+                    Button(action: {
+                        NotificationCenter.default.post(name: .openManualAddURL, object: nil)
+                    }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text("Add URL")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundStyle(Color(red: 0.784, green: 0.478, blue: 0.220))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Manually add a URL")
+
+                    Spacer()
+
                     Text("Save:")
                         .font(.system(size: 11))
                         .foregroundStyle(.white.opacity(0.38))

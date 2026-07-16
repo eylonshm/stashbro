@@ -4,6 +4,7 @@ import AppKit
 
 extension KeyboardShortcuts.Name {
     static let saveCurrentTab = Self("saveCurrentTab", default: .init(.s, modifiers: [.command, .shift]))
+    static let addURLManually = Self("addURLManually")
 }
 
 enum HotkeyManager {
@@ -13,6 +14,12 @@ enum HotkeyManager {
                 guard let tab = await BrowserTabGrabber.grab() else { return }
                 handler(tab)
             }
+        }
+    }
+
+    static func registerManualAdd(handler: @escaping () -> Void) {
+        KeyboardShortcuts.onKeyDown(for: .addURLManually) {
+            Task { @MainActor in handler() }
         }
     }
 }

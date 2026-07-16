@@ -94,10 +94,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.openQuickSave(url: tab.url, tabTitle: tab.title)
         }
 
+        HotkeyManager.registerManualAdd { [weak self] in
+            self?.openQuickSave(url: nil, tabTitle: nil)
+        }
+
         // Observe openMainWindow notification from notch "Open App" button and menubar footer
         NotificationCenter.default.addObserver(
             self, selector: #selector(handleOpenMainWindow),
             name: MainWindowController.openMainWindow, object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleOpenManualAdd),
+            name: .openManualAddURL, object: nil
         )
 
         // ponytail: debug-only; forces notch panel (bypasses safeAreaInsets + showInNotch pref), auto-triggers expand sequence
@@ -215,6 +224,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showMainWindow()
     }
 
+    @objc private func handleOpenManualAdd() {
+        openQuickSave(url: nil, tabTitle: nil)
+    }
+
     private func showMainWindow() {
         if mainWindowController == nil {
             mainWindowController = MainWindowController(db: db, syncEngine: { [weak self] in self?.syncEngine })
@@ -228,7 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    func openQuickSave(url: URL, tabTitle: String?) {
+    func openQuickSave(url: URL?, tabTitle: String?) {
         guard let store else { return }
 
         // Close any existing panel first
@@ -250,17 +263,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.quickSavePanel = nil
         }
 
-        let onSave: (String, ItemPriority, [String], String?, String?) -> Void = { [weak self] title, priority, tags, desc, thumb in
+        let onSave: (URL, String, ItemPriority, [String], String?, String?) -> Void = { [weak self] savedURL, title, priority, tags, desc, thumb in
             guard let self else { return }
             let now = Date()
             let item = StashItem(
                 id: UUID().uuidString, userId: "default",
-                url: url.absoluteString,
-                title: title.isEmpty ? url.absoluteString : title,
+                url: savedURL.absoluteString,
+                title: title.isEmpty ? savedURL.absoluteString : title,
                 description: desc,
                 thumbnailUrl: thumb, faviconUrl: nil,
-                domain: url.host ?? url.absoluteString,
-                type: detectItemType(url: url.absoluteString),
+                domain: savedURL.host ?? savedURL.absoluteString,
+                type: detectItemType(url: savedURL.absoluteString),
                 status: .unread, priority: priority,
                 createdAt: now, updatedAt: now, deletedAt: nil,
                 changeSeq: 0  // ponytail: bumpOrCreateWithTags overwrites with MAX(change_seq)+1

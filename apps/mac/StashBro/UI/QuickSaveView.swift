@@ -2,36 +2,48 @@
 import SwiftUI
 
 struct QuickSaveView: View {
-    let url: URL
+    let initialURL: URL?
     let tabTitle: String?
-    let onSave: (_ title: String, _ priority: ItemPriority, _ tags: [String], _ ogDescription: String?, _ ogThumbnail: String?) -> Void
+    let onSave: (_ url: URL, _ title: String, _ priority: ItemPriority, _ tags: [String], _ ogDescription: String?, _ ogThumbnail: String?) -> Void
     let onCancel: () -> Void
 
+    @State private var urlText: String
+    @State private var resolvedURL: URL?
+    @State private var urlError: String? = nil
     @State private var editTitle: String
     @State private var priority: ItemPriority = .medium
     @State private var tagText = ""
     @State private var ogTitle: String? = nil
     @State private var ogDescription: String? = nil
     @State private var ogImageURL: String? = nil
-    @State private var ogLoading = true
-    @State private var shimmerOn = false  // ponytail: single bool drives all skeleton opacity
+    @State private var ogLoading: Bool
+    @State private var shimmerOn = false
 
     private let defaultTitle: String
+    private let isManualMode: Bool
 
-    init(url: URL, tabTitle: String?,
-         onSave: @escaping (_ title: String, _ priority: ItemPriority, _ tags: [String], _ ogDescription: String?, _ ogThumbnail: String?) -> Void,
+    init(url: URL?, tabTitle: String?,
+         onSave: @escaping (_ url: URL, _ title: String, _ priority: ItemPriority, _ tags: [String], _ ogDescription: String?, _ ogThumbnail: String?) -> Void,
          onCancel: @escaping () -> Void) {
-        self.url = url
+        self.initialURL = url
         self.tabTitle = tabTitle
         self.onSave = onSave
         self.onCancel = onCancel
-        let initial = tabTitle ?? url.absoluteString
+        self.isManualMode = url == nil
+        let initial = tabTitle ?? url?.absoluteString ?? ""
         self._editTitle = State(initialValue: initial)
         self.defaultTitle = initial
+        self._urlText = State(initialValue: url?.absoluteString ?? "")
+        self._resolvedURL = State(initialValue: url)
+        self._ogLoading = State(initialValue: url != nil)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if isManualMode {
+                urlInputSection
+            }
+
             previewCard
                 .padding(.horizontal, 14)
                 .padding(.top, 14)
@@ -73,13 +85,51 @@ struct QuickSaveView: View {
                 Button("Save") { doSave() }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
+                    .disabled(resolvedURL == nil)
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 14)
             .padding(.top, 4)
         }
         .frame(width: 380)
-        .task { await loadOG() }
+        .task {
+            if let _ = initialURL { await loadOG() }
+        }
+    }
+
+    // MARK: - URL input (manual mode)
+
+    @ViewBuilder
+    private var urlInputSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            TextField("Paste or type a URL...", text: $urlText, onCommit: { submitURL() })
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12))
+            if let err = urlError {
+                Text(err)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 14)
+    }
+
+    private func submitURL() {
+        let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              url.scheme == "http" || url.scheme == "https" else {
+            urlError = "Enter a valid http:// or https:// URL"
+            resolvedURL = nil
+            return
+        }
+        urlError = nil
+        resolvedURL = url
+        ogLoading = true
+        if editTitle.isEmpty || editTitle == defaultTitle {
+            editTitle = trimmed
+        }
+        Task { await loadOG() }
     }
 
     // MARK: - Preview card
@@ -99,7 +149,7 @@ struct QuickSaveView: View {
                         Spacer(minLength: 0).frame(width: 36)
                     }
                     .transition(.opacity)
-                } else {
+                } else if resolvedURL != nil {
                     Text(previewTitle)
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(2)
@@ -113,8 +163,12 @@ struct QuickSaveView: View {
                             .lineLimit(2)
                     }
 
-                    Text(url.host ?? url.absoluteString)
+                    Text(resolvedURL?.host ?? "")
                         .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                } else {
+                    Text("Enter a URL above")
+                        .font(.system(size: 12))
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -163,7 +217,8 @@ struct QuickSaveView: View {
     }
 
     private var typeGradient: some View {
-        let type = detectItemType(url: url.absoluteString)
+        let urlStr = resolvedURL?.absoluteString ?? ""
+        let type = detectItemType(url: urlStr)
         let colors: [Color] = {
             switch type {
             case .video:   return [Color(red: 1, green: 0.125, blue: 0.125), Color(red: 0.8, green: 0, blue: 0)]
@@ -176,24 +231,25 @@ struct QuickSaveView: View {
     }
 
     private var previewTitle: String {
-        ogTitle ?? tabTitle ?? url.absoluteString
+        ogTitle ?? tabTitle ?? resolvedURL?.absoluteString ?? ""
     }
 
     // MARK: - Actions
 
     private func doSave() {
+        guard let url = resolvedURL else { return }
         let tags = tagText
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-        onSave(editTitle, priority, tags, ogDescription, ogImageURL)
+        onSave(url, editTitle, priority, tags, ogDescription, ogImageURL)
     }
 
     // MARK: - OG fetch
 
-    // ponytail: @MainActor ensures all @State assignments run on main thread - fixes silent image drop
     @MainActor
     private func loadOG() async {
+        guard let url = resolvedURL ?? initialURL else { return }
         defer { ogLoading = false }
         var req = URLRequest(url: url, timeoutInterval: 5)
         req.setValue(
@@ -206,7 +262,8 @@ struct QuickSaveView: View {
 
         let meta = parseOGMetadata(html: html, baseURL: url)
 
-        if editTitle == defaultTitle, let t = meta.title, !t.isEmpty {
+        if editTitle == defaultTitle || editTitle == url.absoluteString || editTitle.isEmpty,
+           let t = meta.title, !t.isEmpty {
             editTitle = t
         }
         ogTitle = meta.title

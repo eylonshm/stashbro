@@ -76,6 +76,7 @@ struct SettingsView: View {
 
             Section("Hotkey") {
                 KeyboardShortcuts.Recorder("Save current tab", name: .saveCurrentTab)
+                KeyboardShortcuts.Recorder("Add URL manually", name: .addURLManually)
             }
 
             Section("System") {

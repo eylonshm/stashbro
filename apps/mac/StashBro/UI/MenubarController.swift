@@ -8,6 +8,21 @@ private struct MenubarPopoverView: View {
     let syncEngine: () -> SyncEngine?
     var body: some View {
         VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button(action: {
+                    NotificationCenter.default.post(name: .openManualAddURL, object: nil)
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color(red: 0.784, green: 0.478, blue: 0.220))
+                }
+                .buttonStyle(.plain)
+                .help("Add a URL manually")
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+
             StashListView(db: db, syncEngine: syncEngine, style: .popover)
             Divider()
             Button("Open App \u{2192}") {

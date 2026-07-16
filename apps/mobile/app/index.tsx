@@ -1,16 +1,18 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, TextInput, FlatList, ScrollView, StyleSheet, Pressable, RefreshControl, ActivityIndicator, Modal, Share, Image } from 'react-native'
+import { View, Text, TextInput, FlatList, ScrollView, StyleSheet, Pressable, RefreshControl, ActivityIndicator, Modal, Share, Image, TouchableOpacity } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { router } from 'expo-router'
 import { useSyncEngine, type SyncStatus } from '../src/hooks/useSyncEngine'
 import type { Theme } from '../src/hooks/useTheme'
 import { useItems } from '../src/hooks/useItems'
-import { useTheme, SPACING } from '../src/hooks/useTheme'
+import { useTheme, SPACING, ACCENT } from '../src/hooks/useTheme'
 import { ItemRow } from '../src/components/ItemRow'
 import { FilterChips } from '../src/components/FilterChips'
 import { EmptyState } from '../src/components/EmptyState'
 import type { LocalItem } from '../src/hooks/useItems'
+import { AddURLSheet } from '../src/components/AddURLSheet'
+import { genId } from '../src/sync/SQLiteLocalStore'
 
 type TypeFilter = 'all' | 'video' | 'post' | 'article' | 'other'
 type PriorityFilter = 'all' | 'high' | 'low'
@@ -39,6 +41,23 @@ export default function HomeScreen() {
   // ponytail: onSyncComplete wires foreground sync → list refresh without extra state
   const { sync, saveLocalItem, status, realtimeConnected, lastError } = useSyncEngine(refresh)
   const [errorModal, setErrorModal] = useState(false)
+  const [addUrlVisible, setAddUrlVisible] = useState(false)
+
+  const handleAddUrl = useCallback((item: {
+    url: string; title: string; description: string | null
+    thumbnail_url: string | null; domain: string; type: string; priority: string
+  }) => {
+    saveLocalItem({
+      id: genId(), url: item.url, title: item.title, description: item.description,
+      thumbnail_url: item.thumbnail_url, favicon_url: null, domain: item.domain,
+      type: item.type, status: 'unread', priority: item.priority,
+      updated_at: new Date().toISOString(), deleted_at: null,
+      tag_names: [],
+    })
+    refresh()
+    void sync()
+    setAddUrlVisible(false)
+  }, [saveLocalItem, sync, refresh])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -184,6 +203,20 @@ export default function HomeScreen() {
         theme={theme}
         onRetry={() => { void sync() }}
       />
+
+      <TouchableOpacity
+        style={[styles.fab, { bottom: insets.bottom + 16 }]}
+        onPress={() => setAddUrlVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.fabIcon}>+</Text>
+      </TouchableOpacity>
+
+      <AddURLSheet
+        visible={addUrlVisible}
+        onSave={handleAddUrl}
+        onClose={() => setAddUrlVisible(false)}
+      />
     </View>
   )
 }
@@ -303,4 +336,16 @@ const styles = StyleSheet.create({
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
   listContent: { paddingBottom: 24 },
   listEmpty: { flexGrow: 1 },
+  fab: {
+    position: 'absolute', right: 16,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: ACCENT,
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 6,
+    elevation: 8,
+  },
+  fabIcon: {
+    color: '#FFFFFF', fontSize: 28, fontWeight: '300', marginTop: -2,
+  },
 })
