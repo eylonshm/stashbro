@@ -46,7 +46,8 @@
             "alpha": 1
           },
           "height": 420,
-          "rootComponent": "./share-extension/index"
+          "rootComponent": "./share-extension/index",
+          "excludedPackages": ["expo-dev-client", "expo-dev-launcher", "expo-dev-menu", "expo-updates"]
         }
       ],
       [
