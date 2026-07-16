@@ -22,4 +22,5 @@ apps/mobile/android/
 # Claude Code / agent tooling
 .agents/
 .claude/skills/
+.claude/worktrees/
 skills-lock.json
