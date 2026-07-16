@@ -24,10 +24,19 @@ The widget reads this copy via sqlite3 C API with `SQLITE_OPEN_READONLY`. Widget
 
 ## Share Extension (inbox pattern)
 
-expo-share-extension v1.10.7 API surface:
-- Uses `InitialProps` (not `getShareData`)
-- Uses `pathForGroup` (not `AppGroupDirectoryPath`)
-- No metro subpath support
+expo-share-extension v5.0.6 (patched via `patches/expo-share-extension@5.0.6.patch`):
+- Shared data arrives as `InitialProps` component props
+- Patch 1: iOS deployment target 15.1 → 16.4 (ExtensionStorage pod needs it)
+- Patch 2 (backport of upstream 6.0.0-beta): use `ExpoReactNativeFactory` instead of
+  `RCTReactNativeFactory` in `ShareExtensionViewController.swift`. Without it the
+  Expo JSI host (`globalThis.expo`) is never installed in the extension runtime, so
+  any `expo-*` JS import (incl. expo-share-extension itself) throws
+  "Cannot read property 'EventEmitter' of undefined" at module load →
+  `AppRegistry.registerComponent` never runs → blank white sheet.
+- No global `crypto` in Hermes: use `genId()` (src/sync/SQLiteLocalStore.ts), never `crypto.randomUUID()`
+- Dev-mode bundle routing: metro.config.js wraps `withShareExtension` and adds a
+  monorepo-aware rewrite (`?shareExtension=true` → `apps/mobile/index.share.bundle`);
+  the lib's own rewrite only matches non-monorepo `index.bundle` URLs
 
 Writes JSON to `{appGroup}/inbox/`. On foreground, `ingestShareExtensionInbox()` reads each file, calls `saveLocalItem`, deletes on success, keeps on DB error for retry.
 

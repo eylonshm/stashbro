@@ -11,3 +11,45 @@ index 3816339ae033c7b49c7d683d4c432888d5080788..27f41d12b95e29fa951d46c48abb0ebc
          LD_RUNPATH_SEARCH_PATHS: `"$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"`,
          PRODUCT_BUNDLE_IDENTIFIER: `"${bundleIdentifier}"`,
          PRODUCT_NAME: `"${targetName}"`,
+diff --git a/plugin/swift/ShareExtensionViewController.swift b/plugin/swift/ShareExtensionViewController.swift
+index 7f9f6d84323d9fdcc80b23a661f76af8dd8bf793..af0012f8f27e17ecadfef5a29850e8fadb8a6bf9 100644
+--- a/plugin/swift/ShareExtensionViewController.swift
++++ b/plugin/swift/ShareExtensionViewController.swift
+@@ -12,7 +12,16 @@ import FirebaseCore
+ import FirebaseAuth
+ #endif
+ 
+-class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
++#if canImport(Expo)
++internal import Expo
++typealias ShareExtensionReactNativeDelegateSuperclass = ExpoReactNativeFactoryDelegate
++typealias ShareExtensionReactNativeFactory = ExpoReactNativeFactory
++#else
++typealias ShareExtensionReactNativeDelegateSuperclass = RCTDefaultReactNativeFactoryDelegate
++typealias ShareExtensionReactNativeFactory = RCTReactNativeFactory
++#endif
++
++class ReactNativeDelegate: ShareExtensionReactNativeDelegateSuperclass {
+   override func sourceURL(for bridge: RCTBridge) -> URL? {
+     self.bundleURL()
+   }
+@@ -42,8 +51,8 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
+ 
+ class ShareExtensionViewController: UIViewController {
+   private let loadingIndicator = UIActivityIndicatorView(style: .large)
+-  var reactNativeFactory: RCTReactNativeFactory?
+-  var reactNativeFactoryDelegate: RCTReactNativeFactoryDelegate?
++  var reactNativeFactory: ShareExtensionReactNativeFactory?
++  var reactNativeFactoryDelegate: ShareExtensionReactNativeDelegateSuperclass?
+   private var isCleanedUp = false
+ 
+   deinit {
+@@ -98,7 +107,7 @@ class ShareExtensionViewController: UIViewController {
+       
+       reactNativeFactoryDelegate = ReactNativeDelegate()
+       reactNativeFactoryDelegate!.dependencyProvider = RCTAppDependencyProvider()
+-      reactNativeFactory = RCTReactNativeFactory(delegate: reactNativeFactoryDelegate!)
++      reactNativeFactory = ShareExtensionReactNativeFactory(delegate: reactNativeFactoryDelegate!)
+       
+       var initialProps = sharedData ?? [:]
+       
