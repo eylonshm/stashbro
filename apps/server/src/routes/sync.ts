@@ -1,10 +1,12 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+import { streamSSE } from 'hono/streaming'
 import { uuidv7 } from 'uuidv7'
 import { eq, and, gt, lt, desc } from 'drizzle-orm'
 import { authMiddleware } from '../middleware/auth.js'
 import { getDb } from '../db/index.js'
 import { items, tags, item_tags } from '../db/schema.js'
 import { enrichMetadataAsync } from '../services/metadata.js'
+import { emitChange, subscribeChanges } from '../services/events.js'
 
 type Env = { Variables: { userId: string } }
 
@@ -115,7 +117,28 @@ export function syncRouter() {
       }
     }
 
+    if (accepted > 0) emitChange(userId)
     return c.json({ accepted })
+  })
+
+  // GET /sync/events - SSE stream; emits a message whenever this user's data changes.
+  // ponytail: raw route (not openapi) - streaming bodies aren't expressible in the zod-openapi schema.
+  app.get('/events', (c) => {
+    const userId = c.get('userId')
+    return streamSSE(c, async (stream) => {
+      let closed = false
+      const unsub = subscribeChanges(userId, () => {
+        void stream.writeSSE({ data: 'change' })
+      })
+      stream.onAbort(() => { closed = true; unsub() })
+      await stream.writeSSE({ data: 'connected' })
+      // Keepalive so idle proxies (nginx/CDN) don't drop the connection.
+      while (!closed) {
+        await stream.sleep(25000)
+        if (closed) break
+        await stream.writeSSE({ data: 'ping' })
+      }
+    })
   })
 
   // GET /sync/pull

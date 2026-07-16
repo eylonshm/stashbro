@@ -23,6 +23,7 @@ struct SettingsView: View {
     @State private var codeStep = false
     @State private var loginStatus = ""
     @State private var connectionStatus = ""
+    @State private var serverHistory: [String] = ServerConfig.history()
 
     // ponytail: computed at render time; static per session but correct
     private var hasNotch: Bool { (NSScreen.main?.safeAreaInsets.top ?? 0) > 0 }
@@ -32,6 +33,14 @@ struct SettingsView: View {
             Section("Server") {
                 TextField("Server URL", text: $serverURL)
                     .textContentType(.URL)
+                if !serverHistory.isEmpty {
+                    Menu("Recent servers") {
+                        ForEach(serverHistory, id: \.self) { url in
+                            Button(url) { serverURL = url }
+                        }
+                    }
+                    .font(.caption)
+                }
                 SecureField("Bearer Token", text: $serverToken)
                 Button("Save & Reconnect") { reconnect() }
                 if !connectionStatus.isEmpty {
@@ -155,9 +164,16 @@ struct SettingsView: View {
                 }
                 if let delegate = NSApp.delegate as? AppDelegate {
                     let store = GRDBLocalStore(db: delegate.db)
+                    // Switching servers must fully resync: reset the cursor so the next sync
+                    // re-pushes every local item and re-pulls everything from the new server.
+                    store.setCursor(0)
+                    ServerConfig.addToHistory(config.baseURL.absoluteString)
+                    serverHistory = ServerConfig.history()
                     let client = StashBroAPIClient(config: config)
                     let engine = SyncEngine(store: store, client: client)
                     delegate.syncEngine = engine
+                    SyncStatusStore.shared.state = .idle
+                    delegate.startRealtime(config: config)
                     Task { await engine.sync() }
                 }
                 connectionStatus = "Connected!"

@@ -93,6 +93,7 @@ struct StashListView: View {
     let syncEngine: () -> SyncEngine?  // ponytail: closure so callers always get the current engine after reconnect
     let style: ListStyle
 
+    @ObservedObject private var syncStatus = SyncStatusStore.shared
     @State private var searchText = ""
     @State private var selectedType: ItemType? = nil
     @State private var selectedPriority: ItemPriority? = nil
@@ -122,6 +123,7 @@ struct StashListView: View {
                 TextField("Search your stash\u{2026}", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
+                SyncStatusBadge(status: syncStatus)
                 Button(action: openSettings) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 12))

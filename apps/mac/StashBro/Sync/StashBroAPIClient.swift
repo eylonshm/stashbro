@@ -22,6 +22,19 @@ struct ServerConfig {
         defaults.set(baseURL.absoluteString, forKey: "serverURL")
         defaults.set(token, forKey: "serverToken")
     }
+
+    // MARK: Server URL history (local, most-recent-first, capped at 8)
+
+    static func history(from defaults: UserDefaults = .standard) -> [String] {
+        defaults.stringArray(forKey: "serverURLHistory") ?? []
+    }
+
+    static func addToHistory(_ url: String, defaults: UserDefaults = .standard) {
+        let clean = url.hasSuffix("/") ? String(url.dropLast()) : url
+        var h = history(from: defaults).filter { $0 != clean }
+        h.insert(clean, at: 0)
+        defaults.set(Array(h.prefix(8)), forKey: "serverURLHistory")
+    }
 }
 
 // MARK: - StashBroAPIClient

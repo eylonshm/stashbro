@@ -25,6 +25,7 @@ final class SyncEngine: ObservableObject {
             return
         }
         isSyncing = true
+        SyncStatusStore.shared.state = .syncing
         defer {
             isSyncing = false
             if pendingSync {
@@ -40,8 +41,11 @@ final class SyncEngine: ObservableObject {
             if !remoteChanges.isEmpty { try store.applyChanges(remoteChanges) }
             store.setCursor(newCursor)
             lastSyncError = nil
+            SyncStatusStore.shared.state = .synced
+            SyncStatusStore.shared.lastSyncedAt = Date()
         } catch {
             lastSyncError = error
+            SyncStatusStore.shared.state = .error
             onSyncError?(error)
         }
     }

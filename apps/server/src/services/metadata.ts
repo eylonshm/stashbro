@@ -2,6 +2,7 @@ import { eq, desc } from 'drizzle-orm'
 import { lookup } from 'dns/promises'
 import type { AppDb } from '../db/index.js'
 import { items } from '../db/schema.js'
+import { emitChange } from './events.js'
 
 // ponytail: SSRF guard - blocks fetches to private/loopback IPs; required since users supply URLs
 function isPrivateIP(ip: string): boolean {
@@ -151,6 +152,8 @@ async function enrichOnce(db: AppDb, itemId: string, url: string): Promise<void>
       .where(eq(items.id, itemId))
       .run()
   })
+
+  emitChange(current.user_id)
 }
 
 export async function enrichMetadataAsync(db: AppDb, itemId: string, url: string): Promise<void> {

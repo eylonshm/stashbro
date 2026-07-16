@@ -37,6 +37,7 @@ export class OfflineQueue {
 export interface SyncEngineConfig {
   client: StashBroClient
   store: LocalStore
+  onSyncStart?: () => void
   onSyncComplete?: () => void
   onSyncError?: (err: Error) => void
 }
@@ -44,6 +45,7 @@ export interface SyncEngineConfig {
 export class SyncEngine {
   private client: StashBroClient
   private store: LocalStore
+  private onSyncStart: (() => void) | undefined
   private onSyncComplete: (() => void) | undefined
   private onSyncError: ((err: Error) => void) | undefined
   private syncing = false
@@ -52,6 +54,7 @@ export class SyncEngine {
   constructor(config: SyncEngineConfig) {
     this.client = config.client
     this.store = config.store
+    this.onSyncStart = config.onSyncStart
     this.onSyncComplete = config.onSyncComplete
     this.onSyncError = config.onSyncError
   }
@@ -63,6 +66,7 @@ export class SyncEngine {
   async sync(): Promise<void> {
     if (this.syncing) { this.pendingSync = true; return }
     this.syncing = true
+    this.onSyncStart?.()
     try {
       const cursor = await this.store.getCursor()
       const localChanges = await this.store.getChangesSince(cursor)

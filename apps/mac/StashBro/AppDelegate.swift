@@ -56,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var notchController: NotchWindowController?
     var mainWindowController: MainWindowController?  // created lazily on first show
     var syncEngine: SyncEngine?
+    var syncRealtime: SyncRealtime?
     var syncTimer: Timer?
     let db = AppDatabase.makeShared()
     private var store: GRDBLocalStore?   // reused in saveURL and ingestShareExtensionInbox
@@ -72,6 +73,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let config = ServerConfig.load() {
             let client = StashBroAPIClient(config: config)
             self.syncEngine = SyncEngine(store: s, client: client)
+            SyncStatusStore.shared.state = .idle
+            startRealtime(config: config)
         }
 
         // C1: closures so reconnect() swapping syncEngine is always picked up
@@ -169,6 +172,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let inbox = container.appendingPathComponent("inbox", isDirectory: true)
         processShareInbox(at: inbox, into: store)
         // ponytail: no extra sync here; applicationDidBecomeActive fires one right after
+    }
+
+    // Opens (or reopens) the SSE stream so remote changes pull near-instantly.
+    // Safe to call repeatedly - start() tears down any prior stream first.
+    func startRealtime(config: ServerConfig) {
+        if syncRealtime == nil {
+            syncRealtime = SyncRealtime(onChange: { [weak self] in
+                Task { @MainActor in await self?.syncEngine?.sync() }
+            })
+        }
+        syncRealtime?.start(config: config)
     }
 
     private func startSyncTimer() {

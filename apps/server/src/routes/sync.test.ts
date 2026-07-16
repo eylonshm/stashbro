@@ -379,3 +379,29 @@ describe('GET /sync/pull', () => {
     expect(body.changes.some((c: { id: string }) => c.id === 'second')).toBe(true)
   })
 })
+
+describe('GET /sync/events - SSE realtime', () => {
+  it('streams a change event when an item is pushed', async () => {
+    const app = createApp()
+    const res = await app.request('/sync/events', { headers: { Authorization: 'Bearer test' } })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/event-stream')
+
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+
+    // First frame is the initial "connected" hello.
+    const hello = await reader.read()
+    expect(decoder.decode(hello.value)).toContain('connected')
+
+    // A push must produce a "change" frame on the open stream.
+    await app.request('/sync/push', {
+      method: 'POST', headers: AUTH,
+      body: JSON.stringify({ changes: [makeChange({ id: 'sse-1' })] }),
+    })
+    const frame = await reader.read()
+    expect(decoder.decode(frame.value)).toContain('change')
+
+    await reader.cancel()
+  })
+})

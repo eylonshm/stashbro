@@ -6,6 +6,7 @@ import { authMiddleware } from '../middleware/auth.js'
 import { getDb } from '../db/index.js'
 import { items, tags, item_tags } from '../db/schema.js'
 import { enrichMetadataAsync } from '../services/metadata.js'
+import { emitChange } from '../services/events.js'
 
 type Env = { Variables: { userId: string } }
 
@@ -102,6 +103,7 @@ export function itemsRouter() {
       if (body.tag_names?.length) upsertTags(db, userId, body.tag_names, existing.id)
       // Re-enrich if title was never set (still equals url)
       if (existing.title === existing.url) enrichMetadataAsync(db, existing.id, existing.url).catch(() => {})
+      emitChange(userId)
       return c.json(itemWithTags(db, existing.id, userId)!, 201)
     }
 
@@ -125,6 +127,7 @@ export function itemsRouter() {
     // Fire-and-forget metadata enrichment
     enrichMetadataAsync(db, id, body.url).catch(() => {})
 
+    emitChange(userId)
     return c.json(itemWithTags(db, id, userId)!, 201)
   })
 
@@ -230,6 +233,7 @@ export function itemsRouter() {
 
     if (body.tag_names !== undefined) upsertTags(db, userId, body.tag_names, id)
 
+    emitChange(userId)
     return c.json(itemWithTags(db, id, userId)!, 200)
   })
 

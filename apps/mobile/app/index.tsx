@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, TextInput, FlatList, ScrollView, StyleSheet, Pressable, RefreshControl } from 'react-native'
+import { View, Text, TextInput, FlatList, ScrollView, StyleSheet, Pressable, RefreshControl, ActivityIndicator } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { router } from 'expo-router'
-import { useSyncEngine } from '../src/hooks/useSyncEngine'
+import { useSyncEngine, type SyncStatus } from '../src/hooks/useSyncEngine'
+import type { Theme } from '../src/hooks/useTheme'
 import { useItems } from '../src/hooks/useItems'
 import { useTheme, SPACING } from '../src/hooks/useTheme'
 import { ItemRow } from '../src/components/ItemRow'
@@ -36,7 +37,7 @@ export default function HomeScreen() {
   })
 
   // ponytail: onSyncComplete wires foreground sync → list refresh without extra state
-  const { sync, saveLocalItem } = useSyncEngine(refresh)
+  const { sync, saveLocalItem, status, realtimeConnected } = useSyncEngine(refresh)
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -73,9 +74,12 @@ export default function HomeScreen() {
     <View style={[styles.container, { backgroundColor: theme.surface, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.wordmark, { color: theme.text }]}>
-          Stash<Text style={{ color: theme.accent }}>Bro</Text>
-        </Text>
+        <View style={styles.wordmarkRow}>
+          <Text style={[styles.wordmark, { color: theme.text }]}>
+            Stash<Text style={{ color: theme.accent }}>Bro</Text>
+          </Text>
+          <SyncBadge status={status} realtime={realtimeConnected} theme={theme} />
+        </View>
         <View style={styles.headerActions}>
           <Pressable onPress={() => router.push('/tags')} hitSlop={8}>
             <Text style={[styles.headerIcon, { color: theme.meta }]}>#</Text>
@@ -170,12 +174,41 @@ export default function HomeScreen() {
   )
 }
 
+// Compact sync indicator: spinner while syncing, colored dot + label otherwise.
+function SyncBadge({ status, realtime, theme }: { status: SyncStatus; realtime: boolean; theme: Theme }) {
+  if (status === 'syncing') {
+    return (
+      <View style={styles.syncBadge}>
+        <ActivityIndicator size="small" color={theme.meta} />
+        <Text style={[styles.syncBadgeText, { color: theme.meta }]}>Syncing…</Text>
+      </View>
+    )
+  }
+  const map: Record<Exclude<SyncStatus, 'syncing'>, { color: string; label: string }> = {
+    idle: { color: theme.meta, label: 'Connecting…' },
+    synced: { color: theme.typeBadge.article.fg, label: realtime ? 'Live' : 'Synced' },
+    error: { color: theme.typeBadge.video.fg, label: 'Sync error' },
+    offline: { color: theme.meta, label: 'No server' },
+  }
+  const { color, label } = map[status]
+  return (
+    <View style={styles.syncBadge}>
+      <View style={[styles.syncDot, { backgroundColor: color }]} />
+      <Text style={[styles.syncBadgeText, { color: theme.meta }]}>{label}</Text>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, paddingBottom: SPACING.sm,
   },
+  wordmarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  syncBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  syncDot: { width: 7, height: 7, borderRadius: 3.5 },
+  syncBadgeText: { fontSize: 12, fontWeight: '500' },
   wordmark: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
   headerActions: { flexDirection: 'row', gap: 16, alignItems: 'center' },
   headerIcon: { fontSize: 20, fontWeight: '500' },

@@ -9,6 +9,7 @@ import { router } from 'expo-router'
 import { useTheme, SPACING } from '../src/hooks/useTheme'
 import { validateServerUrl } from '../src/lib/config'
 import { reinitializeSyncEngine } from '../src/hooks/useSyncEngine'
+import { getServerHistory, addServerToHistory, resetSyncCursors } from '../src/lib/serverHistory'
 
 export default function SettingsScreen() {
   const theme = useTheme()
@@ -22,16 +23,29 @@ export default function SettingsScreen() {
   const [codeStep, setCodeStep] = useState(false)
   const [code, setCode] = useState('')
   const [loginStatus, setLoginStatus] = useState('')
+  const [history, setHistory] = useState<string[]>([])
 
   useEffect(() => {
     Promise.all([
       AsyncStorage.getItem('stashbro:serverURL'),
       AsyncStorage.getItem('stashbro:serverToken'),
-    ]).then(([u, t]) => {
+      getServerHistory(),
+    ]).then(([u, t, h]) => {
       if (u) setUrl(u)
       if (t) setToken(t)
+      setHistory(h as string[])
     })
   }, [])
+
+  // A URL change means switching servers - clear cursors so the next sync fully resyncs.
+  const handleServerSwitch = async (newUrl: string) => {
+    const prev = await AsyncStorage.getItem('stashbro:serverURL')
+    if ((prev ?? '').replace(/\/$/, '') !== newUrl.replace(/\/$/, '')) {
+      await resetSyncCursors()
+    }
+    await addServerToHistory(newUrl)
+    setHistory(await getServerHistory())
+  }
 
   const detectMode = async (serverUrl: string): Promise<'token' | 'magic-link' | 'unknown'> => {
     try {
@@ -49,10 +63,12 @@ export default function SettingsScreen() {
       const mode = await detectMode(url)
       setServerMode(mode)
       if (mode === 'magic-link') {
+        await handleServerSwitch(url)
         await AsyncStorage.setItem('stashbro:serverURL', url)
         return
       }
       if (!token.trim()) { Alert.alert('Missing Token', 'Bearer token cannot be empty'); return }
+      await handleServerSwitch(url)
       await Promise.all([
         AsyncStorage.setItem('stashbro:serverURL', url),
         AsyncStorage.setItem('stashbro:serverToken', token),
@@ -128,6 +144,22 @@ export default function SettingsScreen() {
               autoCapitalize="none"
               autoCorrect={false}
             />
+            {history.length > 0 && (
+              <View style={styles.historyWrap}>
+                <Text style={[styles.fieldLabel, { color: theme.meta }]}>Recent servers</Text>
+                {history.map((h) => (
+                  <Pressable
+                    key={h}
+                    onPress={() => setUrl(h)}
+                    style={[styles.historyChip, { borderColor: theme.border }]}
+                  >
+                    <Text style={[styles.historyChipText, { color: url.replace(/\/$/, '') === h ? theme.accent : theme.secondary }]} numberOfLines={1}>
+                      {h}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
         </View>
 
@@ -258,6 +290,11 @@ const styles = StyleSheet.create({
   primaryBtnText: { fontSize: 15, fontWeight: '600' },
   saveBtn: { marginTop: SPACING.xl },
   statusText: { fontSize: 13, marginTop: SPACING.xs },
+  historyWrap: { gap: SPACING.xs, marginTop: SPACING.xs },
+  historyChip: {
+    borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7,
+  },
+  historyChipText: { fontSize: 13 },
   navRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: SPACING.xs,
