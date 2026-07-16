@@ -7,10 +7,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "stashbro",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.stashbro.mobile",
-      "deploymentTarget": "16.0",
+      "deploymentTarget": "16.4",
       "appleTeamId": "WUWZ36BFRZ",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -19,7 +20,8 @@
         "com.apple.security.application-groups": [
           "group.com.stashbro.mobile"
         ]
-      }
+      },
+      "runtimeVersion": "1.0.0"
     },
     "plugins": [
       "expo-router",
@@ -86,6 +88,10 @@
         "projectId": "b9e02ef5-f549-4727-9fde-ee25d7a56480"
       },
       "appleApplicationGroup": "group.com.stashbro.mobile"
-    }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b9e02ef5-f549-4727-9fde-ee25d7a56480"
+    },
+    "android": {}
   }
 }

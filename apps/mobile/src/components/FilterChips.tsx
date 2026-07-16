@@ -8,12 +8,14 @@ interface FilterChipsProps<T extends string> {
   options: Option<T>[]
   value: T
   onChange: (v: T) => void
+  // bare: drop outer padding so the group can be composed inside a shared scroll row
+  bare?: boolean
 }
 
-export function FilterChips<T extends string>({ options, value, onChange }: FilterChipsProps<T>) {
+export function FilterChips<T extends string>({ options, value, onChange, bare }: FilterChipsProps<T>) {
   const theme = useTheme()
   return (
-    <View style={styles.row}>
+    <View style={bare ? styles.rowBare : styles.row}>
       {options.map(o => {
         const active = o.value === value
         return (
@@ -40,6 +42,7 @@ export function FilterChips<T extends string>({ options, value, onChange }: Filt
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 6, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.xs },
+  rowBare: { flexDirection: 'row', gap: 6 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
   chipText: { fontSize: 13, fontWeight: '500' },
 })

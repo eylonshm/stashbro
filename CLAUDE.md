@@ -31,6 +31,10 @@ pnpm --filter @stashbro/server dev   # start server (needs AUTH_MODE + AUTH_TOKE
 
 Use `/server`, `/mac`, `/mobile`, `/extension` commands for detailed client reference.
 
+## Mobile: No Expo Go
+
+`apps/mobile` CANNOT run in Expo Go - depends on native modules (`@expo/ui`, `expo-share-extension`, `@react-native-segmented-control`). Use a dev build (`expo run:ios` or `eas build --profile development`). Expo Go bundles fine but fails at runtime with "native module that doesn't exist".
+
 ## Architecture Invariants
 
 - All local writes funnel through `saveLocalItem` (allocates MAX(change_seq)+1) - never bypass

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, TextInput, FlatList, StyleSheet, Pressable, RefreshControl } from 'react-native'
+import { View, Text, TextInput, FlatList, ScrollView, StyleSheet, Pressable, RefreshControl } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { router } from 'expo-router'
@@ -81,7 +81,8 @@ export default function HomeScreen() {
             <Text style={[styles.headerIcon, { color: theme.meta }]}>#</Text>
           </Pressable>
           <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
-            <Text style={[styles.headerIcon, { color: theme.meta }]}>⚙</Text>
+            {/* U+FE0E forces monochrome text glyph instead of the emoji gear */}
+            <Text style={[styles.headerIcon, { color: theme.meta }]}>{'⚙︎'}</Text>
           </Pressable>
         </View>
       </View>
@@ -110,9 +111,15 @@ export default function HomeScreen() {
         />
       </View>
 
-      {/* Type + Priority filters */}
-      <View style={styles.filterRow}>
+      {/* Type + Priority filters - single scroll row so nothing clips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScrollBox}
+        contentContainerStyle={styles.filterScroll}
+      >
         <FilterChips
+          bare
           options={[
             { label: 'All', value: 'all' },
             { label: 'Video', value: 'video' },
@@ -122,7 +129,9 @@ export default function HomeScreen() {
           value={typeFilter}
           onChange={setTypeFilter}
         />
+        <View style={[styles.filterDivider, { backgroundColor: theme.border }]} />
         <FilterChips
+          bare
           options={[
             { label: 'All', value: 'all' },
             { label: 'High', value: 'high' },
@@ -131,7 +140,7 @@ export default function HomeScreen() {
           value={priorityFilter}
           onChange={setPriorityFilter}
         />
-      </View>
+      </ScrollView>
 
       {/* Item list */}
       <FlatList
@@ -178,7 +187,9 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 15 },
   segmentWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
-  filterRow: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: SPACING.xs },
+  filterScrollBox: { flexGrow: 0 },
+  filterScroll: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.xs },
+  filterDivider: { width: StyleSheet.hairlineWidth, height: 20, marginHorizontal: 2 },
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
   listContent: { paddingBottom: 24 },
   listEmpty: { flexGrow: 1 },

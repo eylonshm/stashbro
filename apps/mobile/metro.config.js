@@ -14,8 +14,12 @@ config.resolver.nodeModulesPaths = [
 // ponytail: pnpm strict symlinks need this; drop if switching to npm/yarn
 config.resolver.disableHierarchicalLookup = true
 
-config.resolver.unstable_enablePackageExports = false
+config.resolver.unstable_enablePackageExports = true
+// ponytail: @babel/runtime v8 dropped the /regenerator subpath; react-devtools-core still imports it
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === '@babel/runtime/regenerator') {
+    return context.resolveRequest(context, 'regenerator-runtime/runtime', platform)
+  }
   if (moduleName.endsWith('.js')) {
     const base = moduleName.slice(0, -3)
     for (const ext of ['.ts', '.tsx', '']) {
