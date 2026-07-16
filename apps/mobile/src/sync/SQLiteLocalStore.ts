@@ -169,6 +169,14 @@ export class SQLiteLocalStore implements LocalStore {
     this.upsertTags(item.id, item.tag_names)
   }
 
+  // Returns all distinct tag names for this user (share extension reads these for suggestions)
+  getAllTagNames(): string[] {
+    const rows = this.db.queryAll<{ name: string }>(
+      'SELECT DISTINCT name FROM tags WHERE user_id = ? ORDER BY name ASC', [this.userId]
+    )
+    return rows.map(r => r.name)
+  }
+
   async getCursor(): Promise<number> {
     const val = await this.storage.getItem(this.cursorKey())
     return val ? parseInt(val, 10) : 0
