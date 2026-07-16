@@ -2,8 +2,19 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-native",
-    "lib": ["ESNext"],
-    "paths": { "@stashbro/shared": ["../../packages/shared/src/index.ts"] }
+    "lib": [
+      "ESNext"
+    ],
+    "paths": {
+      "@stashbro/shared": [
+        "../../packages/shared/src/index.ts"
+      ]
+    }
   },
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }
