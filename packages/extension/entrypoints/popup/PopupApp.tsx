@@ -8,6 +8,12 @@ type Priority = 'low' | 'medium' | 'high'
 type View = 'save' | 'list'
 type ListFilter = 'unread' | 'read' | 'archived'
 
+const EMPTY_COPY: Record<ListFilter, [string, string]> = {
+  unread: ['Nothing unread', 'Save a link to get started'],
+  read: ['No read items', 'Mark items read and they land here'],
+  archived: ['Nothing archived', 'Archived items show up here'],
+}
+
 // ponytail: one-time read at module load; popup is a fresh page each open, no listener needed
 const DARK = window.matchMedia('(prefers-color-scheme: dark)').matches
 
@@ -170,7 +176,7 @@ export default function PopupApp() {
     <div style={{ width: 320, fontFamily: 'system-ui', background: TH.bg, boxSizing: 'border-box' }}>
       {/* Top nav */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${TH.border}` }}>
-        <div style={{ width: 28, height: 28, borderRadius: 7, background: TH.copper, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13 }}>S</div>
+        <img src="/icon/128.png" width={28} height={28} style={{ borderRadius: 7 }} alt="StashBro" />
         <div style={{ fontSize: 13, fontWeight: 700, color: TH.text }}>StashBro</div>
         <div style={{ marginLeft: 'auto', display: 'flex', background: TH.segBg, borderRadius: 8, padding: 2, gap: 1 }}>
           {(['save', 'list'] as View[]).map(v => (
@@ -253,7 +259,11 @@ export default function PopupApp() {
             {listLoading ? (
               <div style={{ padding: 16, fontSize: 12, color: TH.secondary, textAlign: 'center' }}>Loading...</div>
             ) : listItems.length === 0 ? (
-              <div style={{ padding: 16, fontSize: 12, color: TH.secondary, textAlign: 'center' }}>No {listFilter} items</div>
+              <div style={{ padding: '36px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
+                <img src="/icon/128.png" width={48} height={48} style={{ borderRadius: 12, opacity: 0.9 }} alt="StashBro" />
+                <div style={{ fontSize: 13, fontWeight: 600, color: TH.text }}>{EMPTY_COPY[listFilter][0]}</div>
+                <div style={{ fontSize: 11.5, color: TH.secondary }}>{EMPTY_COPY[listFilter][1]}</div>
+              </div>
             ) : listItems.map(item => (
               <div
                 key={item.id}

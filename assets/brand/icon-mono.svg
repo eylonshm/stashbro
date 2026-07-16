@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Monochrome menubar template: black glyph on transparent, macOS auto-inverts for light/dark bar.
+       Centered + scaled to fill. Notch (bottom V) and cap/body seam are negative space. -->
+  <g transform="translate(50 50) scale(1.62) translate(-50 -48.5)" fill="#000">
+    <path d="M50 34V21" stroke="#000" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M33 41c0-4 6-7 17-7s17 3 17 7c0 3-3 5-6 5H39c-3 0-6-2-6-5z"/>
+    <path d="M37 47.5h26v30l-13-8-13 8z"/>
+  </g>
+</svg>

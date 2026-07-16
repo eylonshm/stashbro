@@ -121,8 +121,7 @@ function OptionsApp() {
   return (
     <div style={{ fontFamily: 'system-ui', maxWidth: 400, margin: '40px auto', padding: 24, background: TH.bg, minHeight: '100vh', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: TH.copper, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15 }}>S</div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: TH.text, margin: 0 }}>StashBro Settings</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: TH.text, margin: 0 }}>Settings</h2>
       </div>
 
       <label style={label}>Server URL</label>
