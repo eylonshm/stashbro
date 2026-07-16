@@ -85,6 +85,7 @@ struct NotchPanelView: View {
                     .cornerRadius(4)
                     .foregroundStyle(.white.opacity(0.55))
                 }
+                .padding(.horizontal, 12)
                 .padding(.vertical, 8)
             }
             .padding(.horizontal, hInset)

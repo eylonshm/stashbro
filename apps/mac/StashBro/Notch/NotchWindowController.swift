@@ -162,6 +162,7 @@ final class NotchWindowController {
     private var hoverLogic = NotchHoverLogic()
     private var hoverTimer: Timer?
     private var openAppObserver: NSObjectProtocol?
+    private var addURLObserver: NSObjectProtocol?
     private var screenObserver: NSObjectProtocol?
 
     // Open notch canvas size (the fixed window size). Width/height of the reading-list panel.
@@ -246,17 +247,23 @@ final class NotchWindowController {
             MainActor.assumeIsolated { self?.screenParametersChanged() }
         }
 
-        // Auto-close when "Open App" is clicked - main window takes over. Screen-independent,
+        // Auto-close when "Open App" or "Add URL" is clicked. Screen-independent,
         // so register once here (not in setupPanel, which now runs on every reconfigure).
-        openAppObserver = NotificationCenter.default.addObserver(
-            forName: MainWindowController.openMainWindow, object: nil, queue: .main
-        ) { [weak self] _ in
+        let collapseBlock: (Notification) -> Void = { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.panel != nil, self.notchState.isExpanded else { return }
-                self.hoverLogic = NotchHoverLogic()  // ponytail: fresh instance starts collapsed
+                self.hoverLogic = NotchHoverLogic()
                 self.collapse()
             }
         }
+        openAppObserver = NotificationCenter.default.addObserver(
+            forName: MainWindowController.openMainWindow, object: nil, queue: .main,
+            using: collapseBlock
+        )
+        addURLObserver = NotificationCenter.default.addObserver(
+            forName: .openManualAddURL, object: nil, queue: .main,
+            using: collapseBlock
+        )
 
         reconfigure()
     }
@@ -394,6 +401,7 @@ final class NotchWindowController {
     deinit {
         hoverTimer?.invalidate()
         if let openAppObserver { NotificationCenter.default.removeObserver(openAppObserver) }
+        if let addURLObserver { NotificationCenter.default.removeObserver(addURLObserver) }
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         // Ordered-front windows stay in NSApp.windows past dealloc - without close()
         // a replaced/disabled controller leaves a zombie pill onscreen forever
