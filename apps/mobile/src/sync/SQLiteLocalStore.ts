@@ -29,20 +29,28 @@ export function cursorFromChanges(changes: SyncChange[]): number {
 
 // --- store ---
 
+// Normalize a server URL into a stable key fragment (host[:port], no scheme/slash).
+export function serverTag(url: string): string {
+  return url.replace(/^https?:\/\//, '').replace(/\/+$/, '') || 'default'
+}
+
 export class SQLiteLocalStore implements LocalStore {
   private db: SyncDb
   private storage: CursorStorage
   private userId: string
+  private server: string
 
-  constructor(db: SyncDb, storage: CursorStorage, userId: string) {
+  constructor(db: SyncDb, storage: CursorStorage, userId: string, serverUrl = '') {
     this.db = db
     this.storage = storage
     this.userId = userId
+    this.server = serverTag(serverUrl)
   }
 
-  // Cursor key is per-user so Phase 5 auth can hand off cleanly
+  // Cursor key is per-user AND per-server: switching servers (or the first sync after
+  // this fix ships) starts from 0 -> a full resync -> no cross-server cursor bleed.
   private cursorKey(): string {
-    return `stashbro:sync:cursor:${this.userId}`
+    return `stashbro:sync:cursor:${this.userId}:${this.server}`
   }
 
   async getChangesSince(cursor: number): Promise<SyncChange[]> {

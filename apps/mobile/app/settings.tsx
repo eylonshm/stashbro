@@ -9,7 +9,7 @@ import { router } from 'expo-router'
 import { useTheme, SPACING } from '../src/hooks/useTheme'
 import { validateServerUrl } from '../src/lib/config'
 import { reinitializeSyncEngine } from '../src/hooks/useSyncEngine'
-import { getServerHistory, addServerToHistory, resetSyncCursors } from '../src/lib/serverHistory'
+import { getServerHistory, addServerToHistory } from '../src/lib/serverHistory'
 
 export default function SettingsScreen() {
   const theme = useTheme()
@@ -37,12 +37,9 @@ export default function SettingsScreen() {
     })
   }, [])
 
-  // A URL change means switching servers - clear cursors so the next sync fully resyncs.
+  // Record the server in history. Cursors are per-server (see SQLiteLocalStore),
+  // so switching servers already triggers a full resync automatically.
   const handleServerSwitch = async (newUrl: string) => {
-    const prev = await AsyncStorage.getItem('stashbro:serverURL')
-    if ((prev ?? '').replace(/\/$/, '') !== newUrl.replace(/\/$/, '')) {
-      await resetSyncCursors()
-    }
     await addServerToHistory(newUrl)
     setHistory(await getServerHistory())
   }

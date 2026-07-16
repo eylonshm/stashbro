@@ -18,6 +18,7 @@
       },
       "entitlements": {
         "com.apple.security.application-groups": [
+          "group.com.stashbro.mobile",
           "group.com.stashbro.mobile"
         ]
       },
@@ -92,6 +93,10 @@
     "updates": {
       "url": "https://u.expo.dev/b9e02ef5-f549-4727-9fde-ee25d7a56480"
     },
-    "android": {}
+    "android": {
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
+    }
   }
 }

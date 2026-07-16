@@ -92,7 +92,7 @@ export function useSyncEngine(onSyncComplete?: () => void) {
     closeRealtime()
     if (!url || !token) { setStatus('offline'); return }
     const rawDb = openDatabase()
-    storeRef.current = new SQLiteLocalStore(makeExpoSyncDb(rawDb), AsyncStorage, userId ?? 'local')
+    storeRef.current = new SQLiteLocalStore(makeExpoSyncDb(rawDb), AsyncStorage, userId ?? 'local', url)
     const client = new StashBroClient({ baseUrl: url, token }, fetch, {
       getRefreshToken: () => AsyncStorage.getItem('stashbro:refreshToken'),
       setAccessToken: async (t) => { await AsyncStorage.setItem('stashbro:serverToken', t) },

@@ -67,14 +67,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Notch on by default for notch Macs; user can disable in Settings
         UserDefaults.standard.register(defaults: ["showInNotch": true])
 
-        let s = GRDBLocalStore(db: db)
-        self.store = s
-
         if let config = ServerConfig.load() {
+            // Engine store is keyed to this server so the cursor is per-server.
+            let s = GRDBLocalStore(db: db, serverURL: config.baseURL)
+            self.store = s
             let client = StashBroAPIClient(config: config)
             self.syncEngine = SyncEngine(store: s, client: client)
             SyncStatusStore.shared.state = .idle
             startRealtime(config: config)
+        } else {
+            self.store = GRDBLocalStore(db: db)
         }
 
         // C1: closures so reconnect() swapping syncEngine is always picked up

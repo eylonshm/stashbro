@@ -163,9 +163,9 @@ struct SettingsView: View {
                     return
                 }
                 if let delegate = NSApp.delegate as? AppDelegate {
-                    let store = GRDBLocalStore(db: delegate.db)
-                    // Switching servers must fully resync: reset the cursor so the next sync
-                    // re-pushes every local item and re-pulls everything from the new server.
+                    let store = GRDBLocalStore(db: delegate.db, serverURL: config.baseURL)
+                    // Reconnect is a deliberate "resync now" action: reset the per-server cursor
+                    // so the next sync re-pushes every local item and re-pulls everything.
                     store.setCursor(0)
                     ServerConfig.addToHistory(config.baseURL.absoluteString)
                     serverHistory = ServerConfig.history()

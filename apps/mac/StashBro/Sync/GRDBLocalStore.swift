@@ -24,11 +24,25 @@ protocol SyncClientProtocol {
 final class GRDBLocalStore: LocalStoreProtocol {
     private let db: AppDatabase
     private let defaults: UserDefaults
-    private let cursorKey = "stashbro.sync.cursor"
+    private let cursorKey: String
 
-    init(db: AppDatabase, defaults: UserDefaults = .standard) {
+    // Normalize a server URL into a stable key fragment (host[:port], no scheme/slash).
+    static func serverTag(_ url: URL?) -> String {
+        guard let url else { return "default" }
+        let host = url.host ?? url.absoluteString
+        if let port = url.port { return "\(host):\(port)" }
+        return host
+    }
+
+    // Cursor key is per-server: switching servers (or the first sync after this fix ships)
+    // starts from 0 -> a full resync -> no cross-server cursor bleed. `serverURL` nil keeps
+    // the legacy key for non-sync callers (they never touch the cursor).
+    init(db: AppDatabase, serverURL: URL? = nil, defaults: UserDefaults = .standard) {
         self.db = db
         self.defaults = defaults
+        self.cursorKey = serverURL == nil
+            ? "stashbro.sync.cursor"
+            : "stashbro.sync.cursor.\(GRDBLocalStore.serverTag(serverURL))"
     }
 
     func getChangesSince(_ cursor: Int) throws -> [SyncChange] {
