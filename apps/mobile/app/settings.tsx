@@ -24,6 +24,8 @@ export default function SettingsScreen() {
   const [code, setCode] = useState('')
   const [loginStatus, setLoginStatus] = useState('')
   const [history, setHistory] = useState<string[]>([])
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -42,6 +44,42 @@ export default function SettingsScreen() {
   const handleServerSwitch = async (newUrl: string) => {
     await addServerToHistory(newUrl)
     setHistory(await getServerHistory())
+  }
+
+  // Full connectivity check: reachability, auth mode, and whether the token authenticates.
+  const testConnection = async () => {
+    setTesting(true)
+    setTestResult(null)
+    const base = url.replace(/\/$/, '')
+    if (!validateServerUrl(url)) {
+      setTestResult({ ok: false, text: 'Invalid URL - must start with http:// or https://' })
+      setTesting(false)
+      return
+    }
+    try {
+      const health = await fetch(`${base}/health`)
+      if (!health.ok) {
+        setTestResult({ ok: false, text: `Server reachable but /health returned HTTP ${health.status}` })
+        return
+      }
+      const mode = ((await health.json()) as { mode?: string }).mode ?? 'unknown'
+      // Authenticated probe with the entered token.
+      const res = await fetch(`${base}/sync/pull?cursor=0`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const body = await res.text()
+      if (res.ok) {
+        let count = '?'
+        try { count = String((JSON.parse(body) as { changes: unknown[] }).changes.length) } catch { /* keep ? */ }
+        setTestResult({ ok: true, text: `Connected. Auth mode: ${mode}. Token OK. Server has ${count} synced change(s).` })
+      } else {
+        setTestResult({ ok: false, text: `Reachable (mode: ${mode}), but auth failed: HTTP ${res.status}\n${body.slice(0, 300)}` })
+      }
+    } catch (e) {
+      setTestResult({ ok: false, text: `Cannot reach server: ${e instanceof Error ? e.message : String(e)}` })
+    } finally {
+      setTesting(false)
+    }
   }
 
   const detectMode = async (serverUrl: string): Promise<'token' | 'magic-link' | 'unknown'> => {
@@ -229,6 +267,27 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        {/* Test connection */}
+        <Pressable
+          onPress={testConnection}
+          disabled={testing}
+          style={[styles.primaryBtn, styles.testBtn, { borderColor: theme.accent }]}
+        >
+          {testing ? (
+            <ActivityIndicator size="small" color={theme.accent} />
+          ) : (
+            <Text style={[styles.primaryBtnText, { color: theme.accent }]}>Test Connection</Text>
+          )}
+        </Pressable>
+        {testResult && (
+          <Text
+            selectable
+            style={[styles.testResult, { color: testResult.ok ? theme.accent : '#D64545' }]}
+          >
+            {testResult.ok ? '✓ ' : '✗ '}{testResult.text}
+          </Text>
+        )}
+
         {/* Save */}
         <Pressable
           onPress={save}
@@ -285,7 +344,9 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginTop: SPACING.xs,
   },
   primaryBtnText: { fontSize: 15, fontWeight: '600' },
-  saveBtn: { marginTop: SPACING.xl },
+  saveBtn: { marginTop: SPACING.md },
+  testBtn: { marginTop: SPACING.xl, borderWidth: 1 },
+  testResult: { fontSize: 13, marginTop: SPACING.sm, lineHeight: 18 },
   statusText: { fontSize: 13, marginTop: SPACING.xs },
   historyWrap: { gap: SPACING.xs, marginTop: SPACING.xs },
   historyChip: {

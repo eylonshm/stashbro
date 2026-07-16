@@ -14,6 +14,16 @@ const POLL_INTERVAL_MS = 20000
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline'
 
+// Build a full, human-readable error string so the UI can show + let the user copy it.
+export function formatSyncError(e: unknown): string {
+  if (e instanceof Error) {
+    const parts = [e.message]
+    if (e.stack) parts.push('', e.stack)
+    return parts.join('\n')
+  }
+  try { return JSON.stringify(e) } catch { return String(e) }
+}
+
 // ponytail: copy DB to app group after each sync so the iOS widget can read it.
 // Widget can't access the default expo-sqlite sandbox path; app group is the shared container.
 // TRUNCATE checkpoint flushes + zeroes WAL; atomic tmp→rename prevents widget reading a partial file.
@@ -58,6 +68,7 @@ export function useSyncEngine(onSyncComplete?: () => void) {
 
   const [status, setStatus] = useState<SyncStatus>('idle')
   const [realtimeConnected, setRealtimeConnected] = useState(false)
+  const [lastError, setLastError] = useState<string | null>(null)
 
   const closeRealtime = useCallback(() => {
     esRef.current?.removeAllEventListeners()
@@ -103,10 +114,16 @@ export function useSyncEngine(onSyncComplete?: () => void) {
       onSyncStart: () => setStatus('syncing'),
       onSyncComplete: () => {
         setStatus('synced')
-        onSyncCompleteRef.current?.()
+        setLastError(null)
+        // Guard: a throw in these UI/side-effect calls must not flip a successful
+        // sync to 'error' (the engine runs onSyncComplete inside its try block).
+        try { onSyncCompleteRef.current?.() } catch (e) { console.warn('post-sync refresh failed', e) }
         void copyDbToAppGroup()
       },
-      onSyncError: () => setStatus('error'),
+      onSyncError: (e: Error) => {
+        setStatus('error')
+        setLastError(formatSyncError(e))
+      },
     })
     openRealtime(url, token)
     void engineRef.current.sync()
@@ -159,7 +176,7 @@ export function useSyncEngine(onSyncComplete?: () => void) {
   }, [])
 
   return useMemo(
-    () => ({ sync, saveLocalItem, status, realtimeConnected }),
-    [sync, saveLocalItem, status, realtimeConnected],
+    () => ({ sync, saveLocalItem, status, realtimeConnected, lastError }),
+    [sync, saveLocalItem, status, realtimeConnected, lastError],
   )
 }

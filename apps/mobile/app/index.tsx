@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, TextInput, FlatList, ScrollView, StyleSheet, Pressable, RefreshControl, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, FlatList, ScrollView, StyleSheet, Pressable, RefreshControl, ActivityIndicator, Modal, Share } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { router } from 'expo-router'
@@ -37,7 +37,8 @@ export default function HomeScreen() {
   })
 
   // ponytail: onSyncComplete wires foreground sync → list refresh without extra state
-  const { sync, saveLocalItem, status, realtimeConnected } = useSyncEngine(refresh)
+  const { sync, saveLocalItem, status, realtimeConnected, lastError } = useSyncEngine(refresh)
+  const [errorModal, setErrorModal] = useState(false)
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -78,7 +79,9 @@ export default function HomeScreen() {
           <Text style={[styles.wordmark, { color: theme.text }]}>
             Stash<Text style={{ color: theme.accent }}>Bro</Text>
           </Text>
-          <SyncBadge status={status} realtime={realtimeConnected} theme={theme} />
+          <Pressable onPress={() => setErrorModal(true)} hitSlop={8}>
+            <SyncBadge status={status} realtime={realtimeConnected} theme={theme} />
+          </Pressable>
         </View>
         <View style={styles.headerActions}>
           <Pressable onPress={() => router.push('/tags')} hitSlop={8}>
@@ -170,7 +173,66 @@ export default function HomeScreen() {
           />
         }
       />
+
+      <SyncDetailModal
+        visible={errorModal}
+        onClose={() => setErrorModal(false)}
+        status={status}
+        realtime={realtimeConnected}
+        error={lastError}
+        theme={theme}
+        onRetry={() => { void sync() }}
+      />
     </View>
+  )
+}
+
+// Tap-through detail for the sync badge: shows the full error, selectable + shareable.
+function SyncDetailModal({
+  visible, onClose, status, realtime, error, theme, onRetry,
+}: {
+  visible: boolean; onClose: () => void; status: SyncStatus; realtime: boolean
+  error: string | null; theme: Theme; onRetry: () => void
+}) {
+  const stateLine =
+    status === 'error' ? 'Last sync failed.'
+    : status === 'syncing' ? 'Syncing now…'
+    : status === 'offline' ? 'No server configured.'
+    : status === 'synced' ? (realtime ? 'Synced - realtime connected.' : 'Synced.')
+    : 'Connecting…'
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable style={[styles.modalCard, { backgroundColor: theme.bg }]} onPress={() => {}}>
+          <Text style={[styles.modalTitle, { color: theme.text }]}>Sync status</Text>
+          <Text style={[styles.modalState, { color: theme.secondary }]}>{stateLine}</Text>
+          {error ? (
+            <>
+              <Text style={[styles.modalLabel, { color: theme.meta }]}>Error detail (long-press to select)</Text>
+              <ScrollView style={[styles.modalErrorBox, { borderColor: theme.border }]}>
+                <Text selectable style={[styles.modalErrorText, { color: theme.text }]}>{error}</Text>
+              </ScrollView>
+              <Pressable
+                onPress={() => { void Share.share({ message: error }) }}
+                style={[styles.modalBtn, { backgroundColor: theme.accent }]}
+              >
+                <Text style={[styles.modalBtnText, { color: theme.accentText }]}>Copy / Share error</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={[styles.modalState, { color: theme.meta }]}>No errors. Everything is in sync.</Text>
+          )}
+          <View style={styles.modalActions}>
+            <Pressable onPress={() => { onRetry(); onClose() }} style={[styles.modalBtnSecondary, { borderColor: theme.border }]}>
+              <Text style={[styles.modalBtnText, { color: theme.accent }]}>Retry sync</Text>
+            </Pressable>
+            <Pressable onPress={onClose} style={[styles.modalBtnSecondary, { borderColor: theme.border }]}>
+              <Text style={[styles.modalBtnText, { color: theme.secondary }]}>Close</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   )
 }
 
@@ -209,6 +271,17 @@ const styles = StyleSheet.create({
   syncBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   syncDot: { width: 7, height: 7, borderRadius: 3.5 },
   syncBadgeText: { fontSize: 12, fontWeight: '500' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 24 },
+  modalCard: { borderRadius: 14, padding: 20, gap: 10, maxHeight: '80%' },
+  modalTitle: { fontSize: 18, fontWeight: '700' },
+  modalState: { fontSize: 14 },
+  modalLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
+  modalErrorBox: { borderWidth: 1, borderRadius: 8, padding: 10, maxHeight: 240 },
+  modalErrorText: { fontSize: 12, fontFamily: 'Menlo' },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  modalBtn: { borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 4 },
+  modalBtnSecondary: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+  modalBtnText: { fontSize: 14, fontWeight: '600' },
   wordmark: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
   headerActions: { flexDirection: 'row', gap: 16, alignItems: 'center' },
   headerIcon: { fontSize: 20, fontWeight: '500' },

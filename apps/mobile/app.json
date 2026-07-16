@@ -14,7 +14,10 @@
       "deploymentTarget": "16.4",
       "appleTeamId": "WUWZ36BFRZ",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       },
       "entitlements": {
         "com.apple.security.application-groups": [
