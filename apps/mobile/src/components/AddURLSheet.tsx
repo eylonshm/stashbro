@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, Image, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native'
 import { detectType, extractDomain } from '@stashbro/shared'
 import { fetchOGMetadata } from '../lib/ogMetadata'
 import { useTheme, ACCENT } from '../hooks/useTheme'
@@ -79,6 +79,7 @@ export function AddURLSheet({ visible, onSave, onClose }: AddURLSheetProps) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={[styles.sheet, { backgroundColor: theme.bg }]} onPress={() => {}}>
           <ScrollView keyboardShouldPersistTaps="handled">
@@ -188,6 +189,7 @@ export function AddURLSheet({ visible, onSave, onClose }: AddURLSheetProps) {
           </ScrollView>
         </Pressable>
       </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
