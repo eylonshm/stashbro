@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 
 import { close, type InitialProps } from 'expo-share-extension'
 import RNFS from 'react-native-fs'
 import { detectType, extractDomain } from '@stashbro/shared'
+import { genId } from '../src/sync/SQLiteLocalStore'
 import { ACCENT } from '../src/hooks/useTheme'
 
 // ponytail: share extension runs in a separate iOS process (no React context/hooks)
@@ -49,7 +50,8 @@ export default function ShareExtension({ url: sharedUrl = '', text }: InitialPro
       const groupDir = await RNFS.pathForGroup(APP_GROUP)
       const inboxDir = `${groupDir}/inbox`
       await RNFS.mkdir(inboxDir)
-      const id = crypto.randomUUID()
+      // Hermes has no global crypto - crypto.randomUUID() throws on-device
+      const id = genId()
       const payload = JSON.stringify({
         id, url, title: title || url, domain,
         type: detectedType, priority,

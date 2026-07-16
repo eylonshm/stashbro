@@ -1,5 +1,6 @@
 // apps/mobile/metro.config.js
 const { getDefaultConfig } = require('expo/metro-config')
+const { withShareExtension } = require('expo-share-extension/metro')
 const path = require('path')
 
 const projectRoot = __dirname
@@ -31,4 +32,14 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform)
 }
 
-module.exports = config
+// dev-only: routes bundle requests with ?shareExtension=true to index.share.js.
+// expo-share-extension's own rewrite only matches "index.bundle", but the extension's
+// RCTBundleURLProvider requests "/.expo/.virtual-metro-entry.bundle" with no monorepo
+// prefix - map it to the share entry under apps/mobile ourselves.
+const shareConfig = withShareExtension(config)
+const rewrite = shareConfig.server.rewriteRequestUrl
+shareConfig.server.rewriteRequestUrl = (url) =>
+  url.includes('shareExtension=true')
+    ? url.replace(/^\/?(apps\/mobile\/)?\.expo\/\.virtual-metro-entry\.bundle/, '/apps/mobile/index.share.bundle')
+    : rewrite(url)
+module.exports = shareConfig
