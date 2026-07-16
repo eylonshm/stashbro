@@ -36,4 +36,14 @@ describe('OpenAPI spec', () => {
     const committed = JSON.parse(readFileSync(new URL('../../openapi.json', import.meta.url), 'utf-8'))
     expect(live).toEqual(committed)
   })
+
+  // The Mac client's spec is a generated copy of the server spec (via scripts/gen-openapi.sh).
+  // This guard fails if it drifts - the root cause of the 2026-07-16 Mac "Sync error"
+  // (mac spec's status enum was missing "read"). Run scripts/gen-openapi.sh to fix.
+  it('mac client openapi.yaml matches server spec (drift guard)', async () => {
+    const app = createApp()
+    const live = await (await app.request('/openapi.json')).json()
+    const macSpec = JSON.parse(readFileSync(new URL('../../../mac/StashBro/openapi.yaml', import.meta.url), 'utf-8'))
+    expect(macSpec).toEqual(live)
+  })
 })

@@ -27,6 +27,7 @@ pnpm --filter @stashbro/server dev   # start server (needs AUTH_MODE + AUTH_TOKE
 | Server dev | `AUTH_MODE=token AUTH_TOKEN=secret pnpm --filter @stashbro/server dev` |
 | Build extension | `cd packages/extension && pnpm build` |
 | Build Mac project | `cd apps/mac && xcodegen generate && open StashBro.xcodeproj` |
+| Regenerate OpenAPI spec | `bash scripts/gen-openapi.sh` (server zod → server openapi.json → mac openapi.yaml; guarded by openapi.test.ts) |
 | E2E smoke | `SERVER_URL=http://localhost:3000 AUTH_TOKEN=secret bash scripts/e2e-smoke.sh` |
 
 Use `/server`, `/mac`, `/mobile`, `/extension` commands for detailed client reference.
