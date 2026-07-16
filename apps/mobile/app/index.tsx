@@ -205,7 +205,7 @@ export default function HomeScreen() {
       />
 
       <TouchableOpacity
-        style={[styles.fab, { bottom: insets.bottom + 16 }]}
+        style={[styles.fab, { bottom: insets.bottom + 24 }]}
         onPress={() => setAddUrlVisible(true)}
         activeOpacity={0.8}
       >
