@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import { describe, it, expect } from 'vitest'
 import type { SyncChange } from '@stashbro/shared'
-import { shouldApplyChange, cursorFromChanges, SQLiteLocalStore } from './SQLiteLocalStore'
+import { shouldApplyChange, cursorFromChanges, SQLiteLocalStore, genId } from './SQLiteLocalStore'
 import type { SyncDb, CursorStorage } from './SQLiteLocalStore'
 import { MIGRATIONS } from '../db/schema'
 
@@ -50,6 +50,27 @@ function makeStore(db: Database.Database, userId = 'u1') {
 }
 
 // --- unit tests (brief-specified) ---
+
+describe('genId', () => {
+  it('produces unique v4-format UUIDs without needing global crypto', () => {
+    const id = genId()
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+    const ids = new Set(Array.from({ length: 1000 }, () => genId()))
+    expect(ids.size).toBe(1000)
+  })
+})
+
+describe('applyChanges - creates tags (regression: crypto.randomUUID crashed on Hermes)', () => {
+  it('applies a pulled item with a new tag', () => {
+    const db = freshDb()
+    const store = makeStore(db)
+    store.applyChanges([makeChange({ id: 'tagged-1', tag_names: ['reading', 'work'] })] as SyncChange[])
+    const tags = db.prepare('SELECT name FROM tags ORDER BY name').all() as { name: string }[]
+    expect(tags.map(t => t.name)).toEqual(['reading', 'work'])
+    const links = db.prepare('SELECT count(*) c FROM item_tags WHERE item_id = ?').get('tagged-1') as { c: number }
+    expect(links.c).toBe(2)
+  })
+})
 
 describe('shouldApplyChange', () => {
   it('applies change when no existing item', () => {

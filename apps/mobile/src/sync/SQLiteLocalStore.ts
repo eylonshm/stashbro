@@ -29,6 +29,17 @@ export function cursorFromChanges(changes: SyncChange[]): number {
 
 // --- store ---
 
+// Pure-JS UUID v4. Hermes (React Native) has no global `crypto`, so crypto.randomUUID()
+// throws on-device. Tag IDs need uniqueness, not cryptographic strength (tags are also
+// deduped by name before insert), so Math.random is fine here.
+export function genId(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 // Normalize a server URL into a stable key fragment (host[:port], no scheme/slash).
 export function serverTag(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/\/+$/, '') || 'default'
@@ -174,7 +185,7 @@ export class SQLiteLocalStore implements LocalStore {
         'SELECT id FROM tags WHERE user_id = ? AND name = ?', [this.userId, name]
       )
       if (!tag) {
-        const tagId = crypto.randomUUID()
+        const tagId = genId()
         this.db.run('INSERT INTO tags(id,user_id,name) VALUES(?,?,?)', [tagId, this.userId, name])
         tag = { id: tagId }
       }
