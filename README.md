@@ -1,4 +1,4 @@
-# StashBro
+<h1><img src="apps/mobile/assets/icon.png" width="36" height="36" align="center" alt="StashBro" /> StashBro</h1>
 
 Open-source universal reading list. Save links from Mac, iPhone, and any browser. Sync locally-first via your own server or the hosted instance.
 

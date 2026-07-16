@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, TextInput, FlatList, ScrollView, StyleSheet, Pressable, RefreshControl, ActivityIndicator, Modal, Share } from 'react-native'
+import { View, Text, TextInput, FlatList, ScrollView, StyleSheet, Pressable, RefreshControl, ActivityIndicator, Modal, Share, Image } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { router } from 'expo-router'
@@ -76,6 +76,7 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.wordmarkRow}>
+          <Image source={require('../assets/icon.png')} style={styles.wordmarkIcon} />
           <Text style={[styles.wordmark, { color: theme.text }]}>
             Stash<Text style={{ color: theme.accent }}>Bro</Text>
           </Text>
@@ -268,6 +269,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, paddingBottom: SPACING.sm,
   },
   wordmarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  wordmarkIcon: { width: 30, height: 30, borderRadius: 7 },
   syncBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   syncDot: { width: 7, height: 7, borderRadius: 3.5 },
   syncBadgeText: { fontSize: 12, fontWeight: '500' },
@@ -293,7 +295,9 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 15 },
   segmentWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
-  filterScrollBox: { flexGrow: 0 },
+  // minHeight floors the horizontal ScrollView frame: on device its cross-axis height
+  // can collapse and clip the chips (not reproducible in sim). Grows for larger text.
+  filterScrollBox: { flexGrow: 0, minHeight: 44 },
   filterScroll: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.xs },
   filterDivider: { width: StyleSheet.hairlineWidth, height: 20, marginHorizontal: 2 },
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
