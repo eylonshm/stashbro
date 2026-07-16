@@ -40,6 +40,22 @@ expo-share-extension v5.0.6 (patched via `patches/expo-share-extension@5.0.6.pat
 
 Writes JSON to `{appGroup}/inbox/`. On foreground, `ingestShareExtensionInbox()` reads each file, calls `saveLocalItem`, deletes on success, keeps on DB error for retry.
 
+### App group files
+
+| File | Writer | Reader | Purpose |
+|------|--------|--------|---------|
+| `inbox/*.json` | share ext | host app | saved item queue |
+| `stashbro.db` | host app (`copyDbToAppGroup`) | widget | widget data |
+| `tags.json` | host app (`writeTagsToAppGroup`, after each sync) | share ext | tag suggestions |
+| `credentials.json` | host app (`useSyncEngine` init) | share ext | direct upload creds (`{serverURL, token}`) |
+
+### Share extension features (PR feat/share-ext-polish)
+- **Auto-fetch metadata**: on open, fetches shared URL (5s timeout), populates title + description; user edits take precedence
+- **Tags input**: chips + free-text, suggests from `tags.json`, included in inbox JSON and direct upload
+- **Direct upload**: POSTs to `/sync/push` using `credentials.json`; inbox always written first (offline-safe). Status: "Saved & synced" vs "Saved - will sync later"
+- **Dark/light theme**: follows system via `useColorScheme()`; `backgroundColor` removed from plugin config so Swift falls back to `.systemBackground`
+- **Clipping fix**: sheet height raised to 600pt to accommodate new description + tags fields
+
 ## Sync Engine Lifecycle
 
 Module-level refs `_initFn` and `_syncFn` let the settings screen reinitialize without React context wiring. `reinitializeSyncEngine()` and `triggerSync()` are exported for this.

@@ -41,6 +41,17 @@ async function copyDbToAppGroup(): Promise<void> {
   }
 }
 
+// Write tag names to app group so share extension can show suggestions (extension reads readonly).
+async function writeTagsToAppGroup(store: SQLiteLocalStore): Promise<void> {
+  try {
+    const groupDir = await RNFS.pathForGroup(APP_GROUP)
+    const tagNames = store.getAllTagNames()
+    await RNFS.writeFile(`${groupDir}/tags.json`, JSON.stringify(tagNames), 'utf8')
+  } catch {
+    // non-fatal
+  }
+}
+
 // ponytail: RNFS adapter defined once at module level; only referenced in prod (never in tests)
 const rnfsInboxFS: InboxFS = {
   exists: (p) => RNFS.exists(p),
@@ -102,6 +113,11 @@ export function useSyncEngine(onSyncComplete?: () => void) {
     ])
     closeRealtime()
     if (!url || !token) { setStatus('offline'); return }
+
+    // Mirror credentials to app group so share extension can do direct upload without AsyncStorage.
+    RNFS.pathForGroup(APP_GROUP)
+      .then(g => RNFS.writeFile(`${g}/credentials.json`, JSON.stringify({ serverURL: url, token }), 'utf8'))
+      .catch(() => {}) // non-fatal
     const rawDb = openDatabase()
     storeRef.current = new SQLiteLocalStore(makeExpoSyncDb(rawDb), AsyncStorage, userId ?? 'local', url)
     const client = new StashBroClient({ baseUrl: url, token }, fetch, {
@@ -119,6 +135,7 @@ export function useSyncEngine(onSyncComplete?: () => void) {
         // sync to 'error' (the engine runs onSyncComplete inside its try block).
         try { onSyncCompleteRef.current?.() } catch (e) { console.warn('post-sync refresh failed', e) }
         void copyDbToAppGroup()
+        if (storeRef.current) void writeTagsToAppGroup(storeRef.current)
       },
       onSyncError: (e: Error) => {
         setStatus('error')

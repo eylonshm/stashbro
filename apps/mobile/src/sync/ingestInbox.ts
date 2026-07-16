@@ -11,6 +11,8 @@ export interface InboxFS {
 interface InboxPayload {
   id: string; url: string; title: string; domain: string
   type: string; priority: string; createdAt: string
+  // optional fields added in share-ext-polish (backward-compatible)
+  description?: string | null; tag_names?: string[]
 }
 
 function isValidPayload(v: unknown): v is InboxPayload {
@@ -68,10 +70,10 @@ export async function ingestShareExtensionInbox(
           }
         : {
             id: payload.id, url: payload.url, title: payload.title || payload.url,
-            description: null, thumbnail_url: null, favicon_url: null,
+            description: payload.description ?? null, thumbnail_url: null, favicon_url: null,
             domain: payload.domain, type: payload.type, status: 'unread',
             priority: payload.priority, updated_at: payload.createdAt,
-            deleted_at: null, tag_names: [],
+            deleted_at: null, tag_names: payload.tag_names ?? [],
           }
       )
       // ponytail: if deleteFile fails the item re-ingests next foreground (saveLocalItem is idempotent via UPDATE, bumps seq harmlessly)
