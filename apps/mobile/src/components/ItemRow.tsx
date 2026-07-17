@@ -1,7 +1,8 @@
-import React, { useRef } from 'react'
-import { View, Text, Pressable, StyleSheet, Animated, Dimensions } from 'react-native'
+import React from 'react'
+import { View, Text, Pressable, StyleSheet, Dimensions } from 'react-native'
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { Image } from 'expo-image'
-import { Swipeable } from 'react-native-gesture-handler'
 import * as Linking from 'expo-linking'
 import * as Clipboard from 'expo-clipboard'
 import { useTheme, SPACING } from '../hooks/useTheme'
@@ -13,17 +14,20 @@ interface ItemRowProps {
   onMarkRead: (item: LocalItem) => void
 }
 
-// Past this drag distance a release triggers the side's primary action (iOS Mail
-// full-swipe). Below it, the row just snaps open to reveal the tappable buttons.
-const FULL_SWIPE = Dimensions.get('window').width * 0.45
+const SCREEN_W = Dimensions.get('window').width
+const ACTION_W = 84            // width of one action button
+const LEFT_REVEAL = ACTION_W       // Read (1 button) revealed on swipe right
+const RIGHT_REVEAL = ACTION_W * 2  // Copy + Archive revealed on swipe left
+const FULL = SCREEN_W * 0.4        // drag past this on release = trigger primary action
 
-const ACTION_COLORS = { read: '#3A7BD5', copy: '#6B7280' }
+const READ_COLOR = '#3A7BD5'
+const COPY_COLOR = '#6B7280'
 
-function SwipeAction({ label, glyph, color, onPress }: { label: string; glyph: string; color: string; onPress: () => void }) {
+function ActionButton({ label, glyph, color, width, onPress }: { label: string; glyph: string; color: string; width: number; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[styles.swipeAction, { backgroundColor: color }]}>
-      <Text style={styles.swipeGlyph}>{glyph}</Text>
-      <Text style={styles.swipeLabel}>{label}</Text>
+    <Pressable onPress={onPress} style={[styles.action, { backgroundColor: color, width }]}>
+      <Text style={styles.actionGlyph}>{glyph}</Text>
+      <Text style={styles.actionLabel}>{label}</Text>
     </Pressable>
   )
 }
@@ -33,125 +37,118 @@ export function ItemRow({ item, onArchive, onMarkRead }: ItemRowProps) {
   const typeBadge = theme.typeBadge[item.type as keyof typeof theme.typeBadge] ?? theme.typeBadge.other
   const tags = item.tag_names.slice(0, 2)
 
-  const swipeRef = useRef<Swipeable>(null)
-  // Track live drag per side so a full swipe (past FULL_SWIPE) triggers the primary
-  // action, while a small swipe only reveals buttons. Listener attached once per
-  // Animated.Value (Swipeable creates it once for the row's lifetime).
-  const leftDrag = useRef<Animated.AnimatedInterpolation<string | number> | null>(null)
-  const rightDrag = useRef<Animated.AnimatedInterpolation<string | number> | null>(null)
-  const leftFull = useRef(false)
-  const rightFull = useRef(false)
+  const tx = useSharedValue(0)
 
-  const close = () => swipeRef.current?.close()
+  const close = () => { tx.value = withSpring(0, { damping: 20, stiffness: 220 }) }
   const doRead = () => { close(); onMarkRead(item) }
   const doArchive = () => { close(); onArchive(item) }
-  const doCopy = async () => { close(); await Clipboard.setStringAsync(item.url) }
+  const doCopy = () => { close(); void Clipboard.setStringAsync(item.url) }
 
-  // Left actions (revealed by swiping RIGHT): Read.
-  const renderLeftActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<string | number>) => {
-    if (leftDrag.current !== dragX) {
-      leftDrag.current = dragX
-      dragX.addListener(({ value }) => { leftFull.current = Number(value) > FULL_SWIPE })
-    }
-    return (
-      <View style={styles.swipeRow}>
-        <SwipeAction label="Read" glyph="✓" color={ACTION_COLORS.read} onPress={doRead} />
-      </View>
-    )
-  }
+  const pan = Gesture.Pan()
+    .activeOffsetX([-12, 12])  // only claim horizontal drags
+    .failOffsetY([-10, 10])    // let the FlatList handle vertical scroll
+    .onChange((e) => {
+      const next = tx.value + e.changeX
+      // allow overscroll a little past the reveal, clamp to screen width
+      tx.value = Math.max(-SCREEN_W, Math.min(SCREEN_W, next))
+    })
+    .onEnd(() => {
+      const x = tx.value
+      if (x > FULL) { runOnJS(doRead)(); return }
+      if (x < -FULL) { runOnJS(doArchive)(); return }
+      if (x > LEFT_REVEAL / 2) { tx.value = withSpring(LEFT_REVEAL, { damping: 20, stiffness: 220 }); return }
+      if (x < -RIGHT_REVEAL / 2) { tx.value = withSpring(-RIGHT_REVEAL, { damping: 20, stiffness: 220 }); return }
+      tx.value = withSpring(0, { damping: 20, stiffness: 220 })
+    })
 
-  // Right actions (revealed by swiping LEFT): Copy, Archive.
-  const renderRightActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<string | number>) => {
-    if (rightDrag.current !== dragX) {
-      rightDrag.current = dragX
-      dragX.addListener(({ value }) => { rightFull.current = Number(value) < -FULL_SWIPE })
-    }
-    return (
-      <View style={styles.swipeRow}>
-        <SwipeAction label="Copy" glyph="⧉" color={ACTION_COLORS.copy} onPress={doCopy} />
-        <SwipeAction label="Archive" glyph="🗄" color={theme.accent} onPress={doArchive} />
-      </View>
-    )
-  }
-
-  // Fired when either side snaps open. Distinguish a full swipe (trigger primary)
-  // from a small reveal (leave buttons showing) via the per-side drag flags.
-  const onOpen = (direction: 'left' | 'right') => {
-    if (direction === 'left' && leftFull.current) doRead()
-    else if (direction === 'right' && rightFull.current) doArchive()
-  }
+  const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }] }))
+  // Action layers fade/grow with the drag so nothing shows at rest.
+  const leftStyle = useAnimatedStyle(() => ({ opacity: tx.value > 4 ? 1 : 0 }))
+  const rightStyle = useAnimatedStyle(() => ({ opacity: tx.value < -4 ? 1 : 0 }))
 
   return (
-    <Swipeable
-      ref={swipeRef}
-      renderLeftActions={renderLeftActions}
-      renderRightActions={renderRightActions}
-      onSwipeableOpen={onOpen}
-      leftThreshold={36}
-      rightThreshold={36}
-      overshootFriction={8}
-    >
-      <Pressable
-        onPress={() => Linking.openURL(item.url)}
-        style={[styles.row, { backgroundColor: theme.bg }]}
-      >
-        {/* Favicon */}
-        <View style={[styles.faviconWrap, { backgroundColor: theme.searchBg }]}>
-          {item.favicon_url ? (
-            <Image source={{ uri: item.favicon_url }} style={styles.favicon} contentFit="contain" />
-          ) : (
-            <Text style={[styles.faviconFallback, { color: theme.meta }]}>
-              {(item.domain || item.title || '?').charAt(0).toUpperCase()}
-            </Text>
-          )}
-        </View>
+    <View style={styles.wrap}>
+      {/* Left actions (revealed by swiping right): Read */}
+      <Animated.View style={[styles.actionsLeft, leftStyle]}>
+        <ActionButton label="Read" glyph="✓" color={READ_COLOR} width={LEFT_REVEAL} onPress={doRead} />
+      </Animated.View>
+      {/* Right actions (revealed by swiping left): Copy, Archive */}
+      <Animated.View style={[styles.actionsRight, rightStyle]}>
+        <ActionButton label="Copy" glyph="⧉" color={COPY_COLOR} width={ACTION_W} onPress={doCopy} />
+        <ActionButton label="Archive" glyph="🗄" color={theme.accent} width={ACTION_W} onPress={doArchive} />
+      </Animated.View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
-              {item.title || item.url}
-            </Text>
-            {item.priority === 'high' && <View style={styles.highDot} />}
-          </View>
-
-          <View style={styles.metaRow}>
-            {item.domain ? (
-              <Text style={[styles.domain, { color: theme.meta }]} numberOfLines={1}>
-                {item.domain}
-              </Text>
-            ) : null}
-            <View style={[styles.typePill, { backgroundColor: typeBadge.bg }]}>
-              <Text style={[styles.typeText, { color: typeBadge.fg }]}>{item.type}</Text>
+      <GestureDetector gesture={pan}>
+        <Animated.View style={rowStyle}>
+          <Pressable
+            onPress={() => (tx.value !== 0 ? close() : Linking.openURL(item.url))}
+            style={[styles.row, { backgroundColor: theme.bg }]}
+          >
+            {/* Favicon */}
+            <View style={[styles.faviconWrap, { backgroundColor: theme.searchBg }]}>
+              {item.favicon_url ? (
+                <Image source={{ uri: item.favicon_url }} style={styles.favicon} contentFit="contain" />
+              ) : (
+                <Text style={[styles.faviconFallback, { color: theme.meta }]}>
+                  {(item.domain || item.title || '?').charAt(0).toUpperCase()}
+                </Text>
+              )}
             </View>
-          </View>
 
-          {tags.length > 0 && (
-            <View style={styles.tagRow}>
-              {tags.map(t => (
-                <View key={t} style={[styles.tag, { backgroundColor: theme.tagBg }]}>
-                  <Text style={[styles.tagText, { color: theme.tagText }]}>{t.trim()}</Text>
+            {/* Content */}
+            <View style={styles.content}>
+              <View style={styles.titleRow}>
+                <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
+                  {item.title || item.url}
+                </Text>
+                {item.priority === 'high' && <View style={styles.highDot} />}
+              </View>
+
+              <View style={styles.metaRow}>
+                {item.domain ? (
+                  <Text style={[styles.domain, { color: theme.meta }]} numberOfLines={1}>
+                    {item.domain}
+                  </Text>
+                ) : null}
+                <View style={[styles.typePill, { backgroundColor: typeBadge.bg }]}>
+                  <Text style={[styles.typeText, { color: typeBadge.fg }]}>{item.type}</Text>
                 </View>
-              ))}
-            </View>
-          )}
-        </View>
+              </View>
 
-        {/* Thumbnail */}
-        {item.thumbnail_url ? (
-          <Image
-            source={{ uri: item.thumbnail_url }}
-            style={styles.thumbnail}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : null}
-      </Pressable>
-    </Swipeable>
+              {tags.length > 0 && (
+                <View style={styles.tagRow}>
+                  {tags.map(t => (
+                    <View key={t} style={[styles.tag, { backgroundColor: theme.tagBg }]}>
+                      <Text style={[styles.tagText, { color: theme.tagText }]}>{t.trim()}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Thumbnail */}
+            {item.thumbnail_url ? (
+              <Image
+                source={{ uri: item.thumbnail_url }}
+                style={styles.thumbnail}
+                contentFit="cover"
+                transition={200}
+              />
+            ) : null}
+          </Pressable>
+        </Animated.View>
+      </GestureDetector>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  wrap: { position: 'relative', overflow: 'hidden' },
+  actionsLeft: { position: 'absolute', left: 0, top: 0, bottom: 0, flexDirection: 'row' },
+  actionsRight: { position: 'absolute', right: 0, top: 0, bottom: 0, flexDirection: 'row' },
+  action: { justifyContent: 'center', alignItems: 'center', gap: 3 },
+  actionGlyph: { color: '#FFF', fontSize: 18 },
+  actionLabel: { color: '#FFF', fontSize: 12, fontWeight: '600' },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: SPACING.lg, gap: 12 },
   faviconWrap: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   favicon: { width: 20, height: 20 },
@@ -168,8 +165,4 @@ const styles = StyleSheet.create({
   tag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   tagText: { fontSize: 11 },
   thumbnail: { width: 56, height: 56, borderRadius: 8 },
-  swipeRow: { flexDirection: 'row' },
-  swipeAction: { justifyContent: 'center', alignItems: 'center', width: 76, gap: 3 },
-  swipeGlyph: { color: '#FFF', fontSize: 18 },
-  swipeLabel: { color: '#FFF', fontSize: 12, fontWeight: '600' },
 })
