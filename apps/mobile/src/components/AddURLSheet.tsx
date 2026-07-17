@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native'
-import { detectType, extractDomain } from '@stashbro/shared'
-import { fetchOGMetadata } from '../lib/ogMetadata'
+import { detectType, extractDomain, fetchHtmlMeta } from '@stashbro/shared'
 import { useTheme, ACCENT } from '../hooks/useTheme'
 
 type Priority = 'low' | 'medium' | 'high'
@@ -33,31 +32,55 @@ export function AddURLSheet({ visible, onSave, onClose }: AddURLSheetProps) {
   const [priority, setPriority] = useState<Priority>('medium')
   const [ogLoading, setOgLoading] = useState(false)
   const [ogLoaded, setOgLoaded] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastLoadedRef = useRef('')  // raw URL we already fetched (dedupe)
+  const reqIdRef = useRef(0)        // monotonic id - newest load wins (race guard)
 
   useEffect(() => {
     if (visible) {
       setUrl(''); setTitle(''); setDescription(''); setThumbnailUrl(null)
       setPriority('medium'); setUrlError(''); setOgLoaded(false)
+      lastLoadedRef.current = ''
       setTimeout(() => urlRef.current?.focus(), 300)
     }
   }, [visible])
 
-  const submitURL = async () => {
+  const loadPreview = async (trimmed: string) => {
+    if (trimmed === lastLoadedRef.current) return  // already fetched this URL
+    lastLoadedRef.current = trimmed
+    setUrlError('')
+    setOgLoading(true)
+    const reqId = ++reqIdRef.current
+    const meta = await fetchHtmlMeta(trimmed)
+    if (reqId !== reqIdRef.current) return  // superseded by a newer load
+    setTitle(meta.title || trimmed)
+    setDescription(meta.description || '')
+    setThumbnailUrl(meta.image || null)
+    setOgLoading(false)
+    setOgLoaded(true)
+  }
+
+  // Return/"Go" pressed - explicit, surfaces a validation error.
+  const submitURL = () => {
     const trimmed = url.trim()
     if (!isValidURL(trimmed)) {
       setUrlError('Enter a valid http:// or https:// URL')
       return
     }
-    setUrlError('')
-    setOgLoading(true)
-    const meta = await fetchOGMetadata(trimmed)
-    if (meta.title) setTitle(meta.title)
-    else setTitle(trimmed)
-    if (meta.description) setDescription(meta.description)
-    if (meta.image) setThumbnailUrl(meta.image)
-    setOgLoading(false)
-    setOgLoaded(true)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    loadPreview(trimmed)
   }
+
+  // Debounced auto-load while typing/pasting. Silent on partial input, dedupes,
+  // reloads whenever the URL changes to a new valid value.
+  useEffect(() => {
+    const trimmed = url.trim()
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!isValidURL(trimmed) || trimmed === lastLoadedRef.current) return
+    debounceRef.current = setTimeout(() => loadPreview(trimmed), 500)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url])
 
   const handleSave = () => {
     const trimmed = url.trim()

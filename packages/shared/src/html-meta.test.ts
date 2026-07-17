@@ -47,4 +47,19 @@ describe('parseHtmlMeta', () => {
     const html = `<html><head><meta name="twitter:description" content="Twitter Desc"/></head></html>`
     expect(parseHtmlMeta(html).description).toBe('Twitter Desc')
   })
+
+  it('extracts og:image and resolves it against baseUrl', () => {
+    const html = `<meta property="og:image" content="/assets/pic.png"/>`
+    expect(parseHtmlMeta(html, 'https://example.com/page').image).toBe('https://example.com/assets/pic.png')
+  })
+
+  it('keeps an absolute og:image as-is', () => {
+    const html = `<meta property="og:image" content="https://cdn.example.com/i.png"/>`
+    expect(parseHtmlMeta(html, 'https://example.com').image).toBe('https://cdn.example.com/i.png')
+  })
+
+  it('decodes HTML entities in fields', () => {
+    const html = `<meta property="og:title" content="Tom &amp; Jerry"/>`
+    expect(parseHtmlMeta(html).title).toBe('Tom & Jerry')
+  })
 })

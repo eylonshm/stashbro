@@ -1,8 +1,15 @@
 // packages/extension/entrypoints/popup/PopupApp.tsx
-import React, { useState, useEffect, useCallback } from 'react'
-import { detectType, extractDomain, StashBroClient } from '@stashbro/shared'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { detectType, extractDomain, fetchHtmlMeta, StashBroClient } from '@stashbro/shared'
 import type { Item, Status } from '@stashbro/shared'
 import { saveWithRetry } from '../background.js'
+
+function isValidURL(text: string): boolean {
+  try {
+    const u = new URL(text)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch { return false }
+}
 
 type Priority = 'low' | 'medium' | 'high'
 type View = 'save' | 'list'
@@ -57,8 +64,16 @@ function relTime(iso: string): string {
 export default function PopupApp() {
   const [url, setUrl] = useState('')
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+  const [ogLoading, setOgLoading] = useState(false)
+  const [ogLoaded, setOgLoaded] = useState(false)
   const [detectedType, setDetectedType] = useState('article')
   const [tagInput, setTagInput] = useState('')
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastLoadedRef = useRef('')       // raw URL already fetched (dedupe)
+  const reqIdRef = useRef(0)             // newest load wins (race guard)
+  const titleTouchedRef = useRef(false)  // don't clobber a title the user edited
   const [tags, setTags] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [priority, setPriority] = useState<Priority>('medium')
@@ -91,6 +106,31 @@ export default function PopupApp() {
       } catch { /* offline */ }
     })
   }, [])
+
+  const loadPreview = useCallback(async (trimmed: string) => {
+    if (trimmed === lastLoadedRef.current) return  // already fetched this URL
+    lastLoadedRef.current = trimmed
+    setOgLoading(true)
+    const reqId = ++reqIdRef.current
+    const meta = await fetchHtmlMeta(trimmed)
+    if (reqId !== reqIdRef.current) return  // superseded by a newer load
+    setTitle(prev => (titleTouchedRef.current ? prev : (meta.title || prev || trimmed)))
+    setDescription(meta.description ?? '')
+    setThumbnailUrl(meta.image ?? null)
+    setOgLoading(false)
+    setOgLoaded(true)
+  }, [])
+
+  // Debounced auto-load preview whenever the URL changes (tab prefill, typing,
+  // or paste). Silent on partial input, dedupes, reloads on a new valid URL.
+  useEffect(() => {
+    const trimmed = url.trim()
+    setDetectedType(trimmed ? detectType(trimmed) : 'article')
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!isValidURL(trimmed) || trimmed === lastLoadedRef.current) return
+    debounceRef.current = setTimeout(() => loadPreview(trimmed), 500)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [url, loadPreview])
 
   const fetchItems = useCallback(async (filter: ListFilter) => {
     setListLoading(true)
@@ -174,6 +214,7 @@ export default function PopupApp() {
 
   return (
     <div style={{ width: 320, fontFamily: 'system-ui', background: TH.bg, boxSizing: 'border-box' }}>
+      <style>{'@keyframes sb-spin{to{transform:rotate(360deg)}}'}</style>
       {/* Top nav */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${TH.border}` }}>
         <img src="/icon/128.png" width={28} height={28} style={{ borderRadius: 7 }} alt="StashBro" />
@@ -194,10 +235,48 @@ export default function PopupApp() {
             <div style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: tc.bg, color: tc.fg }}>{detectedType.toUpperCase()}</div>
           </div>
 
+          {/* URL */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: TH.secondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>URL</label>
+            <input
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="https://..."
+              spellCheck={false}
+              autoCapitalize="none"
+              style={{ width: '100%', marginTop: 4, padding: '6px 8px', borderRadius: 6, border: `1px solid ${TH.border}`, fontSize: 13, boxSizing: 'border-box', outline: 'none', color: TH.text, background: TH.surface }}
+            />
+          </div>
+
+          {/* Preview card */}
+          <div style={{ borderRadius: 8, border: `1px solid ${TH.border}`, padding: 10, background: TH.surface, minHeight: 44 }}>
+            {ogLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', color: TH.secondary, fontSize: 12 }}>
+                <span style={{ width: 13, height: 13, border: `2px solid ${TH.border}`, borderTopColor: TH.copper, borderRadius: '50%', display: 'inline-block', animation: 'sb-spin 0.7s linear infinite' }} />
+                Fetching preview...
+              </div>
+            ) : ogLoaded ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                {thumbnailUrl ? (
+                  <img src={thumbnailUrl} width={44} height={44} style={{ borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} alt="" />
+                ) : (
+                  <div style={{ width: 44, height: 44, borderRadius: 6, flexShrink: 0, background: tc.bg, color: tc.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700 }}>{detectedType[0]?.toUpperCase()}</div>
+                )}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: TH.text, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{title || url}</div>
+                  {description ? <div style={{ fontSize: 11, color: TH.secondary, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{description}</div> : null}
+                  <div style={{ fontSize: 10, color: TH.secondary, marginTop: 2 }}>{domain}</div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: TH.secondary, textAlign: 'center' }}>Enter a URL above to preview</div>
+            )}
+          </div>
+
           {/* Title */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: TH.secondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Title</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', marginTop: 4, padding: '6px 8px', borderRadius: 6, border: `1px solid ${TH.border}`, fontSize: 13, boxSizing: 'border-box', outline: 'none', color: TH.text, background: TH.surface }} />
+            <input value={title} onChange={e => { titleTouchedRef.current = true; setTitle(e.target.value) }} style={{ width: '100%', marginTop: 4, padding: '6px 8px', borderRadius: 6, border: `1px solid ${TH.border}`, fontSize: 13, boxSizing: 'border-box', outline: 'none', color: TH.text, background: TH.surface }} />
           </div>
 
           {/* Tags */}

@@ -18,6 +18,8 @@ struct QuickSaveView: View {
     @State private var ogImageURL: String? = nil
     @State private var ogLoading: Bool
     @State private var shimmerOn = false
+    @State private var debounceTask: Task<Void, Never>?
+    @State private var lastLoadedURL: String? = nil  // raw string of URL we already fetched
 
     private let defaultTitle: String
     private let isManualMode: Bool
@@ -105,6 +107,7 @@ struct QuickSaveView: View {
             TextField("Paste or type a URL...", text: $urlText, onCommit: { submitURL() })
                 .textFieldStyle(.roundedBorder)
                 .font(.system(size: 12))
+                .onChange(of: urlText) { _ in scheduleAutoLoad() }
             if let err = urlError {
                 Text(err)
                     .font(.system(size: 10))
@@ -115,6 +118,7 @@ struct QuickSaveView: View {
         .padding(.top, 14)
     }
 
+    // Return pressed - explicit submit, may surface a validation error.
     private func submitURL() {
         let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed),
@@ -123,11 +127,34 @@ struct QuickSaveView: View {
             resolvedURL = nil
             return
         }
+        debounceTask?.cancel()
+        guard trimmed != lastLoadedURL else { return }  // already fetched this URL
+        applyURL(url, raw: trimmed)
+    }
+
+    // Debounced auto-load while typing/pasting. Only acts on a valid URL - stays
+    // silent (no red error) on partial input, and never re-fetches the same URL.
+    private func scheduleAutoLoad() {
+        let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+        debounceTask?.cancel()
+        guard let url = URL(string: trimmed),
+              url.scheme == "http" || url.scheme == "https",
+              trimmed != lastLoadedURL else { return }
+        debounceTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+            applyURL(url, raw: trimmed)
+        }
+    }
+
+    @MainActor
+    private func applyURL(_ url: URL, raw: String) {
         urlError = nil
         resolvedURL = url
+        lastLoadedURL = raw
         ogLoading = true
         if editTitle.isEmpty || editTitle == defaultTitle {
-            editTitle = trimmed
+            editTitle = raw
         }
         Task { await loadOG() }
     }
@@ -143,12 +170,15 @@ struct QuickSaveView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 if ogLoading {
-                    skeletonBar(height: 13)
-                    HStack(spacing: 0) {
-                        skeletonBar(height: 10)
-                        Spacer(minLength: 0).frame(width: 36)
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small)
+                        Text("Fetching preview…")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
                     }
                     .transition(.opacity)
+                    skeletonBar(height: 10)
+                        .transition(.opacity)
                 } else if resolvedURL != nil {
                     Text(previewTitle)
                         .font(.system(size: 13, weight: .semibold))
@@ -250,7 +280,10 @@ struct QuickSaveView: View {
     @MainActor
     private func loadOG() async {
         guard let url = resolvedURL ?? initialURL else { return }
-        defer { ogLoading = false }
+        let target = url
+        // Only this load owns the loading flag/results while it's still the current URL;
+        // a newer load supersedes it (guards against fast typing / paste-then-edit races).
+        defer { if resolvedURL == target { ogLoading = false } }
         var req = URLRequest(url: url, timeoutInterval: 5)
         req.setValue(
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -259,6 +292,7 @@ struct QuickSaveView: View {
         guard let (data, _) = try? await URLSession.shared.data(for: req) else { return }
         let html = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? ""
         guard !html.isEmpty else { return }
+        guard resolvedURL == target else { return }  // superseded by a newer load
 
         let meta = parseOGMetadata(html: html, baseURL: url)
 
