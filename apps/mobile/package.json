@@ -19,6 +19,7 @@
     "@react-native-segmented-control/segmented-control": "2.5.7",
     "@stashbro/shared": "workspace:*",
     "expo": "~57.0.6",
+    "expo-clipboard": "~57.0.1",
     "expo-constants": "~57.0.5",
     "expo-image": "~57.0.1",
     "expo-linking": "~57.0.3",

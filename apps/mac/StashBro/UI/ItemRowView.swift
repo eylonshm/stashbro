@@ -179,6 +179,7 @@ struct ItemRowView: View {
                 if item.status == .unread, let onMarkRead = onMarkRead {
                     ActionButton(systemName: "checkmark.circle", help: "Mark as Read", action: onMarkRead)
                 }
+                ActionButton(systemName: "doc.on.doc", help: "Copy Link", action: copyLink)
                 if let onArchive = onArchive {
                     ActionButton(systemName: "archivebox", help: "Archive", action: onArchive)
                 }
@@ -190,6 +191,11 @@ struct ItemRowView: View {
             .allowsHitTesting(isHovering)
             .animation(.easeOut(duration: 0.15), value: isHovering)
         }
+    }
+
+    private func copyLink() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(item.url, forType: .string)
     }
 
     private var thumbnailGradient: LinearGradient {

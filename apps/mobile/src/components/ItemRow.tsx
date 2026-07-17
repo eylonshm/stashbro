@@ -1,8 +1,9 @@
-import React from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import React, { useRef } from 'react'
+import { View, Text, Pressable, StyleSheet, Animated, Dimensions } from 'react-native'
 import { Image } from 'expo-image'
 import { Swipeable } from 'react-native-gesture-handler'
 import * as Linking from 'expo-linking'
+import * as Clipboard from 'expo-clipboard'
 import { useTheme, SPACING } from '../hooks/useTheme'
 import type { LocalItem } from '../hooks/useItems'
 
@@ -12,9 +13,16 @@ interface ItemRowProps {
   onMarkRead: (item: LocalItem) => void
 }
 
-function SwipeAction({ label, color, onPress }: { label: string; color: string; onPress: () => void }) {
+// Past this drag distance a release triggers the side's primary action (iOS Mail
+// full-swipe). Below it, the row just snaps open to reveal the tappable buttons.
+const FULL_SWIPE = Dimensions.get('window').width * 0.45
+
+const ACTION_COLORS = { read: '#3A7BD5', copy: '#6B7280' }
+
+function SwipeAction({ label, glyph, color, onPress }: { label: string; glyph: string; color: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={[styles.swipeAction, { backgroundColor: color }]}>
+      <Text style={styles.swipeGlyph}>{glyph}</Text>
       <Text style={styles.swipeLabel}>{label}</Text>
     </Pressable>
   )
@@ -23,18 +31,66 @@ function SwipeAction({ label, color, onPress }: { label: string; color: string; 
 export function ItemRow({ item, onArchive, onMarkRead }: ItemRowProps) {
   const theme = useTheme()
   const typeBadge = theme.typeBadge[item.type as keyof typeof theme.typeBadge] ?? theme.typeBadge.other
-  // tag_names is string[] from useItems
   const tags = item.tag_names.slice(0, 2)
 
-  const renderRightActions = () => (
-    <View style={styles.swipeRow}>
-      <SwipeAction label="Read" color="#3A7BD5" onPress={() => onMarkRead(item)} />
-      <SwipeAction label="Archive" color={theme.accent} onPress={() => onArchive(item)} />
-    </View>
-  )
+  const swipeRef = useRef<Swipeable>(null)
+  // Track live drag per side so a full swipe (past FULL_SWIPE) triggers the primary
+  // action, while a small swipe only reveals buttons. Listener attached once per
+  // Animated.Value (Swipeable creates it once for the row's lifetime).
+  const leftDrag = useRef<Animated.AnimatedInterpolation<string | number> | null>(null)
+  const rightDrag = useRef<Animated.AnimatedInterpolation<string | number> | null>(null)
+  const leftFull = useRef(false)
+  const rightFull = useRef(false)
+
+  const close = () => swipeRef.current?.close()
+  const doRead = () => { close(); onMarkRead(item) }
+  const doArchive = () => { close(); onArchive(item) }
+  const doCopy = async () => { close(); await Clipboard.setStringAsync(item.url) }
+
+  // Left actions (revealed by swiping RIGHT): Read.
+  const renderLeftActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<string | number>) => {
+    if (leftDrag.current !== dragX) {
+      leftDrag.current = dragX
+      dragX.addListener(({ value }) => { leftFull.current = Number(value) > FULL_SWIPE })
+    }
+    return (
+      <View style={styles.swipeRow}>
+        <SwipeAction label="Read" glyph="✓" color={ACTION_COLORS.read} onPress={doRead} />
+      </View>
+    )
+  }
+
+  // Right actions (revealed by swiping LEFT): Copy, Archive.
+  const renderRightActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<string | number>) => {
+    if (rightDrag.current !== dragX) {
+      rightDrag.current = dragX
+      dragX.addListener(({ value }) => { rightFull.current = Number(value) < -FULL_SWIPE })
+    }
+    return (
+      <View style={styles.swipeRow}>
+        <SwipeAction label="Copy" glyph="⧉" color={ACTION_COLORS.copy} onPress={doCopy} />
+        <SwipeAction label="Archive" glyph="🗄" color={theme.accent} onPress={doArchive} />
+      </View>
+    )
+  }
+
+  // Fired when either side snaps open. Distinguish a full swipe (trigger primary)
+  // from a small reveal (leave buttons showing) via the per-side drag flags.
+  const onOpen = (direction: 'left' | 'right') => {
+    if (direction === 'left' && leftFull.current) doRead()
+    else if (direction === 'right' && rightFull.current) doArchive()
+  }
 
   return (
-    <Swipeable renderRightActions={renderRightActions} overshootFriction={8}>
+    <Swipeable
+      ref={swipeRef}
+      renderLeftActions={renderLeftActions}
+      renderRightActions={renderRightActions}
+      onSwipeableOpen={onOpen}
+      leftThreshold={36}
+      rightThreshold={36}
+      overshootFriction={8}
+    >
       <Pressable
         onPress={() => Linking.openURL(item.url)}
         style={[styles.row, { backgroundColor: theme.bg }]}
@@ -45,7 +101,7 @@ export function ItemRow({ item, onArchive, onMarkRead }: ItemRowProps) {
             <Image source={{ uri: item.favicon_url }} style={styles.favicon} contentFit="contain" />
           ) : (
             <Text style={[styles.faviconFallback, { color: theme.meta }]}>
-              {(item.domain || item.title || '?')[0].toUpperCase()}
+              {(item.domain || item.title || '?').charAt(0).toUpperCase()}
             </Text>
           )}
         </View>
@@ -113,6 +169,7 @@ const styles = StyleSheet.create({
   tagText: { fontSize: 11 },
   thumbnail: { width: 56, height: 56, borderRadius: 8 },
   swipeRow: { flexDirection: 'row' },
-  swipeAction: { justifyContent: 'center', alignItems: 'center', width: 72 },
+  swipeAction: { justifyContent: 'center', alignItems: 'center', width: 76, gap: 3 },
+  swipeGlyph: { color: '#FFF', fontSize: 18 },
   swipeLabel: { color: '#FFF', fontSize: 12, fontWeight: '600' },
 })

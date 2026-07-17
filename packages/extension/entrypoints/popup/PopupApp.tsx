@@ -86,6 +86,7 @@ export default function PopupApp() {
   const [listItems, setListItems] = useState<Item[]>([])
   const [listLoading, setListLoading] = useState(false)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
     browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
@@ -149,6 +150,12 @@ export default function PopupApp() {
   useEffect(() => {
     if (view === 'list' && configured) fetchItems(listFilter)
   }, [view, listFilter, configured, fetchItems])
+
+  const copyLink = async (id: string, link: string) => {
+    try { await navigator.clipboard.writeText(link) } catch { /* clipboard blocked */ }
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(c => (c === id ? null : c)), 1500)
+  }
 
   const updateStatus = async (id: string, status: Status) => {
     const s = await browser.storage.local.get(['serverURL', 'serverToken']) as { serverURL?: string; serverToken?: string }
@@ -360,6 +367,11 @@ export default function PopupApp() {
                 {/* hover actions - revealed on row hover only */}
                 {hoveredId === item.id && (
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    <button
+                      title={copiedId === item.id ? 'Copied!' : 'Copy link'}
+                      onClick={() => copyLink(item.id, item.url)}
+                      style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${TH.border}`, background: TH.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: copiedId === item.id ? TH.copper : TH.text }}
+                    >{copiedId === item.id ? '✓' : '⧉'}</button>
                     {listFilter !== 'read' && (
                       <button
                         title="Mark as read"
