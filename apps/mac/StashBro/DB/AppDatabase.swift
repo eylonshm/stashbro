@@ -90,6 +90,11 @@ final class AppDatabase {
                 t.primaryKey(["item_id", "tag_id"])
             }
         }
+        migrator.registerMigration("v2") { db in
+            try db.alter(table: "stash_items") { t in
+                t.add(column: "reading_time_seconds", .integer)
+            }
+        }
         try migrator.migrate(dbWriter)
     }
 }

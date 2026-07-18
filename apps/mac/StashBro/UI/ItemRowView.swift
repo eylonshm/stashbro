@@ -13,6 +13,11 @@ func relativeAge(_ date: Date, now: Date = Date()) -> String {
     return "\(days / 7)w"
 }
 
+// ponytail: exported for test; matches spec (< 1 min under 60s, else N min)
+func readingTimeLabel(_ seconds: Int) -> String {
+    seconds < 60 ? "< 1 min" : "\(seconds / 60) min"
+}
+
 // Stable AppKit hover view that POLLS the cursor position (8Hz) instead of relying on
 // NSTrackingArea enter/exit events. Two reasons:
 //  1. Tracking-area events are unreliable in the notch's nonactivating SkyLight-space panel
@@ -163,6 +168,11 @@ struct ItemRowView: View {
                     Text("· \(relativeAge(item.createdAt))")
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
+                    if let rt = item.readingTimeSeconds {
+                        Text("· \(readingTimeLabel(rt))")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             }
             Spacer()

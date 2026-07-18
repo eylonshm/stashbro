@@ -19,6 +19,7 @@ struct SyncChange: Codable {
     var status: ItemStatus
     var priority: ItemPriority
     var tagNames: [String]
+    var readingTimeSeconds: Int? = nil
 
     // Explicit snake_case mapping for wire format - don't rely on future client's decoder strategy
     enum CodingKeys: String, CodingKey {
@@ -32,5 +33,6 @@ struct SyncChange: Codable {
         case faviconUrl = "favicon_url"
         case domain, type, status, priority
         case tagNames = "tag_names"
+        case readingTimeSeconds = "reading_time_seconds"
     }
 }

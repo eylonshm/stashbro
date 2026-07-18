@@ -63,7 +63,8 @@ final class GRDBLocalStore: LocalStoreProtocol {
                     description: item.description, thumbnailUrl: item.thumbnailUrl,
                     faviconUrl: item.faviconUrl, domain: item.domain,
                     type: item.type, status: item.status, priority: item.priority,
-                    tagNames: tagNames
+                    tagNames: tagNames,
+                    readingTimeSeconds: item.readingTimeSeconds
                 )
             }
         }
@@ -87,7 +88,8 @@ final class GRDBLocalStore: LocalStoreProtocol {
                     createdAt: existing?.createdAt ?? change.createdAt,
                     updatedAt: change.updatedAt,
                     deletedAt: change.deletedAt,
-                    changeSeq: change.changeSeq
+                    changeSeq: change.changeSeq,
+                    readingTimeSeconds: change.readingTimeSeconds
                 )
                 try item.save(dbConn)
 

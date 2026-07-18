@@ -40,6 +40,7 @@ struct StashItem: Identifiable, Codable, FetchableRecord, PersistableRecord {
     var updatedAt: Date
     var deletedAt: Date?
     var changeSeq: Int
+    var readingTimeSeconds: Int? = nil
 
     static let databaseColumnDecodingStrategy = DatabaseColumnDecodingStrategy.convertFromSnakeCase
     static let databaseColumnEncodingStrategy = DatabaseColumnEncodingStrategy.convertToSnakeCase

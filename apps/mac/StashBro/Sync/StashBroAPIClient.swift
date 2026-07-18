@@ -77,6 +77,7 @@ final class StashBroAPIClient: SyncClientProtocol {
                 _type: .init(rawValue: c.type.rawValue) ?? .article,
                 status: .init(rawValue: c.status.rawValue) ?? .unread,
                 priority: .init(rawValue: c.priority.rawValue) ?? .medium,
+                reading_time_seconds: c.readingTimeSeconds.map(Double.init),
                 tag_names: c.tagNames
             )
         }
@@ -105,7 +106,8 @@ final class StashBroAPIClient: SyncClientProtocol {
                 type: ItemType(rawValue: c._type.rawValue) ?? .article,
                 status: ItemStatus(rawValue: c.status.rawValue) ?? .unread,
                 priority: ItemPriority(rawValue: c.priority.rawValue) ?? .medium,
-                tagNames: c.tag_names
+                tagNames: c.tag_names,
+                readingTimeSeconds: c.reading_time_seconds.map { Int($0) }
             )
         }
         return (changes, Int(result.cursor))
