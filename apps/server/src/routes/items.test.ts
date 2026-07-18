@@ -44,6 +44,28 @@ describe('POST /items', () => {
     expect(item.title).toBe('My Title')
   })
 
+  it('accepts and returns reading_time_seconds', async () => {
+    const res = await app().request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com/rt', reading_time_seconds: 180 }),
+    })
+    expect(res.status).toBe(201)
+    const item = await res.json()
+    expect(item.reading_time_seconds).toBe(180)
+  })
+
+  it('returns reading_time_seconds as null when not provided', async () => {
+    const res = await app().request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com/no-rt' }),
+    })
+    expect(res.status).toBe(201)
+    const item = await res.json()
+    expect(item.reading_time_seconds).toBeNull()
+  })
+
   it('returns 401 without auth', async () => {
     const res = await app().request('/items', {
       method: 'POST',

@@ -25,6 +25,7 @@ const SyncChangeSchema = z.object({
   type: z.enum(['video', 'post', 'article', 'other']),
   status: z.enum(['unread', 'read', 'archived']),
   priority: z.enum(['low', 'medium', 'high']),
+  reading_time_seconds: z.number().nullish(),
   tag_names: z.array(z.string()),
 })
 
@@ -42,6 +43,7 @@ function toSyncChange(db: ReturnType<typeof getDb>, item: typeof items.$inferSel
     type: item.type as 'video' | 'post' | 'article' | 'other',
     status: item.status as 'unread' | 'read' | 'archived',
     priority: item.priority as 'low' | 'medium' | 'high',
+    reading_time_seconds: item.reading_time_seconds ?? null,
     tag_names: tagRows.map(t => t.name),
   }
 }
@@ -78,6 +80,7 @@ export function syncRouter() {
               thumbnail_url: change.thumbnail_url ?? null, favicon_url: change.favicon_url ?? null,
               domain: change.domain, type: change.type, status: change.status,
               priority: change.priority, updated_at: change.updated_at,
+              reading_time_seconds: change.reading_time_seconds ?? null,
               deleted_at: change.deleted_at ?? null, change_seq: seq,
             }).where(and(eq(items.id, change.id), eq(items.user_id, userId))).run()
           } else {
@@ -86,6 +89,7 @@ export function syncRouter() {
               description: change.description ?? null, thumbnail_url: change.thumbnail_url ?? null,
               favicon_url: change.favicon_url ?? null, domain: change.domain, type: change.type,
               status: change.status, priority: change.priority,
+              reading_time_seconds: change.reading_time_seconds ?? null,
               created_at: change.created_at,
               updated_at: change.updated_at,
               deleted_at: change.deleted_at ?? null, change_seq: seq,

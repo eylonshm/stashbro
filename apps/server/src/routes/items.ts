@@ -26,6 +26,7 @@ const ItemSchema = z.object({
   updated_at: z.string(),
   deleted_at: z.string().nullable(),
   change_seq: z.number(),
+  reading_time_seconds: z.number().nullable(),
   tags: z.array(z.object({ id: z.string(), user_id: z.string(), name: z.string() })),
 })
 
@@ -80,6 +81,7 @@ export function itemsRouter() {
         type: z.enum(['video', 'post', 'article', 'other']).optional(),
         priority: z.enum(['low', 'medium', 'high']).optional(),
         tag_names: z.array(z.string()).optional(),
+        reading_time_seconds: z.number().int().positive().optional(),
       })}}}
     },
     responses: { 201: { content: { 'application/json': { schema: ItemSchema }}, description: 'Created item' }},
@@ -120,6 +122,7 @@ export function itemsRouter() {
       priority: body.priority ?? 'medium',
       created_at: now, updated_at: now,
       change_seq: seq,
+      reading_time_seconds: body.reading_time_seconds ?? null,
     }).run()
 
     if (body.tag_names?.length) upsertTags(db, userId, body.tag_names, id)

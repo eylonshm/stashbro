@@ -269,6 +269,11 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "reading_time_seconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
                   }
                 },
                 "required": [
@@ -351,6 +356,10 @@
                     "change_seq": {
                       "type": "number"
                     },
+                    "reading_time_seconds": {
+                      "type": "number",
+                      "nullable": true
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -390,6 +399,7 @@
                     "updated_at",
                     "deleted_at",
                     "change_seq",
+                    "reading_time_seconds",
                     "tags"
                   ]
                 }
@@ -530,6 +540,10 @@
                           "change_seq": {
                             "type": "number"
                           },
+                          "reading_time_seconds": {
+                            "type": "number",
+                            "nullable": true
+                          },
                           "tags": {
                             "type": "array",
                             "items": {
@@ -569,6 +583,7 @@
                           "updated_at",
                           "deleted_at",
                           "change_seq",
+                          "reading_time_seconds",
                           "tags"
                         ]
                       }
@@ -723,6 +738,10 @@
                     "change_seq": {
                       "type": "number"
                     },
+                    "reading_time_seconds": {
+                      "type": "number",
+                      "nullable": true
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -762,6 +781,7 @@
                     "updated_at",
                     "deleted_at",
                     "change_seq",
+                    "reading_time_seconds",
                     "tags"
                   ]
                 }
@@ -948,6 +968,10 @@
                             "high"
                           ]
                         },
+                        "reading_time_seconds": {
+                          "type": "number",
+                          "nullable": true
+                        },
                         "tag_names": {
                           "type": "array",
                           "items": {
@@ -1087,6 +1111,10 @@
                               "medium",
                               "high"
                             ]
+                          },
+                          "reading_time_seconds": {
+                            "type": "number",
+                            "nullable": true
                           },
                           "tag_names": {
                             "type": "array",
