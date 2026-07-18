@@ -1,5 +1,6 @@
 import { eq, desc } from 'drizzle-orm'
 import { lookup } from 'dns/promises'
+import { estimateReadingTimeSeconds } from '@stashbro/shared'
 import type { AppDb } from '../db/index.js'
 import { items } from '../db/schema.js'
 import { emitChange } from './events.js'
@@ -65,7 +66,7 @@ const OEMBED_PROVIDERS: Array<{ pattern: RegExp; endpoint: string }> = [
 ]
 
 export async function fetchOgMeta(url: string): Promise<{
-  title?: string; description?: string; image?: string; favicon?: string
+  title?: string; description?: string; image?: string; favicon?: string; reading_time_seconds?: number
 }> {
   try {
     const res = await fetchSafe(url)
@@ -87,7 +88,7 @@ export async function fetchOgMeta(url: string): Promise<{
     if (favicon && !favicon.startsWith('http')) {
       try { favicon = new URL(favicon, url).href } catch { favicon = undefined }
     }
-    const result: { title?: string; description?: string; image?: string; favicon?: string } = {}
+    const result: { title?: string; description?: string; image?: string; favicon?: string; reading_time_seconds?: number } = {}
     const htmlTitle = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim()
     const title = get('og:title') ?? get('twitter:title') ?? htmlTitle
     const description = get('og:description') ?? get('twitter:description') ?? get('description')
@@ -96,6 +97,8 @@ export async function fetchOgMeta(url: string): Promise<{
     if (description) result.description = description
     if (image) result.image = image
     if (favicon) result.favicon = favicon
+    const readingTime = estimateReadingTimeSeconds(html)
+    if (readingTime > 0) result.reading_time_seconds = readingTime
     return result
   } catch {
     return {}
@@ -134,6 +137,11 @@ async function enrichOnce(db: AppDb, itemId: string, url: string): Promise<void>
   const thumbnail = oembed?.thumbnail_url ?? og.image
   if (thumbnail && !current.thumbnail_url) update.thumbnail_url = thumbnail
   if (og.favicon && !current.favicon_url) update.favicon_url = og.favicon
+
+  // Reading time: word-count estimate from HTML. Skip videos - page word count is meaningless there.
+  if (og.reading_time_seconds && !current.reading_time_seconds && current.type !== 'video') {
+    update.reading_time_seconds = og.reading_time_seconds
+  }
 
   if (Object.keys(update).length === 0) return
 

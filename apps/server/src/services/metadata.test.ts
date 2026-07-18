@@ -117,7 +117,7 @@ describe('enrichMetadataAsync - LWW guards and sync visibility', () => {
 
   beforeEach(() => { clearDbCache(); mockFetch.mockReset() })
 
-  function insertItem(overrides: { title?: string; thumbnail_url?: string | null } = {}) {
+  function insertItem(overrides: { title?: string; thumbnail_url?: string | null; type?: 'article' | 'video'; reading_time_seconds?: number | null } = {}) {
     const db = getDb()
     db.insert(items).values({
       id: 'item-1',
@@ -125,11 +125,12 @@ describe('enrichMetadataAsync - LWW guards and sync visibility', () => {
       url: URL,
       title: overrides.title ?? URL, // default fallback = url
       domain: 'example.com',
-      type: 'article',
+      type: overrides.type ?? 'article',
       status: 'unread',
       priority: 'medium',
       change_seq: 1,
       thumbnail_url: overrides.thumbnail_url ?? null,
+      reading_time_seconds: overrides.reading_time_seconds ?? null,
     }).run()
     return db
   }
@@ -169,5 +170,31 @@ describe('enrichMetadataAsync - LWW guards and sync visibility', () => {
     await enrichMetadataAsync(db, 'item-2', URL)
     const item2 = db.select().from(items).where(eq(items.id, 'item-2')).all()[0]!
     expect(item2.thumbnail_url).toBe('https://existing.com/thumb.jpg')
+  })
+
+  it('(d) reading_time_seconds is computed from HTML body when null', async () => {
+    const db = insertItem()
+    // 238 words at 238 WPM = 60s
+    const body = `word `.repeat(238)
+    mockFetch.mockResolvedValueOnce(htmlResponse(`<html><body><p>${body}</p></body></html>`))
+    await enrichMetadataAsync(db, 'item-1', URL)
+    const item = db.select().from(items).where(eq(items.id, 'item-1')).all()[0]!
+    expect(item.reading_time_seconds).toBe(60)
+  })
+
+  it('(e) existing reading_time_seconds is not overwritten', async () => {
+    const db = insertItem({ reading_time_seconds: 120 })
+    mockFetch.mockResolvedValueOnce(htmlResponse(`<html><body><p>${`word `.repeat(238)}</p></body></html>`))
+    await enrichMetadataAsync(db, 'item-1', URL)
+    const item = db.select().from(items).where(eq(items.id, 'item-1')).all()[0]!
+    expect(item.reading_time_seconds).toBe(120)
+  })
+
+  it('(f) video-type items do not get a reading_time_seconds estimate', async () => {
+    const db = insertItem({ type: 'video' })
+    mockFetch.mockResolvedValueOnce(htmlResponse(`<html><body><p>${`word `.repeat(238)}</p></body></html>`))
+    await enrichMetadataAsync(db, 'item-1', URL)
+    const item = db.select().from(items).where(eq(items.id, 'item-1')).all()[0]!
+    expect(item.reading_time_seconds).toBeNull()
   })
 })
