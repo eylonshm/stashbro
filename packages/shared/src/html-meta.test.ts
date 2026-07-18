@@ -62,4 +62,9 @@ describe('parseHtmlMeta', () => {
     const html = `<meta property="og:title" content="Tom &amp; Jerry"/>`
     expect(parseHtmlMeta(html).title).toBe('Tom & Jerry')
   })
+
+  it('includes reading_time_seconds estimate', () => {
+    const html = '<html><body>' + '<p>word </p>'.repeat(238) + '</body></html>'
+    expect(parseHtmlMeta(html).reading_time_seconds).toBe(60)
+  })
 })

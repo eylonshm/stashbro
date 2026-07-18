@@ -1,10 +1,13 @@
 // HTML metadata parser - mirrors the regex approach in apps/server/src/services/metadata.ts.
 // parseHtmlMeta is DOM-free and network-free (safe in share extensions and tests);
 // fetchHtmlMeta is a thin network wrapper for callers that need to load a URL first.
+import { estimateReadingTimeSeconds } from './reading-time.js'
+
 export interface HtmlMeta {
   title?: string
   description?: string
   image?: string
+  reading_time_seconds?: number
 }
 
 const CHROME_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -41,6 +44,8 @@ export function parseHtmlMeta(html: string, baseUrl?: string): HtmlMeta {
   if (title) result.title = decodeEntities(title)
   if (description) result.description = decodeEntities(description)
   if (image) result.image = decodeEntities(image)
+  const readingTime = estimateReadingTimeSeconds(html)
+  if (readingTime > 0) result.reading_time_seconds = readingTime
   return result
 }
 

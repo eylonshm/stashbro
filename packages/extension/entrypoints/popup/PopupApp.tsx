@@ -77,6 +77,7 @@ export default function PopupApp() {
   const [tags, setTags] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [priority, setPriority] = useState<Priority>('medium')
+  const [readingTime, setReadingTime] = useState<number | undefined>(undefined)
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   // null = loading (prevents configured/unconfigured flash on open)
   const [configured, setConfigured] = useState<boolean | null>(null)
@@ -120,6 +121,7 @@ export default function PopupApp() {
     setThumbnailUrl(meta.image ?? null)
     setOgLoading(false)
     setOgLoaded(true)
+    if (meta.reading_time_seconds) setReadingTime(meta.reading_time_seconds)
   }, [])
 
   // Debounced auto-load preview whenever the URL changes (tab prefill, typing,
@@ -170,7 +172,7 @@ export default function PopupApp() {
 
   const save = async () => {
     setState('saving')
-    const ok = await saveWithRetry({ url, title, tag_names: tags, priority })
+    const ok = await saveWithRetry({ url, title, tag_names: tags, priority, reading_time_seconds: readingTime })
     setState(ok ? 'saved' : 'error')
     if (ok) setTimeout(() => window.close(), 2000)
   }
