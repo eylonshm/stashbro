@@ -24,6 +24,7 @@ export interface Item {
   updated_at: string   // ISO 8601
   deleted_at: string | null
   change_seq: number
+  reading_time_seconds: number | null
   tags: Tag[]
 }
 
@@ -42,6 +43,7 @@ export interface SyncChange {
   type: ItemType
   status: Status
   priority: Priority
+  reading_time_seconds: number | null
   tag_names: string[]
 }
 
@@ -51,6 +53,7 @@ export interface CreateItemInput {
   type?: ItemType
   priority?: Priority
   tag_names?: string[]
+  reading_time_seconds?: number
 }
 
 export interface UpdateItemInput {
