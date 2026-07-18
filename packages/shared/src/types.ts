@@ -43,7 +43,7 @@ export interface SyncChange {
   type: ItemType
   status: Status
   priority: Priority
-  reading_time_seconds: number | null
+  reading_time_seconds?: number | null
   tag_names: string[]
 }
 

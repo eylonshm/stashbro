@@ -122,7 +122,7 @@ export function itemsRouter() {
       priority: body.priority ?? 'medium',
       created_at: now, updated_at: now,
       change_seq: seq,
-      reading_time_seconds: body.reading_time_seconds ?? null,
+      reading_time_seconds: type === 'video' ? null : (body.reading_time_seconds ?? null),
     }).run()
 
     if (body.tag_names?.length) upsertTags(db, userId, body.tag_names, id)

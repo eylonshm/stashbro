@@ -80,7 +80,7 @@ export function syncRouter() {
               thumbnail_url: change.thumbnail_url ?? null, favicon_url: change.favicon_url ?? null,
               domain: change.domain, type: change.type, status: change.status,
               priority: change.priority, updated_at: change.updated_at,
-              reading_time_seconds: change.reading_time_seconds ?? null,
+              reading_time_seconds: change.reading_time_seconds ?? existing.reading_time_seconds ?? null,
               deleted_at: change.deleted_at ?? null, change_seq: seq,
             }).where(and(eq(items.id, change.id), eq(items.user_id, userId))).run()
           } else {
