@@ -121,7 +121,7 @@ export default function PopupApp() {
     setThumbnailUrl(meta.image ?? null)
     setOgLoading(false)
     setOgLoaded(true)
-    if (meta.reading_time_seconds) setReadingTime(meta.reading_time_seconds)
+    setReadingTime(meta.reading_time_seconds ?? undefined)
   }, [])
 
   // Debounced auto-load preview whenever the URL changes (tab prefill, typing,
