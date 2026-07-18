@@ -1,9 +1,26 @@
 import { eq, desc } from 'drizzle-orm'
 import { lookup } from 'dns/promises'
-import { estimateReadingTimeSeconds } from '@stashbro/shared'
+import { parseHTML } from 'linkedom'
+import { DefuddleClass } from 'defuddle/node'
+import readingTime from 'reading-time'
 import type { AppDb } from '../db/index.js'
 import { items } from '../db/schema.js'
 import { emitChange } from './events.js'
+
+const MAX_READING_SECONDS = 2700 // 45 min cap
+
+function computeReadingTime(html: string, url?: string): number {
+  try {
+    const { document } = parseHTML(html)
+    if (url) { try { Object.defineProperty(document, 'URL', { value: url }) } catch {} }
+    const result = new DefuddleClass(document).parse()
+    if (!result.wordCount || result.wordCount < 5) return 0
+    const stats = readingTime('x '.repeat(result.wordCount))
+    return Math.min(MAX_READING_SECONDS, Math.max(1, Math.round(stats.time / 1000)))
+  } catch {
+    return 0
+  }
+}
 
 // ponytail: SSRF guard - blocks fetches to private/loopback IPs; required since users supply URLs
 function isPrivateIP(ip: string): boolean {
@@ -97,8 +114,8 @@ export async function fetchOgMeta(url: string): Promise<{
     if (description) result.description = description
     if (image) result.image = image
     if (favicon) result.favicon = favicon
-    const readingTime = estimateReadingTimeSeconds(html)
-    if (readingTime > 0) result.reading_time_seconds = readingTime
+    const rt = computeReadingTime(html, url)
+    if (rt > 0) result.reading_time_seconds = rt
     return result
   } catch {
     return {}

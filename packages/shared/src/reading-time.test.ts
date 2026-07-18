@@ -35,8 +35,8 @@ describe('extractTextFromHtml', () => {
 })
 
 describe('estimateReadingTimeSeconds', () => {
-  it('estimates ~60s for 238 words', () => {
-    const text = 'word '.repeat(238).trim()
+  it('estimates ~60s for 200 words (reading-time default WPM)', () => {
+    const text = 'word '.repeat(200).trim()
     expect(estimateReadingTimeSeconds(text)).toBe(60)
   })
 
@@ -45,7 +45,7 @@ describe('estimateReadingTimeSeconds', () => {
   })
 
   it('handles HTML input by stripping tags first', () => {
-    const html = '<article><p>' + 'word '.repeat(476) + '</p></article>'
+    const html = '<article><p>' + 'word '.repeat(400) + '</p></article>'
     expect(estimateReadingTimeSeconds(html)).toBe(120)
   })
 

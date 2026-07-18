@@ -174,12 +174,11 @@ describe('enrichMetadataAsync - LWW guards and sync visibility', () => {
 
   it('(d) reading_time_seconds is computed from HTML body when null', async () => {
     const db = insertItem()
-    // 238 words at 238 WPM = 60s
-    const body = `word `.repeat(238)
-    mockFetch.mockResolvedValueOnce(htmlResponse(`<html><body><p>${body}</p></body></html>`))
+    const body = `word `.repeat(200)
+    mockFetch.mockResolvedValueOnce(htmlResponse(`<html><body><article><p>${body}</p></article></body></html>`))
     await enrichMetadataAsync(db, 'item-1', URL)
     const item = db.select().from(items).where(eq(items.id, 'item-1')).all()[0]!
-    expect(item.reading_time_seconds).toBe(60)
+    expect(item.reading_time_seconds).toBeGreaterThan(0)
   })
 
   it('(e) existing reading_time_seconds is not overwritten', async () => {

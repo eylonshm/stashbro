@@ -1,4 +1,5 @@
-const WPM = 238
+import readingTime from 'reading-time'
+
 // ponytail: 45 min cap - longest legit articles (longform journalism) rarely exceed this
 const MAX_SECONDS = 2700
 
@@ -14,7 +15,6 @@ function toText(html: string): string {
 }
 
 function findContent(html: string): string | null {
-  // Try semantic content containers in order of specificity
   return html.match(/<article[^>]*>([\s\S]+)<\/article>/i)?.[1]
     ?? html.match(/<main[^>]*>([\s\S]+)<\/main>/i)?.[1]
     ?? html.match(/<[^>]+role=["']main["'][^>]*>([\s\S]+?)<\/div>/i)?.[1]
@@ -30,8 +30,7 @@ export function estimateReadingTimeSeconds(textOrHtml: string): number {
   const content = findContent(textOrHtml)
   const text = toText(content ?? textOrHtml)
   if (!text) return 0
-  const words = text.split(/\s+/).length
-  // No content container found and word count suspiciously high -> unreliable estimate
-  if (!content && words > 3000) return 0
-  return Math.min(MAX_SECONDS, Math.max(1, Math.ceil(words / WPM * 60)))
+  const stats = readingTime(text)
+  if (!content && stats.words > 3000) return 0
+  return Math.min(MAX_SECONDS, Math.max(1, Math.round(stats.time / 1000)))
 }

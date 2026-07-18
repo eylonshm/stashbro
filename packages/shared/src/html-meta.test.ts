@@ -64,7 +64,7 @@ describe('parseHtmlMeta', () => {
   })
 
   it('includes reading_time_seconds estimate', () => {
-    const html = '<html><body>' + '<p>word </p>'.repeat(238) + '</body></html>'
+    const html = '<html><body>' + '<p>word </p>'.repeat(200) + '</body></html>'
     expect(parseHtmlMeta(html).reading_time_seconds).toBe(60)
   })
 })
