@@ -14,7 +14,7 @@ function makeChange(overrides: Partial<SyncChange> = {}): SyncChange {
     updated_at: '2026-01-02T00:00:00.000Z', deleted_at: null,
     url: 'https://example.com', title: 'Test', description: null,
     thumbnail_url: null, favicon_url: null, domain: 'example.com',
-    type: 'article', status: 'unread', priority: 'medium', tag_names: [],
+    type: 'article', status: 'unread', priority: 'medium', reading_time_seconds: null, tag_names: [],
     ...overrides,
   }
 }
@@ -22,7 +22,10 @@ function makeChange(overrides: Partial<SyncChange> = {}): SyncChange {
 function freshDb(): Database.Database {
   const db = new Database(':memory:')
   db.pragma('foreign_keys = ON')
-  for (const sql of MIGRATIONS) db.exec(sql)
+  for (const sql of MIGRATIONS) {
+    try { db.exec(sql) }
+    catch (e) { if (!String(e).includes('duplicate column')) throw e }
+  }
   return db
 }
 
@@ -124,6 +127,14 @@ describe('getChangesSince', () => {
 
     const changes = await store.getChangesSince(0)
     expect(changes[0]?.tag_names).toEqual(['tech'])
+  })
+
+  it('round-trips reading_time_seconds through applyChanges', async () => {
+    const db = freshDb()
+    const store = makeStore(db)
+    await store.applyChanges([makeChange({ id: 'rt1', change_seq: 4, reading_time_seconds: 240 })])
+    const changes = await store.getChangesSince(0)
+    expect(changes[0]?.reading_time_seconds).toBe(240)
   })
 
   it('excludes items of other users', async () => {

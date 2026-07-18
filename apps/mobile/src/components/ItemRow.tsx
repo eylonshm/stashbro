@@ -23,6 +23,10 @@ const FULL = SCREEN_W * 0.4        // drag past this on release = trigger primar
 const READ_COLOR = '#3A7BD5'
 const COPY_COLOR = '#6B7280'
 
+function formatReadingTime(seconds: number): string {
+  return seconds < 60 ? '< 1 min' : `${Math.round(seconds / 60)} min`
+}
+
 function ActionButton({ label, glyph, color, width, onPress }: { label: string; glyph: string; color: string; width: number; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={[styles.action, { backgroundColor: color, width }]}>
@@ -113,6 +117,11 @@ export function ItemRow({ item, onArchive, onMarkRead }: ItemRowProps) {
                 <View style={[styles.typePill, { backgroundColor: typeBadge.bg }]}>
                   <Text style={[styles.typeText, { color: typeBadge.fg }]}>{item.type}</Text>
                 </View>
+                {item.reading_time_seconds != null ? (
+                  <Text style={[styles.domain, { color: theme.meta }]} numberOfLines={1}>
+                    {formatReadingTime(item.reading_time_seconds)}
+                  </Text>
+                ) : null}
               </View>
 
               {tags.length > 0 && (

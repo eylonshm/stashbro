@@ -10,7 +10,7 @@ export interface LocalItem {
   thumbnail_url: string | null; favicon_url: string | null
   domain: string; type: string; status: string; priority: string
   created_at: string; updated_at: string; deleted_at: string | null
-  change_seq: number; tag_names: string[]
+  change_seq: number; reading_time_seconds: number | null; tag_names: string[]
 }
 
 export function useItems(filters: Parameters<typeof buildItemsQuery>[0] = {}) {

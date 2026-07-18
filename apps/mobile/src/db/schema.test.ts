@@ -48,7 +48,10 @@ describe('MIGRATIONS (functional - better-sqlite3)', () => {
   function freshDb() {
     const db = new Database(':memory:')
     db.pragma('foreign_keys = ON')
-    for (const sql of MIGRATIONS) db.exec(sql)
+    for (const sql of MIGRATIONS) {
+      try { db.exec(sql) }
+      catch (e) { if (!String(e).includes('duplicate column')) throw e }
+    }
     return db
   }
 

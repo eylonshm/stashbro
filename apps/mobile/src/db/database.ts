@@ -8,7 +8,12 @@ export function openDatabase(name = 'stashbro.db'): SQLite.SQLiteDatabase {
   _db = SQLite.openDatabaseSync(name)
   _db.execSync('PRAGMA journal_mode = WAL')
   _db.execSync('PRAGMA foreign_keys = ON')
-  for (const sql of MIGRATIONS) { _db.execSync(sql) }
+  // ponytail: migrations re-run every open; additive ALTERs throw once the column
+  // already exists (fresh DBs get it from CREATE TABLE). Ignore only that benign error.
+  for (const sql of MIGRATIONS) {
+    try { _db.execSync(sql) }
+    catch (e) { if (!String(e).includes('duplicate column')) throw e }
+  }
   return _db
 }
 

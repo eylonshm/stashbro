@@ -14,7 +14,8 @@ export const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     deleted_at TEXT,
-    change_seq INTEGER NOT NULL DEFAULT 0
+    change_seq INTEGER NOT NULL DEFAULT 0,
+    reading_time_seconds INTEGER
   )`,
   `CREATE INDEX IF NOT EXISTS items_user_seq ON items(user_id, change_seq)`,
   `CREATE TABLE IF NOT EXISTS tags (
@@ -30,4 +31,5 @@ export const MIGRATIONS: string[] = [
     FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
   )`,
+  `ALTER TABLE items ADD COLUMN reading_time_seconds INTEGER`,
 ]

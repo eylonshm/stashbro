@@ -69,7 +69,8 @@ export class SQLiteLocalStore implements LocalStore {
       id: string; change_seq: number; created_at: string; updated_at: string; deleted_at: string | null
       url: string; title: string; description: string | null; thumbnail_url: string | null
       favicon_url: string | null; domain: string; type: string; status: string; priority: string
-    }>('SELECT id,change_seq,created_at,updated_at,deleted_at,url,title,description,thumbnail_url,favicon_url,domain,type,status,priority FROM items WHERE user_id = ? AND change_seq > ? ORDER BY change_seq ASC', [this.userId, cursor])
+      reading_time_seconds: number | null
+    }>('SELECT id,change_seq,created_at,updated_at,deleted_at,url,title,description,thumbnail_url,favicon_url,domain,type,status,priority,reading_time_seconds FROM items WHERE user_id = ? AND change_seq > ? ORDER BY change_seq ASC', [this.userId, cursor])
 
     return rows.map(row => {
       const tagRows = this.db.queryAll<{ name: string }>(
@@ -83,6 +84,7 @@ export class SQLiteLocalStore implements LocalStore {
         type: row.type as SyncChange['type'],
         status: row.status as SyncChange['status'],
         priority: row.priority as SyncChange['priority'],
+        reading_time_seconds: row.reading_time_seconds,
         tag_names: tagRows.map(t => t.name),
       }
     })
@@ -99,17 +101,17 @@ export class SQLiteLocalStore implements LocalStore {
         // Preserve server's change_seq so these items stay <= newCursor and are never re-pushed
         if (existing) {
           this.db.run(
-            'UPDATE items SET url=?,title=?,description=?,thumbnail_url=?,favicon_url=?,domain=?,type=?,status=?,priority=?,updated_at=?,deleted_at=?,change_seq=? WHERE id=?',
+            'UPDATE items SET url=?,title=?,description=?,thumbnail_url=?,favicon_url=?,domain=?,type=?,status=?,priority=?,updated_at=?,deleted_at=?,change_seq=?,reading_time_seconds=? WHERE id=?',
             [change.url, change.title, change.description, change.thumbnail_url, change.favicon_url,
              change.domain, change.type, change.status, change.priority, change.updated_at,
-             change.deleted_at, change.change_seq, change.id]
+             change.deleted_at, change.change_seq, change.reading_time_seconds, change.id]
           )
         } else {
           this.db.run(
-            'INSERT INTO items(id,user_id,url,title,description,thumbnail_url,favicon_url,domain,type,status,priority,created_at,updated_at,deleted_at,change_seq) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+            'INSERT INTO items(id,user_id,url,title,description,thumbnail_url,favicon_url,domain,type,status,priority,created_at,updated_at,deleted_at,change_seq,reading_time_seconds) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
             [change.id, this.userId, change.url, change.title, change.description, change.thumbnail_url,
              change.favicon_url, change.domain, change.type, change.status, change.priority,
-             change.created_at, change.updated_at, change.deleted_at, change.change_seq]
+             change.created_at, change.updated_at, change.deleted_at, change.change_seq, change.reading_time_seconds]
           )
         }
 
@@ -139,6 +141,7 @@ export class SQLiteLocalStore implements LocalStore {
     thumbnail_url: string | null; favicon_url: string | null; domain: string
     type: string; status: string; priority: string
     updated_at: string; deleted_at: string | null; tag_names: string[]
+    reading_time_seconds?: number | null
   }): void {
     const maxRow = this.db.queryOne<{ seq: number | null }>(
       'SELECT MAX(change_seq) as seq FROM items WHERE user_id = ?', [this.userId]
@@ -152,17 +155,17 @@ export class SQLiteLocalStore implements LocalStore {
 
     if (existing) {
       this.db.run(
-        'UPDATE items SET url=?,title=?,description=?,thumbnail_url=?,favicon_url=?,domain=?,type=?,status=?,priority=?,updated_at=?,deleted_at=?,change_seq=? WHERE id=?',
+        'UPDATE items SET url=?,title=?,description=?,thumbnail_url=?,favicon_url=?,domain=?,type=?,status=?,priority=?,updated_at=?,deleted_at=?,change_seq=?,reading_time_seconds=? WHERE id=?',
         [item.url, item.title, item.description, item.thumbnail_url, item.favicon_url,
          item.domain, item.type, item.status, item.priority, item.updated_at,
-         item.deleted_at, nextSeq, item.id]
+         item.deleted_at, nextSeq, item.reading_time_seconds ?? null, item.id]
       )
     } else {
       this.db.run(
-        'INSERT INTO items(id,user_id,url,title,description,thumbnail_url,favicon_url,domain,type,status,priority,created_at,updated_at,deleted_at,change_seq) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO items(id,user_id,url,title,description,thumbnail_url,favicon_url,domain,type,status,priority,created_at,updated_at,deleted_at,change_seq,reading_time_seconds) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
         [item.id, this.userId, item.url, item.title, item.description, item.thumbnail_url,
          item.favicon_url, item.domain, item.type, item.status, item.priority, now,
-         item.updated_at, item.deleted_at, nextSeq]
+         item.updated_at, item.deleted_at, nextSeq, item.reading_time_seconds ?? null]
       )
     }
 
