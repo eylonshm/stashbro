@@ -42,7 +42,8 @@ export function getDb(path = process.env['DB_PATH'] ?? '/data/stashbro.db') {
       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       deleted_at TEXT,
-      change_seq INTEGER NOT NULL DEFAULT 0
+      change_seq INTEGER NOT NULL DEFAULT 0,
+      reading_time_seconds INTEGER
     )
   `)
   db.run(sql`CREATE INDEX IF NOT EXISTS items_user_seq ON items(user_id, change_seq)`)
@@ -74,6 +75,12 @@ export function getDb(path = process.env['DB_PATH'] ?? '/data/stashbro.db') {
     db.run(sql`INSERT INTO items SELECT * FROM _items_old`)
     db.run(sql`DROP TABLE _items_old`)
     db.run(sql`CREATE INDEX IF NOT EXISTS items_user_seq ON items(user_id, change_seq)`)
+  }
+
+  // Migration: add reading_time_seconds column for existing DBs
+  const itemsCols = db.all(sql`PRAGMA table_info(items)`) as Array<{ name: string }>
+  if (!itemsCols.some(c => c.name === 'reading_time_seconds')) {
+    db.run(sql`ALTER TABLE items ADD COLUMN reading_time_seconds INTEGER`)
   }
 
   db.run(sql`

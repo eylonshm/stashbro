@@ -23,6 +23,7 @@ export const items = sqliteTable('items', {
   updated_at: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
   deleted_at: text('deleted_at'),
   change_seq: integer('change_seq').notNull().default(0),
+  reading_time_seconds: integer('reading_time_seconds'),
 })
 
 export const tags = sqliteTable('tags', {
