@@ -272,8 +272,7 @@
                   },
                   "reading_time_seconds": {
                     "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": true
+                    "minimum": 1
                   }
                 },
                 "required": [

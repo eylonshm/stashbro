@@ -107,6 +107,8 @@ describe('POST /items', () => {
     const item2 = await res2.json()
     expect(item2.id).toBe(item1.id)
     expect(item2.change_seq).toBeGreaterThan(item1.change_seq)
+    // resave refreshes save time (created_at) so the item reads as newly saved
+    expect(item2.created_at >= item1.created_at).toBe(true)
     const db = getDb()
     const all = db.select().from(items).all()
     expect(all.length).toBe(1)

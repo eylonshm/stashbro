@@ -134,6 +134,7 @@ final class GRDBLocalStore: LocalStoreProtocol {
                 i.status = .unread
                 i.deletedAt = nil
                 i.updatedAt = item.updatedAt
+                i.createdAt = item.updatedAt  // resave refreshes "save time" -> item shows as newly saved
             } else {
                 i = item
             }
@@ -157,6 +158,7 @@ final class GRDBLocalStore: LocalStoreProtocol {
                 i.priority = item.priority
                 i.deletedAt = nil
                 i.updatedAt = item.updatedAt
+                i.createdAt = item.updatedAt  // resave refreshes "save time" -> item shows as newly saved
             } else {
                 i = item
             }

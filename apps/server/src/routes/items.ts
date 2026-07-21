@@ -81,7 +81,7 @@ export function itemsRouter() {
         type: z.enum(['video', 'post', 'article', 'other']).optional(),
         priority: z.enum(['low', 'medium', 'high']).optional(),
         tag_names: z.array(z.string()).optional(),
-        reading_time_seconds: z.number().int().positive().optional(),
+        reading_time_seconds: z.number().int().min(1).optional(),  // .min(1) not .positive(): positive emits 3.0-style `exclusiveMinimum: true`, invalid under our 3.1 spec (breaks swift-openapi generator)
       })}}}
     },
     responses: { 201: { content: { 'application/json': { schema: ItemSchema }}, description: 'Created item' }},
@@ -100,7 +100,7 @@ export function itemsRouter() {
     if (existing) {
       const seq = nextSeq(db, userId)
       db.update(items).set({
-        change_seq: seq, updated_at: now, status: 'unread', deleted_at: null,
+        change_seq: seq, updated_at: now, created_at: now, status: 'unread', deleted_at: null,
       }).where(eq(items.id, existing.id)).run()
       if (body.tag_names?.length) upsertTags(db, userId, body.tag_names, existing.id)
       // Re-enrich if title was never set (still equals url)
