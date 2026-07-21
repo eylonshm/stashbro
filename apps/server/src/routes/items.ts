@@ -103,8 +103,12 @@ export function itemsRouter() {
         change_seq: seq, updated_at: now, created_at: now, status: 'unread', deleted_at: null,
       }).where(eq(items.id, existing.id)).run()
       if (body.tag_names?.length) upsertTags(db, userId, body.tag_names, existing.id)
-      // Re-enrich if title was never set (still equals url)
-      if (existing.title === existing.url) enrichMetadataAsync(db, existing.id, existing.url).catch(() => {})
+      // Re-enrich if title was never set (still equals url), OR the item is an article
+      // still missing reading time - retries a prior transient enrichment miss (defuddle
+      // returned 0 words / flaky fetch). Enrichment only fills empty fields, so this is idempotent.
+      if (existing.title === existing.url || (existing.type !== 'video' && existing.reading_time_seconds == null)) {
+        enrichMetadataAsync(db, existing.id, existing.url).catch(() => {})
+      }
       emitChange(userId)
       return c.json(itemWithTags(db, existing.id, userId)!, 201)
     }

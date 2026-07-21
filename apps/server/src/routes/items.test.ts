@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createApp } from '../app.js'
 import { getDb, clearDbCache } from '../db/index.js'
 import { items, tags } from '../db/schema.js'
+import { enrichMetadataAsync } from '../services/metadata.js'
 
 vi.mock('../services/metadata.js', () => ({
   enrichMetadataAsync: vi.fn().mockResolvedValue(undefined),
@@ -112,6 +113,29 @@ describe('POST /items', () => {
     const db = getDb()
     const all = db.select().from(items).all()
     expect(all.length).toBe(1)
+  })
+
+  it('dedup: resaving an already-titled article that is missing reading time re-triggers enrichment', async () => {
+    const a = app()
+    const now = new Date().toISOString()
+    const db = getDb()
+    // Simulate an item whose title was enriched but reading time transiently missed
+    db.insert(items).values({
+      id: 'stuck-1', user_id: 'default', url: 'https://blog.example.com/post',
+      title: 'A Real Article Title', domain: 'blog.example.com', type: 'article',
+      status: 'unread', priority: 'medium', created_at: now, updated_at: now,
+      change_seq: 1, reading_time_seconds: null,
+    }).run()
+    vi.mocked(enrichMetadataAsync).mockClear()
+
+    const res = await a.request('/items', {
+      method: 'POST',
+      headers: { ...AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://blog.example.com/post' }),
+    })
+    expect(res.status).toBe(201)
+    // title !== url here, so the old `title === url` guard would NOT fire; the missing-rt guard must
+    expect(vi.mocked(enrichMetadataAsync)).toHaveBeenCalledWith(expect.anything(), 'stuck-1', 'https://blog.example.com/post')
   })
 
   it('dedup: POST url of archived item returns it to unread with new change_seq', async () => {

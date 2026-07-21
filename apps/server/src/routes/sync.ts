@@ -111,8 +111,13 @@ export function syncRouter() {
         })
         if (applied) {
           accepted++
-          // Fire enrichment for new items where title is still the URL (Mac app default before enrichment)
-          if (applied === 'insert' && change.title === change.url) {
+          // Enrich new items where title is still the URL (Mac default before enrichment), OR any
+          // pushed article still missing reading time - retries a prior transient enrichment miss so
+          // a resave self-heals it. Enrichment only fills empty fields (idempotent).
+          // ponytail: this re-fetches on any push of an rt-less article (incl. archive/status changes);
+          // bounded + self-limiting since it stops firing once reading time is set.
+          const missingReadingTime = change.type !== 'video' && !change.deleted_at && change.reading_time_seconds == null
+          if ((applied === 'insert' && change.title === change.url) || missingReadingTime) {
             enrichMetadataAsync(db, change.id, change.url).catch(() => {})
           }
         }

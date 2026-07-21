@@ -52,7 +52,7 @@ describe('POST /sync/push - enrichment trigger', () => {
     expect(mockEnrich).toHaveBeenCalledWith(expect.anything(), 'gh-item', url)
   })
 
-  it('does not trigger enrichment when title is already enriched', async () => {
+  it('does not trigger enrichment when item is fully enriched (title set + reading time present)', async () => {
     const { enrichMetadataAsync } = await import('../services/metadata.js')
     const mockEnrich = vi.mocked(enrichMetadataAsync)
     mockEnrich.mockClear()
@@ -60,7 +60,34 @@ describe('POST /sync/push - enrichment trigger', () => {
     await app.request('/sync/push', {
       method: 'POST',
       headers: AUTH,
-      body: JSON.stringify({ changes: [makeChange({ title: 'GitHub - conductor-oss/conductor: ...' })] }),
+      body: JSON.stringify({ changes: [makeChange({ title: 'GitHub - conductor-oss/conductor: ...', reading_time_seconds: 300 })] }),
+    })
+    expect(mockEnrich).not.toHaveBeenCalled()
+  })
+
+  it('re-triggers enrichment for an already-titled article still missing reading time (retry transient miss)', async () => {
+    const { enrichMetadataAsync } = await import('../services/metadata.js')
+    const mockEnrich = vi.mocked(enrichMetadataAsync)
+    mockEnrich.mockClear()
+    const app = createApp()
+    const url = 'https://blog.example.com/stuck'
+    await app.request('/sync/push', {
+      method: 'POST',
+      headers: AUTH,
+      body: JSON.stringify({ changes: [makeChange({ id: 'stuck-sync', url, title: 'Enriched Title', type: 'article', reading_time_seconds: null })] }),
+    })
+    expect(mockEnrich).toHaveBeenCalledWith(expect.anything(), 'stuck-sync', url)
+  })
+
+  it('does not re-trigger enrichment for a video missing reading time', async () => {
+    const { enrichMetadataAsync } = await import('../services/metadata.js')
+    const mockEnrich = vi.mocked(enrichMetadataAsync)
+    mockEnrich.mockClear()
+    const app = createApp()
+    await app.request('/sync/push', {
+      method: 'POST',
+      headers: AUTH,
+      body: JSON.stringify({ changes: [makeChange({ id: 'vid', title: 'Some Video', type: 'video', reading_time_seconds: null })] }),
     })
     expect(mockEnrich).not.toHaveBeenCalled()
   })
